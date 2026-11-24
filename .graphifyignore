@@ -1,0 +1,7 @@
+# graphify kod haritası kapsamı dışı: üretilmiş çıktı, bilerek hatalı örnekler, belgeler (yalnız kod çıkarılır)
+dist/
+out/
+tests/Fixtures/
+docs/
+*.md
+*.wsb
