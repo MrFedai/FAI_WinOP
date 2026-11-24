@@ -7,6 +7,12 @@ BeforeAll {
     $script:TweakRoot = Join-Path $script:FaiRepoRoot 'tweaks'
     $script:Catalog = Import-FaiTweakCatalog -Path $script:TweakRoot
     $script:Ids = @($script:Catalog.Keys | Sort-Object)
+    # Tek seferlik tweak'ler: her çalıştırmada yeniden yapılır / geri alınmaz (ZATEN UYGUN olmaz); ayrı test edilir.
+    $script:OneShot = @('system.restore-point', 'setup.edition-pro', 'refresh.reboot-to-bios')
+    # Araç tweak'leri profille çalışmaz (dry-run'da da atlanır).
+    $script:ToolIds = @($script:Ids | Where-Object { $script:Catalog[$_].Tool })
+    $script:RepeatIds = @($script:Ids | Where-Object { $script:OneShot -notcontains $_ })
+    $script:GpuClass = 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}'
     $script:NotifRoot = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings'
     $script:Seq = 0
 
@@ -40,7 +46,16 @@ BeforeAll {
         $ctx.Edge.WebView2Version = '131.0.2903.70'
         # Faz 6: görev çubuğu, hesap resimleri, Not Defteri, Gezgin taklidi.
         Initialize-FakeShellState -Ctx $ctx
-        $ctx.Prompt.Enqueue([string[]]@('E', 'E', 'E', 'E', 'E'))
+        # Faz 7: koşullu tweak'ler bu makinede uygulanabilir olsun (Home sürüm, NVIDIA + Intel ekran kartlı dizüstü).
+        $ctx.SystemInfo.Laptop = $true
+        $ctx.SystemInfo.Nvidia = $true
+        $ctx.SystemInfo.Amd = $true
+        $ctx.SystemInfo.Intel = $true
+        $ctx.SystemInfo.Edition = 'Core'
+        $ctx.Registry.Seed("$script:GpuClass\0000", 'ProviderName', 'NVIDIA', 'String')
+        $ctx.Registry.Seed("$script:GpuClass\0001", 'ProviderName', 'Intel Corporation', 'String')
+        $ctx.Registry.Seed("$script:GpuClass\Configuration", 'Reset', 0, 'DWord')
+        $ctx.Prompt.Enqueue([string[]]@('E', 'E', 'E', 'E', 'E', 'E', 'E', 'E'))
         return $ctx
     }
 
@@ -112,8 +127,19 @@ Describe 'Katalog dry-run raporu' {
         Get-FakeWriteCount $script:DryCtx | Should -Be 0
     }
 
+    It 'araç tweak''leri profille çalışmaz: atlanır' {
+        $script:ToolIds | Should -Contain 'refresh.reboot-to-bios'
+        foreach ($id in $script:ToolIds) { $script:DryReport.Find($id).Status | Should -Be 'Skipped' -Because $id }
+    }
+
+    It 'P0 tweak''i yalnız NVIDIA sınıf anahtarına yazar, onay her çalıştırmada' {
+        $line = @($script:DryReport.Find('graphics.p0-state').Lines)[0]
+        $line | Should -Match 'değişecek 1 alt anahtar: 0000\]'
+        $script:DryReport.Find('graphics.p0-state').Reason | Should -Match 'onay'
+    }
+
     It 'her tweak ÖNİZLEME ve en az bir okunabilir değişiklik satırı' {
-        foreach ($id in $script:Ids) {
+        foreach ($id in @($script:Ids | Where-Object { $script:ToolIds -notcontains $_ })) {
             $item = $script:DryReport.Find($id)
             $item | Should -Not -BeNullOrEmpty -Because $id
             $item.Status | Should -Be 'Planned' -Because "$id ($($item.Reason))"
@@ -143,11 +169,14 @@ Describe 'Katalog: uygula → geri al' {
     It 'bütün katalog uygulanır, ikinci çalıştırma ZATEN UYGUN, -Undo başlangıç durumunu birebir getirir' {
         $ctx = New-SeededContext
         $before = Get-State $ctx
-        $profileAll = New-CatalogProfile $script:Ids
+        $profileAll = New-CatalogProfile $script:RepeatIds
 
         $r = Invoke-FaiEngine -Profile $profileAll -Context $ctx -Catalog $script:Catalog
         $r.HasFailures() | Should -BeFalse -Because ($r.Render())
-        $r.Count('Applied') | Should -Be $script:Ids.Count
+        $r.Count('Applied') | Should -Be $script:RepeatIds.Count
+        $ctx.Registry.GetValue("$script:GpuClass\0000", 'DisableDynamicPstate') | Should -Be 1
+        $ctx.Registry.ValueExists("$script:GpuClass\0001", 'DisableDynamicPstate') | Should -BeFalse
+        $ctx.Registry.ValueExists("$script:GpuClass\Configuration", 'DisableDynamicPstate') | Should -BeFalse
 
         $ctx.Registry.GetValue("$script:NotifRoot\Logi.GHUB.Systray", 'Enabled') | Should -Be 0
         $ctx.Registry.GetValue("$script:NotifRoot\Discord.Discord", 'Enabled') | Should -Be 0
@@ -157,11 +186,51 @@ Describe 'Katalog: uygula → geri al' {
         $ctx.Audio.GetVolume() | Should -Be 15
 
         $again = Invoke-FaiEngine -Profile $profileAll -Context $ctx -Catalog $script:Catalog
-        $again.Count('UpToDate') | Should -Be $script:Ids.Count -Because ($again.Render())
+        $again.Count('UpToDate') | Should -Be $script:RepeatIds.Count -Because ($again.Render())
 
         $u = Invoke-FaiEngine -Undo -Context $ctx -Catalog $script:Catalog
         $u.HasFailures() | Should -BeFalse -Because ($u.Render())
         Get-State $ctx | Should -Be $before
+    }
+
+    It 'tek seferlik tweak''ler: geri yükleme noktası ilk adım, sürüm sayfası açılır, BIOS yalnız AllowTools ile' {
+        $ctx = New-SeededContext
+        $ctx.SystemControl.RestoreEnabled = $false
+        $p = [Profile]::FromHashtable(@{ name = 'tek'; tweaks = @('setup.edition-pro', 'refresh.reboot-to-bios', 'system.restore-point'); apps = @() }, 'test')
+        $r = Invoke-FaiEngine -Profile $p -Context $ctx -Catalog $script:Catalog
+        $r.HasFailures() | Should -BeFalse -Because ($r.Render())
+        $r.Items[0].TweakId | Should -Be 'system.restore-point'
+        $r.Find('system.restore-point').Status | Should -Be 'Applied'
+        $ctx.SystemControl.RestoreEnabled | Should -BeTrue
+        @($ctx.SystemControl.RestorePoints) | Should -Be @('FAI_WinOP')
+        $r.Find('setup.edition-pro').Status | Should -Be 'Applied'
+        @($ctx.Shell.Opened) | Should -Contain 'ms-settings:activation'
+        $r.Find('refresh.reboot-to-bios').Status | Should -Be 'Skipped'
+        $ctx.SystemControl.Restarts.Count | Should -Be 0
+
+        $again = Invoke-FaiEngine -Profile $p -Context $ctx -Catalog $script:Catalog
+        $again.Find('system.restore-point').Status | Should -Be 'Applied'
+        $ctx.SystemControl.RestorePoints.Count | Should -Be 2
+
+        $tool = Invoke-FaiEngine -Profile ([Profile]::FromHashtable(@{ name = 'arac'; tweaks = @('refresh.reboot-to-bios') }, 'test')) -Context $ctx -Catalog $script:Catalog -AllowTools
+        $tool.Find('refresh.reboot-to-bios').Status | Should -Be 'Applied' -Because ($tool.Render())
+        @($ctx.SystemControl.Restarts) | Should -Be @(10)
+
+        $u = Invoke-FaiEngine -Undo -Context $ctx -Catalog $script:Catalog
+        $u.HasFailures() | Should -BeFalse -Because ($u.Render())
+    }
+
+    It 'sürüm Pro ise edition-pro atlanır; etkileşimsiz kipte hata verir' {
+        $ctx = New-SeededContext
+        $ctx.SystemInfo.Edition = 'Pro'
+        $r = Invoke-FaiEngine -Profile (New-CatalogProfile @('setup.edition-pro')) -Context $ctx -Catalog $script:Catalog
+        $r.Find('setup.edition-pro').Status | Should -Be 'Skipped'
+        $ctx2 = New-SeededContext
+        $ctx2.Unattended = $true
+        $p = [Profile]::FromHashtable(@{ name = 'u'; tweaks = @('setup.edition-pro'); autoConfirm = @('setup.edition-pro') }, 'test')
+        $r2 = Invoke-FaiEngine -Profile $p -Context $ctx2 -Catalog $script:Catalog
+        $r2.Find('setup.edition-pro').Status | Should -Be 'Failed'
+        $r2.Find('setup.edition-pro').Reason | Should -Match 'Etkileşim gerekir'
     }
 
     It 'profil parametreleri: ses seviyesi ve bildirim istisnaları geçersiz kılınır' {

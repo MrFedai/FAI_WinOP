@@ -74,6 +74,13 @@ class Tweak {
     [string] $Confirm = ''
     # Uygulama / geri alma sonrası kabuk yenilemeleri (Get-FaiRefreshKind): Shell, Desktop, Settings, StartMenu.
     [string[]] $Refresh = @()
+    # Profilde uygulamalardan (apps) ÖNCE işlenir (ör. system.restore-point: her çalıştırmada ilk adım).
+    [bool] $First = $false
+    # Caution / Risk sorusu her çalıştırmada (bekleyen eylem varsa) sorulur: profil autoConfirm'i işlemez,
+    # -Unattended'da atlanır (ör. graphics.p0-state).
+    [bool] $AlwaysConfirm = $false
+    # Araç: profille otomatik çalışmaz (motor atlar); yalnız menüden / -Only ile (Engine.AllowTools).
+    [bool] $Tool = $false
     [Condition[]] $Conditions = @()
     # Ham eylem tanımları (yer tutucular açılmamış).
     [hashtable[]] $ActionDefs = @()
@@ -98,6 +105,9 @@ class Tweak {
         if ($Data.ContainsKey('Confirm')) { $t.Confirm = [string]$Data['Confirm'] }
         if ($Data.ContainsKey('Params')) { $t.Params = $Data['Params'] }
         if ($Data.ContainsKey('Refresh')) { $t.Refresh = [string[]]@($Data['Refresh']) }
+        if ($Data.ContainsKey('First')) { $t.First = [bool]$Data['First'] }
+        if ($Data.ContainsKey('AlwaysConfirm')) { $t.AlwaysConfirm = [bool]$Data['AlwaysConfirm'] }
+        if ($Data.ContainsKey('Tool')) { $t.Tool = [bool]$Data['Tool'] }
         $conds = New-Object 'System.Collections.Generic.List[Condition]'
         if ($Data.ContainsKey('Conditions')) {
             foreach ($c in @($Data['Conditions'])) { $conds.Add([Condition]::Parse($c)) }
@@ -146,6 +156,9 @@ class Tweak {
         $t.Risk = $this.Risk
         $t.Confirm = $this.Confirm
         $t.Refresh = $this.Refresh
+        $t.First = $this.First
+        $t.AlwaysConfirm = $this.AlwaysConfirm
+        $t.Tool = $this.Tool
         $t.Conditions = $this.Conditions
         $t.ActionDefs = $this.ActionDefs
         $t.Params = $merged

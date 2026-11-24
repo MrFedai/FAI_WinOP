@@ -10,12 +10,17 @@ Değişiklikler varsayılan parametrelerle listelenir; profil parametreleri geç
 | [`bloat.edge-remove`](#bloatedge-remove) | Microsoft Edge'i kaldır (WebView2 kalır) | ⚠ Caution | — | — |
 | [`bloat.persistence`](#bloatpersistence) | Kaldırılan uygulamaların geri gelmesini engelle | ⚠ Caution | — | — |
 | [`bloat.remove`](#bloatremove) | Gereksiz Store uygulamalarını kaldır | ⚠ Caution | — | — |
+| [`graphics.p0-state`](#graphicsp0-state) | NVIDIA: P0 güç durumunda sabit tut | ⚠ Caution | HasNvidia | — |
 | [`privacy.app-permissions`](#privacyapp-permissions) | Uygulama izinlerini kapat (kamera ve mikrofon açık) | Safe | — | — |
 | [`privacy.search-ads`](#privacysearch-ads) | Arama ve Başlat reklamlarını kapat | Safe | — | — |
 | [`privacy.telemetry`](#privacytelemetry) | Telemetriyi en aza indir | Safe | — | — |
+| [`refresh.reboot-to-bios`](#refreshreboot-to-bios) | UEFI (BIOS) ayarlarına yeniden başlat | ⚠ Caution | — | `delay` |
 | [`setup.default-browser`](#setupdefault-browser) | Varsayılan tarayıcı (Ayarlar üzerinden) | ⚠ Caution | — | `appName`, `progId`, `scope` |
+| [`setup.edition-pro`](#setupedition-pro) | Windows Home → Pro yükseltmesi (Ayarlar üzerinden) | ⚠ Caution | Edition Core | — |
 | [`sound.startup-sound-off`](#soundstartup-sound-off) | Açılış sesini kapat | Safe | — | — |
 | [`sound.volume`](#soundvolume) | Ses seviyesini ayarla | Safe | — | `level` |
+| [`system.restore-point`](#systemrestore-point) | Sistem Geri Yükleme noktası | Safe | — | `description` |
+| [`system.timer-resolution`](#systemtimer-resolution) | Zamanlayıcı çözünürlüğü 0,5 ms | Safe | — | `resolution` |
 | [`ui.account-pictures-black`](#uiaccount-pictures-black) | Varsayılan hesap resimleri siyah | Safe | — | — |
 | [`ui.copilot-off`](#uicopilot-off) | Copilot'u kapat | Safe | — | — |
 | [`ui.desktop-icons`](#uidesktop-icons) | Masaüstü simgeleri: Bu Bilgisayar + Geri Dönüşüm Kutusu | Safe | — | — |
@@ -125,6 +130,24 @@ Değişiklikler (44):
 - `Appx: king.com.CandyCrushSaga kaldırılır (kullanıcı)`
 - `Appx: king.com.CandyCrushSodaSaga kaldırılır (kullanıcı)`
 
+## graphics
+
+### graphics.p0-state
+
+**NVIDIA: P0 güç durumunda sabit tut** · Risk: ⚠ Caution
+
+NVIDIA ekran kartının dinamik P-state geçişlerini kapatır (DisableDynamicPstate=1): kart boştayken de en yüksek güç durumunda (P0) kalır, saat düşüşünden gelen gecikme sıçramaları azalır. Değer yalnız sağlayıcısı NVIDIA olan ekran bağdaştırıcısı sınıf anahtarına (0000, 0001…) yazılır; Intel / AMD anahtarlarına dokunulmaz. Dizüstünde pil süresi kısalır ve ısı artar; bu yüzden onay her çalıştırmada istenir (profil autoConfirm'i işlemez, -Unattended'da uygulanmaz). Sürücü yeniden yüklenince ya da yeniden başlatınca etkin olur. Not: etkisi gerçek donanımda ölçülmedi (Faz 9).
+
+Onay uyarısı: Ekran kartı boştayken de tam güçte kalır: dizüstünde pil süresi kısalır ve ısı artar.
+
+Çalışma: onay her çalıştırmada sorulur (autoConfirm işlemez, `-Unattended` kipte uygulanmaz)
+
+Koşul: HasNvidia
+
+Değişiklikler (1):
+
+- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\DisableDynamicPstate = 1 (DWord) — yalnız: [0-9][0-9][0-9][0-9] — ProviderName: NVIDIA*`
+
 ## privacy
 
 ### privacy.app-permissions
@@ -223,6 +246,24 @@ Değişiklikler (30):
 - `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\System\UploadUserActivities = 0 (DWord)`
 - `Kayıt defteri: HKCU:\Software\Microsoft\Input\TIPC\Enabled = 0 (DWord)`
 
+## refresh
+
+### refresh.reboot-to-bios
+
+**UEFI (BIOS) ayarlarına yeniden başlat** · Risk: ⚠ Caution
+
+Araç: bilgisayarı birkaç saniye sonra doğrudan UEFI ürün yazılımı ayarlarına yeniden başlatır (shutdown /r /fw). Profille otomatik çalışmaz; yalnız menüden ya da -Only ile, onayla. Açık belgeleri kaydedin. Vazgeçmek için süre dolmadan: shutdown /a. Eski (Legacy BIOS) kurulumlarda desteklenmez.
+
+Onay uyarısı: Bilgisayar birkaç saniye içinde yeniden başlayacak; kaydedilmemiş işler kaybolur.
+
+Çalışma: araç: profille otomatik çalışmaz, menüden / `-Only` ile
+
+Parametreler (varsayılan): `delay` = `10`
+
+Değişiklikler (1):
+
+- `10 sn sonra UEFI (BIOS) ayarlarına yeniden başlat`
+
 ## setup
 
 ### setup.default-browser
@@ -238,6 +279,20 @@ Parametreler (varsayılan): `appName` = `Google Chrome` · `progId` = `ChromeHTM
 Değişiklikler (1):
 
 - `Varsayılan tarayıcı: Google Chrome (ChromeHTML) — Ayarlar'da tek tıkla, elle`
+
+### setup.edition-pro
+
+**Windows Home → Pro yükseltmesi (Ayarlar üzerinden)** · Risk: ⚠ Caution
+
+Yalnız Home (Core) sürümde: Ayarlar \> Etkinleştirme sayfasını açar; Pro'ya yükseltme kullanıcının kendi ürün anahtarıyla ("Ürün anahtarını değiştir") ya da Microsoft Store'dan satın alınan yükseltmeyle yapılır. Araç anahtar içermez, genel / KMS anahtarı girmez ve hiçbir etkinleştirme atlatması yapmaz (korsan aktivasyon yok). Yükseltme sonunda Windows yeniden başlar; sürüm Pro olunca tweak koşulu sağlanmaz, atlanır. Etkileşimsiz kipte uygulanmaz; geri alma yoktur.
+
+Onay uyarısı: Ayarlar \> Etkinleştirme açılacak; yükseltmeyi kendi ürün anahtarınızla ya da Store'dan siz yaparsınız.
+
+Koşul: Edition Core
+
+Değişiklikler (1):
+
+- `Ayarlar açılır (ms-settings:activation): Etkinleştirme sayfası açıldı: "Ürün anahtarını değiştir" ile kendi Pro anahtarınızı girin ya da Store'dan Pro yükseltmesini alın. Yükseltme sonrası Windows yeniden başlar.`
 
 ## sound
 
@@ -263,6 +318,35 @@ Parametreler (varsayılan): `level` = `15`
 Değişiklikler (1):
 
 - `Ses: varsayılan çıkış → seviye = %15`
+
+## system
+
+### system.restore-point
+
+**Sistem Geri Yükleme noktası** · Risk: Safe
+
+Her çalıştırmada ilk adım (First): profildeki uygulamalardan ve öteki tweak'lerden önce bir Sistem Geri Yükleme noktası oluşturur. Sistem sürücüsünde Sistem Koruması kapalıysa açar. Windows'un 24 saatte bir nokta sınırı (SystemRestorePointCreationFrequency) oluşturma sırasında geçici olarak kaldırılır, sonra eski hâline döner. -Undo noktayı silmez; FAI\_WinOP'un kendi geri alması ayrıca vardır, bu nokta son çare (rstrui). Not: Sistem Koruması açma / nokta oluşturma gerçek makinede (VM) doğrulanmadı.
+
+Çalışma: her çalıştırmada ilk adım (uygulamalardan önce)
+
+Parametreler (varsayılan): `description` = `FAI_WinOP`
+
+Değişiklikler (1):
+
+- `Sistem Geri Yükleme noktası: 'FAI_WinOP'`
+
+### system.timer-resolution
+
+**Zamanlayıcı çözünürlüğü 0,5 ms** · Risk: Safe
+
+FAI\_TimerResolution servisini kurar (src/Native/TimerResolution.cs, açılışta otomatik başlar) ve sistem zamanlayıcısını 0,5 ms'ye (5000 × 100 ns) çeker. Windows 11'de bir sürecin istediği çözünürlük yalnız o süreci etkiler; sistem geneli etki için GlobalTimerResolutionRequests=1 gerekir (Session Manager\\kernel). Pilde güç tüketimini biraz artırabilir. -Undo servisi kaldırır, değeri siler.
+
+Parametreler (varsayılan): `resolution` = `5000`
+
+Değişiklikler (2):
+
+- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\kernel\GlobalTimerResolutionRequests = 1 (DWord)`
+- `Zamanlayıcı çözünürlüğü servisi: 0.5 ms`
 
 ## ui
 

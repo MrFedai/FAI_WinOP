@@ -60,6 +60,64 @@ class WindowsSystemInfoProvider : ISystemInfoProvider {
         $cs = Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction Stop
         return [math]::Round([double]$cs.TotalPhysicalMemory / 1GB, 1)
     }
+
+    [int] GetLogicalProcessorCount() {
+        $cs = Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction Stop
+        return [int]$cs.NumberOfLogicalProcessors
+    }
+
+    [int] GetCoreCount() {
+        $total = 0
+        foreach ($cpu in @(Get-CimInstance -ClassName Win32_Processor -ErrorAction Stop)) { $total += [int]$cpu.NumberOfCores }
+        return $total
+    }
+}
+
+# Sistem Geri Yükleme (Enable-ComputerRestore / Checkpoint-Computer, yalnız Windows PowerShell 5.1'de var) ve
+# shutdown.exe. Windows varsayılanı 24 saatte bir nokta (SystemRestorePointCreationFrequency, dakika): oluştururken
+# geçici olarak 0 yapılır, sonra eski hâline döner.
+class WindowsSystemControlProvider : ISystemControlProvider {
+    static [string] $RestoreKey = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore'
+
+    WindowsSystemControlProvider() { }
+
+    static [string] SystemDrive() { return ($env:SystemDrive.TrimEnd('\') + '\') }
+
+    [bool] IsRestoreEnabled() {
+        # Sistem sürücüsünün birim kimliği SPP\Clients altındaki değerde geçiyorsa koruma açıktır.
+        $clients = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SPP\Clients'
+        $item = Get-ItemProperty -LiteralPath $clients -ErrorAction SilentlyContinue
+        if ($null -eq $item) { return $false }
+        $volume = Get-CimInstance -ClassName Win32_Volume -Filter ("DriveLetter='{0}'" -f $env:SystemDrive) -ErrorAction SilentlyContinue
+        if ($null -eq $volume) { return $false }
+        $id = [string]$volume.DeviceID
+        foreach ($p in @($item.PSObject.Properties)) {
+            if ($p.Name -like 'PS*') { continue }
+            foreach ($v in @($p.Value)) { if ([string]$v -like ('*' + $id + '*')) { return $true } }
+        }
+        return $false
+    }
+
+    [void] EnableRestore() { Enable-ComputerRestore -Drive ([WindowsSystemControlProvider]::SystemDrive()) -ErrorAction Stop }
+
+    [void] CreateRestorePoint([string] $Description) {
+        $key = [WindowsSystemControlProvider]::RestoreKey
+        $old = $null
+        $item = Get-ItemProperty -LiteralPath $key -Name 'SystemRestorePointCreationFrequency' -ErrorAction SilentlyContinue
+        if ($null -ne $item) { $old = $item.SystemRestorePointCreationFrequency }
+        Set-ItemProperty -LiteralPath $key -Name 'SystemRestorePointCreationFrequency' -Value 0 -Type DWord -Force
+        try { Checkpoint-Computer -Description $Description -RestorePointType 'MODIFY_SETTINGS' -ErrorAction Stop }
+        finally {
+            if ($null -eq $old) { Remove-ItemProperty -LiteralPath $key -Name 'SystemRestorePointCreationFrequency' -ErrorAction SilentlyContinue }
+            else { Set-ItemProperty -LiteralPath $key -Name 'SystemRestorePointCreationFrequency' -Value $old -Type DWord -Force }
+        }
+    }
+
+    [void] RestartToFirmware([int] $DelaySeconds) {
+        $exe = Join-Path $env:SystemRoot 'System32\shutdown.exe'
+        $out = & $exe '/r' '/fw' '/t' ([string]$DelaySeconds) 2>&1
+        if ($global:LASTEXITCODE -ne 0) { throw ('shutdown /r /fw başarısız ({0}): {1}' -f $global:LASTEXITCODE, ((@($out) -join ' ').Trim())) }
+    }
 }
 
 class WindowsPromptProvider : IPromptProvider {

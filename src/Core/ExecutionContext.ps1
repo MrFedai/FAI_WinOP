@@ -18,6 +18,7 @@ class ExecutionContext {
     [IDesktopProvider] $Desktop
     [IImageProvider] $Images
     [IAppSettingsProvider] $AppSettings
+    [ISystemControlProvider] $SystemControl
 
     [BackupStore] $Backup
     [Logger] $Logger
@@ -29,6 +30,9 @@ class ExecutionContext {
     # Asla kaldırılmayacak Appx paketleri (-like kalıpları): sabit korunan liste (Get-FaiBloatProtected) + profildeki
     # uygulamaların Appx adları. Motor her çalıştırmada doldurur; Appx / AppxCleanup eylemleri bunlara dokunmaz.
     [string[]] $ProtectedAppx = @()
+    # Yeniden başlatma sonrası aynı çalıştırmayı sürdürecek komut satırı (CLI doldurur, Faz 8). Boşsa yeniden başlatma
+    # gerektiren eylem (ör. bekleyen güncellemeler) kullanıcıya "yeniden başlatıp tekrar çalıştırın" der.
+    [string] $ResumeCommand = ''
 
     ExecutionContext() {
         $this.Logger = [Logger]::new()

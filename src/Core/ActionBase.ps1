@@ -10,6 +10,8 @@
 class ActionBase {
     [string] $Type
     [hashtable] $Definition
+    # Eylem düzeyi koşul (tanımda 'When'; New-FaiAction bağlar). Sağlanmazsa motor eylemi bu makinede atlar.
+    [Condition] $When = $null
 
     ActionBase() { }
 
@@ -25,4 +27,10 @@ class ActionBase {
     [string] Describe() { throw [System.NotImplementedException]::new('ActionBase.Describe') }
 
     [string] Preview([ExecutionContext] $Ctx) { return $this.Describe() }
+
+    # When yoksa ya da sağlanıyorsa $true (salt okunur).
+    [bool] Applies([ISystemInfoProvider] $Sys) {
+        if ($null -eq $this.When) { return $true }
+        return $this.When.Test($Sys)
+    }
 }

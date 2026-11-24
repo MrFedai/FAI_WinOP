@@ -84,6 +84,22 @@ class ISystemInfoProvider {
     [string] GetEdition() { throw [System.NotImplementedException]::new('ISystemInfoProvider.GetEdition') }
     [int] GetBuild() { throw [System.NotImplementedException]::new('ISystemInfoProvider.GetBuild') }
     [double] GetRamGB() { throw [System.NotImplementedException]::new('ISystemInfoProvider.GetRamGB') }
+    # Mantıksal işlemci (iş parçacığı) sayısı, bütün soketler toplamı.
+    [int] GetLogicalProcessorCount() { throw [System.NotImplementedException]::new('ISystemInfoProvider.GetLogicalProcessorCount') }
+    # Fiziksel çekirdek sayısı, bütün soketler toplamı (SMT varsa mantıksal sayıdan az).
+    [int] GetCoreCount() { throw [System.NotImplementedException]::new('ISystemInfoProvider.GetCoreCount') }
+}
+
+# Sistem denetimi: Sistem Geri Yükleme (sistem sürücüsü) ve yeniden başlatma.
+class ISystemControlProvider {
+    # Sistem sürücüsünde Sistem Koruması açık mı.
+    [bool] IsRestoreEnabled() { throw [System.NotImplementedException]::new('ISystemControlProvider.IsRestoreEnabled') }
+    # Sistem sürücüsünde Sistem Korumasını açar. YAZMA.
+    [void] EnableRestore() { throw [System.NotImplementedException]::new('ISystemControlProvider.EnableRestore') }
+    # Geri yükleme noktası oluşturur (Windows'un 24 saatte bir sınırı geçici olarak kaldırılır). YAZMA.
+    [void] CreateRestorePoint([string] $Description) { throw [System.NotImplementedException]::new('ISystemControlProvider.CreateRestorePoint') }
+    # DelaySeconds sonra UEFI ürün yazılımı ayarlarına (BIOS) yeniden başlatır. YAZMA.
+    [void] RestartToFirmware([int] $DelaySeconds) { throw [System.NotImplementedException]::new('ISystemControlProvider.RestartToFirmware') }
 }
 
 # Kullanıcıya soru. Onaylar yalnız buradan gelir (Unattended modda motor bunu hiç çağırmaz).

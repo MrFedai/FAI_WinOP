@@ -476,6 +476,8 @@ Describe 'Fabrika, arayüzler ve Windows sağlayıcıları' {
         { ([IRegistryProvider]::new()).DeleteEmptyKey('a') } | Should -Throw -ExceptionType ([System.NotImplementedException])
         { ([IEdgeProvider]::new()).UninstallEdge() } | Should -Throw -ExceptionType ([System.NotImplementedException])
         { ([ITaskProvider]::new()).RegisterStartupTask('a', 'b', 'c', 'd') } | Should -Throw -ExceptionType ([System.NotImplementedException])
+        { ([ISystemControlProvider]::new()).CreateRestorePoint('a') } | Should -Throw -ExceptionType ([System.NotImplementedException])
+        { ([ISystemInfoProvider]::new()).GetCoreCount() } | Should -Throw -ExceptionType ([System.NotImplementedException])
     }
 
     It 'her Windows sağlayıcısı kendi arayüzünden türer' {
@@ -485,6 +487,7 @@ Describe 'Fabrika, arayüzler ve Windows sağlayıcıları' {
             WindowsPromptProvider = 'IPromptProvider'; WindowsFileProvider = 'IFileProvider'; WindowsShortcutProvider = 'IShortcutProvider'
             WindowsPowerProvider = 'IPowerProvider'; WindowsScriptHost = 'IScriptHost'; WindowsAudioProvider = 'IAudioProvider'
             WindowsTimerResolutionProvider = 'ITimerResolutionProvider'; WindowsEdgeProvider = 'IEdgeProvider'
+            WindowsSystemControlProvider = 'ISystemControlProvider'
         }
         foreach ($k in $pairs.Keys) { ($k -as [type]).BaseType.Name | Should -Be $pairs[$k] -Because $k }
     }
@@ -492,7 +495,7 @@ Describe 'Fabrika, arayüzler ve Windows sağlayıcıları' {
     It 'Windows sağlayıcıları arayüzün bütün yöntemlerini ezer' {
         foreach ($name in @('WindowsRegistryProvider', 'WindowsServiceManager', 'WindowsTaskProvider', 'WindowsAppxProvider', 'WindowsPackageProvider',
                 'WindowsSystemInfoProvider', 'WindowsPromptProvider', 'WindowsFileProvider', 'WindowsShortcutProvider', 'WindowsPowerProvider',
-                'WindowsScriptHost', 'WindowsAudioProvider', 'WindowsTimerResolutionProvider', 'WindowsEdgeProvider')) {
+                'WindowsScriptHost', 'WindowsAudioProvider', 'WindowsTimerResolutionProvider', 'WindowsEdgeProvider', 'WindowsSystemControlProvider')) {
             $t = $name -as [type]
             foreach ($m in $t.BaseType.GetMethods() | Where-Object { $_.DeclaringType -eq $t.BaseType }) {
                 $own = $t.GetMethod($m.Name, [type[]]@($m.GetParameters() | ForEach-Object { $_.ParameterType }))
@@ -619,5 +622,113 @@ Describe 'RegistryEachAction' {
         $ctx.Registry.DeleteEmptyKey("$script:Root\App.One")
         $a.Revert($ctx, $snap)
         $ctx.Registry.KeyExists("$script:Root\App.One") | Should -BeFalse
+    }
+}
+
+Describe 'RegistryEachAction: Include / Match / SubKey süzgeçleri (Faz 7)' {
+    BeforeAll {
+        $script:Gpu = 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}'
+        function GpuCtx {
+            $ctx = New-Ctx
+            $ctx.Registry.Seed("$script:Gpu\0000", 'ProviderName', 'NVIDIA', 'String')
+            $ctx.Registry.Seed("$script:Gpu\0000\UMD", 'X', 1, 'DWord')
+            $ctx.Registry.Seed("$script:Gpu\0001", 'ProviderName', 'Intel Corporation', 'String')
+            $ctx.Registry.Seed("$script:Gpu\0001\UMD", 'X', 1, 'DWord')
+            $ctx.Registry.Seed("$script:Gpu\0002", 'ProviderName', 'Advanced Micro Devices, Inc.', 'String')
+            $ctx.Registry.Seed("$script:Gpu\Configuration", 'ProviderName', 'NVIDIA', 'String')
+            return $ctx
+        }
+        function GpuDef([hashtable] $Extra) {
+            $d = @{ Type = 'RegistryEach'; Path = $script:Gpu; Name = 'DisableDynamicPstate'; Value = 1; Kind = 'DWord' }
+            foreach ($k in $Extra.Keys) { $d[$k] = $Extra[$k] }
+            return $d
+        }
+    }
+
+    It 'şema: Include / Match / SubKey denetlenir' {
+        Errs (GpuDef @{ Include = @('[0-9][0-9][0-9][0-9]'); Match = @{ Name = 'ProviderName'; Like = @('NVIDIA*') }; SubKey = 'UMD' }) | Should -BeNullOrEmpty
+        Errs (GpuDef @{ Match = @{ Name = 'ProviderName'; Like = 'NVIDIA*' } }) | Should -BeNullOrEmpty
+        $m = (Errs (GpuDef @{ Include = 'x'; Match = @{ Name = ''; Like = @(); Fazla = 1 }; SubKey = '\UMD' })) -join "`n"
+        $m | Should -Match 'Include: '
+        $m | Should -Match 'Match\.Name: '
+        $m | Should -Match 'Match\.Like: '
+        $m | Should -Match 'Match\.Fazla: bilinmeyen alan'
+        $m | Should -Match 'SubKey: '
+    }
+
+    It 'Include + Match yalnız NVIDIA bağdaştırıcısını hedefler; geri alma birebir' {
+        $ctx = GpuCtx
+        $a = Act (GpuDef @{ Include = @('[0-9][0-9][0-9][0-9]'); Match = @{ Name = 'ProviderName'; Like = @('NVIDIA*') } })
+        @($a.Targets($ctx)) | Should -Be @('0000')
+        $a.Describe() | Should -Match 'yalnız: \[0-9\]'
+        $a.Describe() | Should -Match 'ProviderName: NVIDIA\*'
+        $null = Invoke-Cycle $ctx $a { $ctx.Registry.Dump() -join "`n" }
+        $a.Apply($ctx)
+        $ctx.Registry.GetValue("$script:Gpu\0000", 'DisableDynamicPstate') | Should -Be 1
+        $ctx.Registry.ValueExists("$script:Gpu\0001", 'DisableDynamicPstate') | Should -BeFalse
+        $ctx.Registry.ValueExists("$script:Gpu\Configuration", 'DisableDynamicPstate') | Should -BeFalse
+    }
+
+    It 'SubKey: değer alt anahtarın altındaki (var olan) anahtara yazılır' {
+        $ctx = GpuCtx
+        $a = Act (GpuDef @{ Include = @('0*'); SubKey = 'UMD' })
+        @($a.Targets($ctx)) | Should -Be @('0000', '0001')
+        $null = Invoke-Cycle $ctx $a { $ctx.Registry.Dump() -join "`n" }
+        $a.Apply($ctx)
+        $ctx.Registry.GetValue("$script:Gpu\0001\UMD", 'DisableDynamicPstate') | Should -Be 1
+        $ctx.Registry.KeyExists("$script:Gpu\0002\UMD") | Should -BeFalse
+        $a.Describe() | Should -Match '\\\*\\UMD\\DisableDynamicPstate'
+    }
+}
+
+Describe 'Tek seferlik sistem eylemleri: RestorePoint, Reboot, OpenSettings (Faz 7)' {
+    It 'şema' {
+        Errs @{ Type = 'RestorePoint'; Description = 'FAI_WinOP' } | Should -BeNullOrEmpty
+        ((Errs @{ Type = 'RestorePoint' }) -join "`n") | Should -Match 'Description: zorunlu'
+        ((Errs @{ Type = 'RestorePoint'; Description = ('x' * 65) }) -join "`n") | Should -Match 'Description: '
+        Errs @{ Type = 'Reboot'; Firmware = $true; Delay = 0 } | Should -BeNullOrEmpty
+        ((Errs @{ Type = 'Reboot'; Firmware = $false; Delay = 900 }) -join "`n") | Should -Match 'Firmware: .*Delay: |Delay: '
+        ((Errs @{ Type = 'Reboot'; Firmware = $false }) -join "`n") | Should -Match 'Firmware: '
+        Errs @{ Type = 'OpenSettings'; Uri = 'ms-settings:activation'; Message = 'm' } | Should -BeNullOrEmpty
+        ((Errs @{ Type = 'OpenSettings'; Uri = 'https://example.com'; Message = '' }) -join "`n") | Should -Match 'Uri: .*Message: |Message: '
+    }
+
+    It 'RestorePoint: her zaman bekler, koruma kapalıysa açar, geri alma noktayı silmez' {
+        $ctx = New-Ctx
+        $ctx.SystemControl.RestoreEnabled = $false
+        $a = Act @{ Type = 'RestorePoint'; Description = 'FAI_WinOP' }
+        $a.Preview($ctx) | Should -Match 'kapalı, açılacak'
+        $a.Test($ctx) | Should -BeFalse
+        $a.Apply($ctx)
+        $ctx.SystemControl.RestoreEnabled | Should -BeTrue
+        @($ctx.SystemControl.RestorePoints) | Should -Be @('FAI_WinOP')
+        $a.Test($ctx) | Should -BeFalse
+        $a.Revert($ctx, @{})
+        $ctx.SystemControl.RestorePoints.Count | Should -Be 1
+    }
+
+    It 'Reboot: gecikmeyle ürün yazılımına yeniden başlatır (varsayılan 10 sn)' {
+        $ctx = New-Ctx
+        (Act @{ Type = 'Reboot'; Firmware = $true }).Apply($ctx)
+        (Act @{ Type = 'Reboot'; Firmware = $true; Delay = 0 }).Apply($ctx)
+        @($ctx.SystemControl.Restarts) | Should -Be @(10, 0)
+    }
+
+    It 'OpenSettings: sayfayı açar; etkileşimsiz kipte hata' {
+        $ctx = New-Ctx
+        $a = Act @{ Type = 'OpenSettings'; Uri = 'ms-settings:activation'; Message = 'Anahtarı girin.' }
+        $a.Test($ctx) | Should -BeFalse
+        $a.Apply($ctx)
+        @($ctx.Shell.Opened) | Should -Be @('ms-settings:activation')
+        $ctx.Unattended = $true
+        { $a.Apply($ctx) } | Should -Throw '*Etkileşim gerekir*'
+        $ctx.Shell.Opened.Count | Should -Be 1
+    }
+
+    It 'sistem bilgisi: mantıksal işlemci ve çekirdek sayısı (Fake varsayılanı 16 / 8)' {
+        $ctx = New-Ctx
+        $ctx.SystemInfo.GetLogicalProcessorCount() | Should -Be 16
+        $ctx.SystemInfo.GetCoreCount() | Should -Be 8
+        $ctx.ResumeCommand | Should -Be ''
     }
 }

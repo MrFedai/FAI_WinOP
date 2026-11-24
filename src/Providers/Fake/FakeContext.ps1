@@ -36,6 +36,7 @@ function New-FakeContext {
     $ctx.Desktop = [FakeDesktopProvider]::new()
     $ctx.Images = [FakeImageProvider]::new($files)
     $ctx.AppSettings = [FakeAppSettingsProvider]::new()
+    $ctx.SystemControl = [FakeSystemControlProvider]::new()
     $prompt = [FakePromptProvider]::new()
     if ($Answers.Count -gt 0) { $prompt.Enqueue($Answers) }
     $ctx.Prompt = $prompt
@@ -54,7 +55,7 @@ function Get-FakeWriteCount {
         [int]$Ctx.Appx.WriteCount + [int]$Ctx.Packages.WriteCount + [int]$Ctx.Files.WriteCount +
         [int]$Ctx.Shortcuts.WriteCount + [int]$Ctx.Power.WriteCount + [int]$Ctx.Scripts.WriteCount +
         [int]$Ctx.Audio.WriteCount + [int]$Ctx.TimerResolution.WriteCount + [int]$Ctx.Shell.WriteCount + [int]$Ctx.Edge.WriteCount +
-        [int]$Ctx.Desktop.WriteCount + [int]$Ctx.AppSettings.WriteCount)
+        [int]$Ctx.Desktop.WriteCount + [int]$Ctx.AppSettings.WriteCount + [int]$Ctx.SystemControl.WriteCount)
 }
 
 function Enable-FakeShellLayout {

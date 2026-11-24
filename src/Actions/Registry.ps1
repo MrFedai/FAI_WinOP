@@ -179,13 +179,17 @@ class RegistryAction : ActionBase {
 # Exclude öğesi metin ya da (parametreden gelen) metin dizisi olabilir; düzleştirilir. Hedef, uygulama anında var olan alt
 # anahtarlardır: yeni anahtar oluşturmaz, sonradan eklenen anahtar bir sonraki çalıştırmada yakalanır.
 # Undo: snapshot'taki her alt anahtarın değeri eski haline döner (önceden yoksa silinir); arada silinmiş anahtar yeniden açılmaz.
+# İsteğe bağlı süzgeçler (Faz 7; ör. ekran kartı sınıf anahtarı):
+#   Include=@('[0-9][0-9][0-9][0-9]')                yalnız adı bu -like kalıplarından birine uyan alt anahtarlar
+#   Match=@{ Name='ProviderName'; Like=@('NVIDIA*') } yalnız bu değeri kalıba uyan alt anahtarlar (değer yoksa hedef değil)
+#   SubKey='UMD'                                     hedef <Path>\<alt>\<SubKey> (yalnız varsa; Match yine <alt>'ta bakılır)
 
 class RegistryEachAction : ActionBase {
     RegistryEachAction([hashtable] $Definition) : base($Definition) { }
 
     static [string[]] Validate([object] $Def) {
         $e = New-Object 'System.Collections.Generic.List[string]'
-        foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Path', 'Name', 'Value', 'Kind', 'Exclude'))) { $e.Add($m) }
+        foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Path', 'Name', 'Value', 'Kind', 'Exclude', 'Include', 'Match', 'SubKey'))) { $e.Add($m) }
         # Path / Name / Value / Kind kuralları RegistryAction ile aynı (Ensure yok: her zaman yazar).
         $core = @{ Type = 'Registry' }
         foreach ($k in @('Path', 'Name', 'Value', 'Kind')) { if ($Def.Contains($k)) { $core[$k] = $Def[$k] } }
@@ -195,6 +199,26 @@ class RegistryEachAction : ActionBase {
             $flat = @(foreach ($item in @($Def['Exclude'])) { foreach ($p in @($item)) { $p } })
             $bad = @($flat | Where-Object { $_ -isnot [string] -or [string]::IsNullOrWhiteSpace($_) })
             if (-not (Test-FaiIsList $Def['Exclude']) -or $bad.Count -gt 0) { $e.Add('Exclude: boş olmayan metin dizisi olmalı (-like kalıpları)') }
+        }
+        if ($Def.Contains('Include')) {
+            $bad = @(@($Def['Include']) | Where-Object { $_ -isnot [string] -or [string]::IsNullOrWhiteSpace($_) })
+            if (-not (Test-FaiIsList $Def['Include']) -or $bad.Count -gt 0) { $e.Add('Include: boş olmayan metin dizisi olmalı (-like kalıpları)') }
+        }
+        if ($Def.Contains('SubKey')) {
+            $sk = $Def['SubKey']
+            if ($sk -isnot [string] -or [string]::IsNullOrWhiteSpace($sk) -or $sk.StartsWith('\') -or $sk.EndsWith('\')) { $e.Add('SubKey: göreli anahtar yolu olmalı (ör. UMD)') }
+        }
+        if ($Def.Contains('Match')) {
+            $mt = $Def['Match']
+            if ($mt -isnot [System.Collections.IDictionary]) { $e.Add('Match: @{ Name=''değer adı''; Like=@(''kalıp'') } olmalı') }
+            else {
+                foreach ($m in (Get-FaiUnknownKeyError $mt @('Name', 'Like'))) { $e.Add('Match.' + $m) }
+                if (-not $mt.Contains('Name') -or $mt['Name'] -isnot [string] -or [string]::IsNullOrWhiteSpace($mt['Name'])) { $e.Add('Match.Name: boş olmayan metin olmalı') }
+                $like = @()
+                if ($mt.Contains('Like')) { $like = @($mt['Like']) }
+                $bad = @($like | Where-Object { $_ -isnot [string] -or [string]::IsNullOrWhiteSpace($_) })
+                if ($like.Count -eq 0 -or $bad.Count -gt 0) { $e.Add('Match.Like: boş olmayan metin ya da metin dizisi olmalı (-like kalıpları)') }
+            }
         }
         return $e.ToArray()
     }
@@ -214,13 +238,41 @@ class RegistryEachAction : ActionBase {
         return $false
     }
 
-    [string] KeyPath([string] $KeyName) { return ('{0}\{1}' -f ([string]$this.Definition['Path']).TrimEnd('\'), $KeyName) }
+    [bool] IsIncluded([string] $KeyName) {
+        if (-not $this.Definition.ContainsKey('Include')) { return $true }
+        foreach ($p in @($this.Definition['Include'])) { if ($KeyName -like [string]$p) { return $true } }
+        return $false
+    }
 
-    # İstisna dışındaki alt anahtar adları (salt okunur).
+    # Alt anahtarın kendi yolu (Match buradan okunur).
+    [string] ItemPath([string] $KeyName) { return ('{0}\{1}' -f ([string]$this.Definition['Path']).TrimEnd('\'), $KeyName) }
+
+    # Değerin yazıldığı yol: alt anahtar ya da (SubKey varsa) onun altındaki anahtar.
+    [string] KeyPath([string] $KeyName) {
+        $p = $this.ItemPath($KeyName)
+        if ($this.Definition.ContainsKey('SubKey')) { $p = '{0}\{1}' -f $p, ([string]$this.Definition['SubKey']) }
+        return $p
+    }
+
+    [bool] IsMatch([ExecutionContext] $Ctx, [string] $KeyName) {
+        if (-not $this.Definition.ContainsKey('Match')) { return $true }
+        $mt = $this.Definition['Match']
+        $p = $this.ItemPath($KeyName)
+        $name = [string]$mt['Name']
+        if (-not $Ctx.Registry.ValueExists($p, $name)) { return $false }
+        $v = [string]$Ctx.Registry.GetValue($p, $name)
+        foreach ($pat in @($mt['Like'])) { if ($v -like [string]$pat) { return $true } }
+        return $false
+    }
+
+    # Süzgeçlerden (Include, Exclude, Match, SubKey varlığı) geçen alt anahtar adları (salt okunur).
     [string[]] Targets([ExecutionContext] $Ctx) {
         $out = New-Object 'System.Collections.Generic.List[string]'
         foreach ($n in @($Ctx.Registry.GetSubKeyNames([string]$this.Definition['Path']))) {
-            if ($n -and -not $this.IsExcluded($n)) { $out.Add($n) }
+            if (-not $n -or $this.IsExcluded($n) -or -not $this.IsIncluded($n)) { continue }
+            if (-not $this.IsMatch($Ctx, $n)) { continue }
+            if ($this.Definition.ContainsKey('SubKey') -and -not $Ctx.Registry.KeyExists($this.KeyPath($n))) { continue }
+            $out.Add($n)
         }
         return $out.ToArray()
     }
@@ -278,7 +330,11 @@ class RegistryEachAction : ActionBase {
 
     [string] Describe() {
         $v = (@($this.Definition['Value']) | ForEach-Object { [string]$_ }) -join ','
-        $text = 'Kayıt defteri: {0}\*\{1} = {2} ({3})' -f ([string]$this.Definition['Path']).TrimEnd('\'), $this.Definition['Name'], $v, $this.Definition['Kind']
+        $sub = ''
+        if ($this.Definition.ContainsKey('SubKey')) { $sub = '\' + [string]$this.Definition['SubKey'] }
+        $text = 'Kayıt defteri: {0}\*{1}\{2} = {3} ({4})' -f ([string]$this.Definition['Path']).TrimEnd('\'), $sub, $this.Definition['Name'], $v, $this.Definition['Kind']
+        if ($this.Definition.ContainsKey('Include')) { $text += ' — yalnız: ' + (@($this.Definition['Include']) -join ', ') }
+        if ($this.Definition.ContainsKey('Match')) { $text += (' — {0}: {1}' -f $this.Definition['Match']['Name'], (@($this.Definition['Match']['Like']) -join ' / ')) }
         $pats = $this.Patterns()
         if ($pats.Count -gt 0) { $text += ' — hariç: ' + ($pats -join ', ') }
         return $text

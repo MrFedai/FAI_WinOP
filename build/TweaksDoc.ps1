@@ -83,6 +83,14 @@ foreach ($cat in $categories) {
             $lines.Add('')
             $lines.Add('Onay uyarısı: ' + (ConvertTo-MdText $t.Confirm))
         }
+        $flags = New-Object 'System.Collections.Generic.List[string]'
+        if ($t.First) { $flags.Add('her çalıştırmada ilk adım (uygulamalardan önce)') }
+        if ($t.AlwaysConfirm) { $flags.Add('onay her çalıştırmada sorulur (autoConfirm işlemez, `-Unattended` kipte uygulanmaz)') }
+        if ($t.Tool) { $flags.Add('araç: profille otomatik çalışmaz, menüden / `-Only` ile') }
+        if ($flags.Count -gt 0) {
+            $lines.Add('')
+            $lines.Add('Çalışma: ' + ($flags -join ' · '))
+        }
         if ($t.Conditions.Count -gt 0) {
             $lines.Add('')
             $lines.Add('Koşul: ' + (ConvertTo-MdText ((@($t.Conditions | ForEach-Object { $_.Describe() })) -join ' ve ')))

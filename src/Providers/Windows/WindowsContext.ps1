@@ -39,6 +39,7 @@ function New-FaiWindowsContext {
     $ctx.Desktop = [WindowsDesktopProvider]::new()
     $ctx.Images = [WindowsImageProvider]::new()
     $ctx.AppSettings = [WindowsAppSettingsProvider]::new()
+    $ctx.SystemControl = [WindowsSystemControlProvider]::new()
     $ctx.Backup = [BackupStore]::new($BackupRoot)
     $ctx.Logger = [Logger]::new($LogPath, (-not $ShowLog.IsPresent))
     $ctx.DryRun = $DryRun.IsPresent

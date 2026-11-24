@@ -561,3 +561,109 @@ Describe 'Motor — diğer davranışlar' {
         ($ctx.Logger.Entries | Where-Object { $_.Message -match 'test\.a: uygulandı' }).Count | Should -Be 1
     }
 }
+
+Describe 'Faz 7 tweak alanları: First, AlwaysConfirm, Tool ve eylem koşulu When' {
+    BeforeAll {
+        function New-FlagTweak([string] $Id, [hashtable] $Extra, [object[]] $Actions) {
+            $d = @{ Id = $Id; Title = "Tweak $Id"; Description = 'test'; Category = 'test'; Risk = 'Safe'; Actions = $Actions }
+            foreach ($k in $Extra.Keys) { $d[$k] = $Extra[$k] }
+            return [Tweak]::FromHashtable($d, 'test')
+        }
+    }
+
+    It 'şema: bayraklar mantıksal olmalı; When koşul sözdizimiyle doğrulanır' {
+        $base = @{ Id = 'test.f'; Title = 'T'; Description = 'D'; Category = 'test'; Risk = 'Safe'; Actions = @(RegSet 'A' 1) }
+        $bad = $base.Clone()
+        $bad['First'] = 'evet'
+        $bad['Tool'] = 1
+        $msgs = (Get-FaiTweakError -Data $bad) -join "`n"
+        $msgs | Should -Match 'First: '
+        $msgs | Should -Match 'Tool: '
+        $ok = $base.Clone()
+        $ok['AlwaysConfirm'] = $true
+        $ok['Actions'] = @(@{ Type = 'Registry'; Path = $script:Key; Name = 'A'; Value = 1; Kind = 'DWord'; When = @{ Not = 'IsLaptop' } })
+        Get-FaiTweakError -Data $ok | Should -BeNullOrEmpty
+        $ok['Actions'] = @(@{ Type = 'Registry'; Path = $script:Key; Name = 'A'; Value = 1; Kind = 'DWord'; When = 'IsDesktop' })
+        ((Get-FaiTweakError -Data $ok) -join "`n") | Should -Match 'Actions\[0\]\.When: bilinmeyen koşul'
+    }
+
+    It 'First işaretli tweak profildeki sırasından bağımsız önce işlenir' {
+        $ctx = New-Env
+        $cat = New-Catalog @(
+            (New-FlagTweak 'test.a' @{} @(RegSet 'A' 1))
+            (New-FlagTweak 'test.first' @{ First = $true } @(RegSet 'F' 1))
+        )
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.a', 'test.first')) -Context $ctx -Catalog $cat
+        @($r.Items | ForEach-Object { $_.TweakId }) | Should -Be @('test.first', 'test.a')
+        $r.Count('Applied') | Should -Be 2
+    }
+
+    It 'AlwaysConfirm: autoConfirm''e rağmen her çalıştırmada sorulur; -Unattended''da atlanır (P0 kabulü)' {
+        $t = New-FlagTweak 'test.p0' @{ Risk = 'Caution'; AlwaysConfirm = $true; Confirm = 'pil ve ısı' } @(RegSet 'P0' 1)
+        $cat = New-Catalog @($t)
+        $p = New-Profile @('test.p0') -AutoConfirm @('test.p0')
+
+        $ctx = New-Env -Answers @('H')
+        $r = Invoke-FaiEngine -Profile $p -Context $ctx -Catalog $cat
+        $r.Find('test.p0').Status | Should -Be 'Skipped'
+        $ctx.Prompt.Asked.Count | Should -Be 1
+        $ctx.Prompt.Asked[0]['Message'] | Should -Match 'pil ve ısı'
+
+        $ctx2 = Copy-Env $ctx -Answers @('E')
+        (Invoke-FaiEngine -Profile $p -Context $ctx2 -Catalog $cat).Find('test.p0').Status | Should -Be 'Applied'
+        $ctx2.Prompt.Asked.Count | Should -Be 1
+
+        $ctx.Registry.DeleteValue($script:Key, 'P0')
+        $u = Copy-Env $ctx -Unattended
+        $ru = Invoke-FaiEngine -Profile $p -Context $u -Catalog $cat
+        $ru.Find('test.p0').Status | Should -Be 'Skipped'
+        $ru.Find('test.p0').Reason | Should -Match 'Unattended'
+        $ctx.Registry.ValueExists($script:Key, 'P0') | Should -BeFalse
+
+        # Aynı Caution tweak AlwaysConfirm olmadan autoConfirm ile sorulmadan uygulanır.
+        $plain = New-Catalog @(New-FlagTweak 'test.p0' @{ Risk = 'Caution' } @(RegSet 'P0' 1))
+        (Invoke-FaiEngine -Profile $p -Context (Copy-Env $ctx -Unattended) -Catalog $plain).Find('test.p0').Status | Should -Be 'Applied'
+    }
+
+    It 'Tool: profille atlanır, AllowTools ile çalışır' {
+        $ctx = New-Env
+        $cat = New-Catalog @(New-FlagTweak 'test.tool' @{ Tool = $true } @(RegSet 'T' 1))
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.tool')) -Context $ctx -Catalog $cat
+        $r.Find('test.tool').Status | Should -Be 'Skipped'
+        $r.Find('test.tool').Reason | Should -Match 'Araç'
+        Get-FakeWriteCount $ctx | Should -Be 0
+        $r2 = Invoke-FaiEngine -Profile (New-Profile @('test.tool')) -Context $ctx -Catalog $cat -AllowTools
+        $r2.Find('test.tool').Status | Should -Be 'Applied'
+    }
+
+    It 'When: koşulu sağlanmayan eylem atlanır, oturum kaydında When yok, -Undo birebir' {
+        $acts = @(
+            (RegSet 'Her' 1)
+            @{ Type = 'Registry'; Path = $script:Key; Name = 'Dizustu'; Value = 1; Kind = 'DWord'; When = 'IsLaptop' }
+        )
+        $cat = New-Catalog @(New-FlagTweak 'test.when' @{} $acts)
+        $cat['test.when'].Actions[1].When.Name | Should -Be 'IsLaptop'
+        $cat['test.when'].Actions[1].Definition.ContainsKey('When') | Should -BeFalse
+
+        $ctx = New-Env
+        $before = $ctx.Registry.Dump() -join "`n"
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.when')) -Context $ctx -Catalog $cat
+        @($r.Find('test.when').Lines).Count | Should -Be 1
+        $ctx.Registry.ValueExists($script:Key, 'Dizustu') | Should -BeFalse
+        (Invoke-FaiEngine -Profile (New-Profile @('test.when')) -Context $ctx -Catalog $cat).Find('test.when').Status | Should -Be 'UpToDate'
+
+        $ctx.SystemInfo.Laptop = $true
+        $dry = Invoke-FaiEngine -Profile (New-Profile @('test.when')) -Context (Copy-Env $ctx -DryRun) -Catalog $cat
+        @($dry.Find('test.when').Lines) -join "`n" | Should -Match 'Dizustu'
+        (Invoke-FaiEngine -Profile (New-Profile @('test.when')) -Context $ctx -Catalog $cat).Find('test.when').Status | Should -Be 'Applied'
+        $ctx.Registry.GetValue($script:Key, 'Dizustu') | Should -Be 1
+        $s = $ctx.Backup.GetLatest()
+        $s.Entries[0]['Action'].ContainsKey('When') | Should -BeFalse
+
+        $u1 = Invoke-FaiEngine -Undo -Context $ctx -Catalog $cat
+        $u1.HasFailures() | Should -BeFalse
+        $u2 = Invoke-FaiEngine -Undo -Context $ctx -Catalog $cat
+        $u2.HasFailures() | Should -BeFalse
+        $ctx.Registry.Dump() -join "`n" | Should -Be $before
+    }
+}

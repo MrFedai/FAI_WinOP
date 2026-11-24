@@ -9,6 +9,10 @@
 # Görünüm tweak'leri (Refresh: Shell, Desktop, Settings, StartMenu) uygulanınca / geri alınınca kabuk yenilemesi
 # çalıştırmanın SONUNDA, türü başına bir kez yapılır (Gezgin bir kez yeniden başlar). Profilin 'layout' bölümü
 # tweak'lerden SONRA 'layout.profile' tweak'i olarak işlenir (ConvertTo-FaiLayoutTweak).
+# 'First' işaretli profil tweak'leri (system.restore-point) uygulamalardan da ÖNCE işlenir. 'Tool' tweak'leri
+# (refresh.reboot-to-bios) profille otomatik çalışmaz: AllowTools (menü / -Only, Faz 8) yoksa atlanır. 'AlwaysConfirm'
+# tweak'lerinde profil autoConfirm'i işlemez, -Unattended'da atlanır. Eylemin 'When' koşulu sağlanmıyorsa o eylem bu
+# makinede yok sayılır (hepsi yok sayılırsa tweak ZATEN UYGUN).
 # Tek tweak'in hatası diğerlerini durdurmaz; hata raporda 'Failed' olur. Yarım kalan tweak'in snapshot'ları oturumda
 # durur, -Undo onları da geri alır.
 
@@ -21,6 +25,8 @@ class Engine {
     [BackupSession] $Session
     # Bu çalıştırmada istenen kabuk yenilemeleri (Get-FaiRefreshKind adları).
     [System.Collections.Generic.List[string]] $PendingRefresh = (New-Object 'System.Collections.Generic.List[string]')
+    # Araç tweak'lerine (Tool) izin: menü / -Only (Faz 8). Profil çalıştırmasında $false.
+    [bool] $AllowTools = $false
 
     Engine([ExecutionContext] $Ctx, [hashtable] $Catalog) {
         $this.Ctx = $Ctx
@@ -36,6 +42,17 @@ class Engine {
         $this.PendingRefresh.Clear()
         $this.Ctx.ProtectedAppx = $this.ProtectedAppxFor($FaiProfile)
 
+        $firstIds = New-Object 'System.Collections.Generic.List[string]'
+        foreach ($entry in $FaiProfile.Tweaks) {
+            $id = [string]$entry['Id']
+            if (-not $this.Catalog.ContainsKey($id) -or -not $this.Catalog[$id].First) { continue }
+            $firstIds.Add($id)
+            try { $this.ProcessTweak($FaiProfile, $id, $entry['Params'], $report) }
+            catch {
+                [void]$report.Add($id, $id, 'Failed', $_.Exception.Message, [string[]]@())
+                $this.Ctx.Logger.Error("${id}: $($_.Exception.Message)")
+            }
+        }
         foreach ($app in $FaiProfile.Apps) {
             $id = 'app.' + [string]$app['Id']
             try {
@@ -53,6 +70,7 @@ class Engine {
         }
         foreach ($entry in $FaiProfile.Tweaks) {
             $id = [string]$entry['Id']
+            if ($firstIds.Contains($id)) { continue }
             try { $this.ProcessTweak($FaiProfile, $id, $entry['Params'], $report) }
             catch {
                 [void]$report.Add($id, $id, 'Failed', $_.Exception.Message, [string[]]@())
@@ -119,6 +137,12 @@ class Engine {
         $cx = $this.Ctx
         $Id = $tweak.Id
 
+        if ($tweak.Tool -and -not $this.AllowTools) {
+            [void]$Report.Add($Id, $tweak.Title, 'Skipped', 'Araç: profille otomatik çalışmaz (menüden / -Only ile)', [string[]]@())
+            $cx.Logger.Info("${Id}: atlandı (araç)")
+            return
+        }
+
         # 2) koşullar
         $failedCondition = $tweak.FirstFailedCondition($cx.SystemInfo)
         if ($failedCondition) {
@@ -130,6 +154,8 @@ class Engine {
         # 3) hedef durum zaten sağlanıyorsa soru sormadan geç
         $pending = New-Object 'System.Collections.Generic.List[int]'
         for ($i = 0; $i -lt $tweak.Actions.Count; $i++) {
+            # Eylem düzeyi koşul (When) sağlanmıyorsa eylem bu makinede yok sayılır.
+            if (-not $tweak.Actions[$i].Applies($cx.SystemInfo)) { continue }
             if (-not $tweak.Actions[$i].Test($cx)) { $pending.Add($i) }
         }
         if ($pending.Count -eq 0) {
@@ -142,7 +168,14 @@ class Engine {
         if ($tweak.Risk -ne 'Safe' -and -not $cx.DryRun -and -not $cx.Unattended) {
             foreach ($i in $pending) { $details.Add($tweak.Actions[$i].Preview($cx)) }
         }
-        $decision = [RiskPolicy]::Decide($cx, $tweak.Risk, $tweak.Title, $tweak.Confirm, $FaiProfile.IsAutoConfirmed($Id), $details.ToArray())
+        # AlwaysConfirm: autoConfirm işlemez; etkileşimsiz kipte soru sorulamayacağı için atlanır.
+        if ($tweak.AlwaysConfirm -and $tweak.Risk -ne 'Safe' -and $cx.Unattended) {
+            [void]$Report.Add($Id, $tweak.Title, 'Skipped', 'Her çalıştırmada onay ister: -Unattended kipte uygulanmaz (autoConfirm işlemez)', [string[]]@())
+            $cx.Logger.Info("${Id}: atlandı (her çalıştırmada onay, Unattended)")
+            return
+        }
+        $autoConfirm = $FaiProfile.IsAutoConfirmed($Id) -and -not $tweak.AlwaysConfirm
+        $decision = [RiskPolicy]::Decide($cx, $tweak.Risk, $tweak.Title, $tweak.Confirm, $autoConfirm, $details.ToArray())
         if (-not $decision.Apply) {
             [void]$Report.Add($Id, $tweak.Title, 'Skipped', $decision.Reason, [string[]]@())
             $cx.Logger.Info("${Id}: atlandı ($($decision.Reason))")
@@ -235,6 +268,8 @@ function Invoke-FaiEngine {
         Id → Tweak hashtable (Import-FaiTweakCatalog).
     .PARAMETER AppCatalog
         Uygulama kimliği → katalog kaydı (Import-FaiAppCatalog). Profilde apps varsa gerekir.
+    .PARAMETER AllowTools
+        Araç tweak'lerini (Tool, ör. refresh.reboot-to-bios) de çalıştırır (menü / -Only; profilde varsayılan atlanır).
     .PARAMETER Session
         -Undo ile birlikte: geri alınacak oturum kimliği (boşsa geri alınmamış son oturum).
     #>
@@ -245,11 +280,13 @@ function Invoke-FaiEngine {
         [Parameter(Mandatory = $true)] [hashtable] $Catalog,
         [switch] $Undo,
         [string] $Session = '',
-        [hashtable] $AppCatalog = @{}
+        [hashtable] $AppCatalog = @{},
+        [switch] $AllowTools
     )
 
     $engine = [Engine]::new($Context, $Catalog)
     $engine.AppCatalog = $AppCatalog
+    $engine.AllowTools = $AllowTools.IsPresent
     if ($Undo.IsPresent) { return $engine.Undo($Session) }
     if ($null -eq $FaiProfile) { throw 'Profil verilmedi.' }
     return $engine.Run($FaiProfile)

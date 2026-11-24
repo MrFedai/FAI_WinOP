@@ -9,7 +9,7 @@ function Test-FaiIsList {
 }
 
 function Get-FaiIdPattern { return '^[a-z][a-z0-9]*\.[a-z0-9]+(-[a-z0-9]+)*$' }
-function Get-FaiTweakKey { return [string[]]@('Id', 'Title', 'Description', 'Category', 'Risk', 'Confirm', 'Conditions', 'Params', 'Refresh', 'Actions') }
+function Get-FaiTweakKey { return [string[]]@('Id', 'Title', 'Description', 'Category', 'Risk', 'Confirm', 'Conditions', 'Params', 'Refresh', 'First', 'AlwaysConfirm', 'Tool', 'Actions') }
 # Tweak uygulandıktan / geri alındıktan sonra istenebilecek kabuk yenilemeleri; motor bu sırayla, çalıştırma sonunda bir kez yapar.
 function Get-FaiRefreshKind { return [string[]]@('Desktop', 'Settings', 'StartMenu', 'Shell') }
 function Get-FaiProfileKey { return [string[]]@('$schema', 'name', 'description', 'tweaks', 'autoConfirm', 'apps', 'games', 'layout', 'exceptions') }
@@ -46,6 +46,9 @@ function Get-FaiTweakError {
         $errs.Add("Risk: '$($Data['Risk'])' geçersiz (Safe, Caution ya da Risk olmalı)")
     }
     if ($Data.Contains('Confirm') -and $Data['Confirm'] -isnot [string]) { $errs.Add('Confirm: metin olmalı') }
+    foreach ($flag in @('First', 'AlwaysConfirm', 'Tool')) {
+        if ($Data.Contains($flag) -and $Data[$flag] -isnot [bool]) { $errs.Add("${flag}: `$true ya da `$false olmalı") }
+    }
     if ($Data.Contains('Refresh')) {
         $bad = @(@($Data['Refresh']) | Where-Object { $_ -isnot [string] -or (Get-FaiRefreshKind) -cnotcontains $_ })
         if (-not (Test-FaiIsList $Data['Refresh']) -or $bad.Count -gt 0) { $errs.Add('Refresh: ' + ((Get-FaiRefreshKind) -join ', ') + ' değerlerinden oluşan dizi olmalı') }

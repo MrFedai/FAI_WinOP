@@ -3,13 +3,22 @@
 
 function Get-FaiActionType {
     <# .SYNOPSIS  Bilinen eylem türü adları. #>
-    return [string[]]@('Registry', 'RegistryEach', 'Service', 'ScheduledTask', 'Appx', 'Winget', 'Power', 'File', 'Shortcut', 'Script', 'Volume', 'TimerResolution', 'App', 'DefaultBrowser', 'AppxCleanup', 'EdgeRemove', 'RegistryByte', 'TaskbarPins', 'SolidImage', 'AppSetting')
+    return [string[]]@('Registry', 'RegistryEach', 'Service', 'ScheduledTask', 'Appx', 'Winget', 'Power', 'File', 'Shortcut', 'Script', 'Volume', 'TimerResolution', 'App', 'DefaultBrowser', 'AppxCleanup', 'EdgeRemove', 'RegistryByte', 'TaskbarPins', 'SolidImage', 'AppSetting', 'RestorePoint', 'Reboot', 'OpenSettings')
 }
 
 function New-FaiAction {
     <# .SYNOPSIS  Eylem tanımından (hashtable, Type alanlı) ActionBase türevi üretir. Tanım doğrulanmış olmalı. #>
     [CmdletBinding()]
     param([Parameter(Mandatory = $true, Position = 0)] [hashtable] $Definition)
+
+    # Eylem düzeyi koşul (When): tanımdan çıkarılır (oturum kaydına girmez), eyleme Condition olarak bağlanır.
+    if ($Definition.ContainsKey('When')) {
+        $core = @{}
+        foreach ($k in @($Definition.Keys)) { if ([string]$k -cne 'When') { $core[$k] = $Definition[$k] } }
+        $action = New-FaiAction -Definition $core
+        $action.When = [Condition]::Parse($Definition['When'])
+        return $action
+    }
 
     switch ([string]$Definition['Type']) {
         'Registry' { return [RegistryAction]::new($Definition) }
@@ -32,6 +41,9 @@ function New-FaiAction {
         'TaskbarPins' { return [TaskbarPinsAction]::new($Definition) }
         'SolidImage' { return [SolidImageAction]::new($Definition) }
         'AppSetting' { return [AppSettingAction]::new($Definition) }
+        'RestorePoint' { return [RestorePointAction]::new($Definition) }
+        'Reboot' { return [RebootAction]::new($Definition) }
+        'OpenSettings' { return [OpenSettingsAction]::new($Definition) }
         default { throw ("Bilinmeyen eylem türü: '{0}' (bilinenler: {1})" -f $Definition['Type'], ((Get-FaiActionType) -join ', ')) }
     }
 }
@@ -58,6 +70,13 @@ function Get-FaiActionError {
         $errs.Add("${Path}.Type: bilinmeyen eylem türü '$actionType' (bilinenler: " + ((Get-FaiActionType) -join ', ') + ')')
         return $errs.ToArray()
     }
+    # Eylem düzeyi koşul: Condition sözdizimi; türe özgü doğrulama When'siz kopyaya yapılır.
+    if ($Definition.Contains('When')) {
+        foreach ($m in [Condition]::Validate($Definition['When'])) { $errs.Add("${Path}.When: $m") }
+        $core = @{}
+        foreach ($k in @($Definition.Keys)) { if ([string]$k -cne 'When') { $core[$k] = $Definition[$k] } }
+        $Definition = $core
+    }
     $messages = @()
     switch ($actionType) {
         'Registry' { $messages = [RegistryAction]::Validate($Definition) }
@@ -80,6 +99,9 @@ function Get-FaiActionError {
         'TaskbarPins' { $messages = [TaskbarPinsAction]::Validate($Definition) }
         'SolidImage' { $messages = [SolidImageAction]::Validate($Definition) }
         'AppSetting' { $messages = [AppSettingAction]::Validate($Definition) }
+        'RestorePoint' { $messages = [RestorePointAction]::Validate($Definition) }
+        'Reboot' { $messages = [RebootAction]::Validate($Definition) }
+        'OpenSettings' { $messages = [OpenSettingsAction]::Validate($Definition) }
     }
     foreach ($m in $messages) { $errs.Add("${Path}.$m") }
     return $errs.ToArray()

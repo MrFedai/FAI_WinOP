@@ -141,6 +141,8 @@ class FakeSystemInfoProvider : ISystemInfoProvider {
     [string] $Edition = 'Pro'
     [int] $Build = 26100
     [double] $RamGB = 32
+    [int] $LogicalProcessors = 16
+    [int] $Cores = 8
 
     FakeSystemInfoProvider() { }
 
@@ -151,6 +153,38 @@ class FakeSystemInfoProvider : ISystemInfoProvider {
     [string] GetEdition() { return $this.Edition }
     [int] GetBuild() { return $this.Build }
     [double] GetRamGB() { return $this.RamGB }
+    [int] GetLogicalProcessorCount() { return $this.LogicalProcessors }
+    [int] GetCoreCount() { return $this.Cores }
+}
+
+# Sistem Geri Yükleme ve yeniden başlatma: yalnız durum + çağrı günlüğü.
+class FakeSystemControlProvider : ISystemControlProvider {
+    [bool] $RestoreEnabled = $true
+    # Oluşturulan geri yükleme noktalarının açıklamaları.
+    [System.Collections.ArrayList] $RestorePoints = (New-Object System.Collections.ArrayList)
+    # RestartToFirmware çağrılarındaki gecikmeler.
+    [System.Collections.ArrayList] $Restarts = (New-Object System.Collections.ArrayList)
+    [int] $WriteCount = 0
+
+    FakeSystemControlProvider() { }
+
+    [bool] IsRestoreEnabled() { return $this.RestoreEnabled }
+
+    [void] EnableRestore() {
+        $this.WriteCount++
+        $this.RestoreEnabled = $true
+    }
+
+    [void] CreateRestorePoint([string] $Description) {
+        $this.WriteCount++
+        if (-not $this.RestoreEnabled) { throw 'Sistem Koruması kapalı' }
+        [void]$this.RestorePoints.Add($Description)
+    }
+
+    [void] RestartToFirmware([int] $DelaySeconds) {
+        $this.WriteCount++
+        [void]$this.Restarts.Add($DelaySeconds)
+    }
 }
 
 # Önceden verilmiş yanıt listesiyle çalışır. Liste biterse güvenli varsayılan: reddet.
