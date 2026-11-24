@@ -5,11 +5,18 @@
 Windows 11 için profil odaklı, nesne tabanlı optimizer. Format sonrası tek komut: profildeki ayarlar, uygulamalar ve
 masaüstü / görev çubuğu düzeni uygulanır. Her değişiklikten önce anlık görüntü alınır; `-Undo` gerçek önceki duruma döner.
 
-> **Durum: geliştirme aşamasında (Faz 0 — iskelet).** Henüz kullanılabilir bir sürüm yok; aşağıdaki komut ilk sürümle çalışacak.
+> **Durum: geliştirme aşamasında (Faz 8 — CLI ve yayın).** İlk sürüm etiketlenene kadar aşağıdaki komut çalışmaz.
+
+Yönetici PowerShell'de (önce önizleme):
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/MrFedai/FAI_WinOP/main/install.ps1))) -Profile <profil> -DryRun
+& ([scriptblock]::Create((irm https://github.com/MrFedai/FAI_WinOP/releases/latest/download/get.ps1))) -Profile fedai -DryRun
 ```
+
+`get.ps1` sürümdeki `install.ps1`'i indirir, yayımlanan `install.ps1.sha256` ile doğrular; tutmazsa çalıştırmaz.
+Profil yoksa Türkçe menü açılır. Diğer parametreler: `-Unattended`, `-Undo [-Session <kimlik>]`, `-Only` / `-Skip`,
+`-UpdatesOn` / `-UpdatesOff`, `-ExportProfile <ad>`, `-ExportLayout`, `-Version vX.Y.Z`, `-List`
+(`Get-Help .\install.ps1 -Detailed`). Tweak, katalog ve profil verisi `install.ps1`'e gömülüdür.
 
 ## İlkeler
 - **Ayarlar veri, motor sınıf:** her tweak bir `.psd1` dosyası (açıklama, risk seviyesi, koşullar, eylemler).

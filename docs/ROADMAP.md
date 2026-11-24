@@ -121,10 +121,11 @@ Profile (JSON)  ──►  Engine  ──►  Tweak (psd1 veri)  ──►  Acti
 
 ### 2.4 CLI
 ```
-install.ps1 [-Profile <ad|yol|url>] [-DryRun] [-Unattended] [-Undo [<oturum>]]
+install.ps1 [-Profile <ad|yol|url>] [-DryRun] [-Unattended] [-Undo [-Session <oturum>]]
             [-Only <id,...>] [-Skip <id,...>] [-UpdatesOn] [-UpdatesOff]
-            [-ExportProfile <ad>] [-ExportLayout] [-Version <vX.Y.Z>] [-List]
+            [-ExportProfile <ad|yol>] [-ExportLayout] [-Version <vX.Y.Z>] [-List]
 ```
+- `-Undo [<oturum>]` PowerShell'de hem anahtar hem isteğe bağlı değer olamaz → `-Undo` + `-Session <oturum>` (Faz 8).
 - `-Profile` yoksa etkileşimli menü (kategori → onay kutulu liste, risk renkleriyle).
 - `-ExportLayout`: mevcut görev çubuğu sabitlemeleri + Başlat düzeni + masaüstü simgeleri profile yazılır.
 
@@ -138,7 +139,8 @@ FAI_WinOP/
     Actions/     Registry Service ScheduledTask Appx Winget Power File Shortcut Script Native
     Providers/   Windows/*  Fake/*
     Native/      AudioEndpoint.cs  TimerResolution.cs
-    Engine.ps1   Cli.ps1  Menu.ps1
+    Engine.ps1   Cli.ps1  Menu.ps1  Entry.ps1 (install.ps1 param bloğu + giriş)
+    Bootstrap/   get.ps1 (önyükleyici: indir → SHA-256 → çalıştır; ASCII, BOM'suz)
   tweaks/        setup/ ui/ bloat/ privacy/ sound/ power/ graphics/ gaming/ system/
   apps/          catalog.json
   profiles/      fedai.json  _schema.json
@@ -425,6 +427,42 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
 > `Cli.ps1` (2.4'teki parametreler) ve `Menu.ps1` (profil yoksa kategori → onay kutulu liste, risk renkleri, Türkçe) yaz. Yönetici değilse kendini yükseltsin. `Bundle.ps1` tüm kaynakları bağımlılık sırasıyla tek `install.ps1`'e birleştirsin; tweak/katalog/profil verileri ya gömülü olsun ya da aynı sürüm etiketinden `raw.githubusercontent` ile çekilsin (karar ver ve gerekçelendir). `release.yml`: etiketle sürüm, `install.ps1` + `.sha256` yayınla. `-ExportProfile` yaz.
 
 **Kabul:** Temiz bir Windows CI runner'ında tek satır komut `-DryRun` ile uçtan uca çalışıyor; hash doğrulaması başarısız olursa çalıştırma duruyor.
+
+**Faz 8 notları (uygulama kararları):**
+- Veri **gömülü** (`build/Bundle.ps1` → `Get-FaiEmbeddedData`; okuma `src/Core/Data.ps1`). Gerekçe: tek dosya = tek
+  SHA-256 (veri de doğrulanır; ayrı raw indirmeleri ayrı ayrı doğrulanmak zorunda kalırdı), kod + veri aynı etiketten
+  (kayma yok), çevrimdışı çalışır (format sonrası sürücüsüz Wi-Fi), daha az ağ isteği. Bedeli ~100 KB. `.psd1` metni
+  yürütülmeden okunur (`HashtableAst.SafeGetValue`). Satır başında `'@` olan dosya (edge-remove) base64. Kullanıcı
+  profili yine yol ya da https URL ile verilebilir (düz http reddedilir).
+- Tek satır: `& ([scriptblock]::Create((irm .../releases/latest/download/get.ps1))) -Profile fedai -DryRun`.
+  `get.ps1` install.ps1 + .sha256 indirir, doğrular (tutmazsa siler, hata, çalıştırmaz), yöneticiyse aynı konsolda
+  `powershell.exe -ExecutionPolicy Bypass -File`, değilse UAC ile yeni pencerede (`-NoExit`). `irm install.ps1 | iex`
+  doğrulanamaz; README yalnız get.ps1'i önerir. get.ps1 saf ASCII ve BOM'suz (5.1 `irm` charset'siz yanıtı ISO-8859-1
+  çözer); lint BOM kuralı "BOM yok ve ASCII dışı bayt var" olarak daraldı, birim testi get.ps1'i denetler.
+- `install.ps1` başında param bloğu (`src/Entry.ps1`; Bundle AST ile böler: param başa, giriş sona). Nokta-kaynakta
+  (testler) çalışmaz; dosyadan çalıştıysa `exit <kod>`, `iex`'te exit yok. Param değişkeni `FaiProfile`
+  (`[Alias('Profile')]`; `$PROFILE` ezilmesin). Nokta-kaynak eden betik aynı adlı değişkenlerini korumalı
+  (Apps-Install `-Only / -Undo`).
+- Yükseltme: `-List / -ExportProfile / -ExportLayout / -Version` yönetici istemez; diğerleri dosyadan çalıştıysa UAC ile
+  yeniden başlar (aynı parametreler), `iex`'te get.ps1 önerilir. Çıkış kodları 0 / 1 HATA / 2 kullanım / 3 yükseltme.
+- `-Only`: profille süzgeç, profilsiz geçici profil ('secim'), araçlara (Tool) izin. Kimlikler tweak Id, `app.<id>`,
+  `gaming.per-game`, `layout.profile`; `-Skip` aynı kimliklerle (yalnız -Profile ile). `-Version vX.Y.Z`: o etiketin
+  install.ps1 + .sha256'sı doğrulanıp onunla çalışır. `ResumeCommand`: dosyadan, dry-run olmayan profil çalıştırmasında
+  betik `%ProgramData%\FAI_WinOP\install.ps1`'e kopyalanır, aynı parametrelerle (yerel profil yolu mutlak).
+  Günlük `%ProgramData%\FAI_WinOP\logs\<zaman>.log`.
+- `-ExportProfile <ad|yol>`: motor dry-run + Unattended ile bütün (araç dışı) tweak'ler + katalog uygulamaları → ZATEN
+  UYGUN olanlar profile girer (varsayılan parametrelerle), düzen `Export-FaiLayout`; doğrulanıp `Belgeler\FAI_WinOP\<ad>.json`.
+  `-ExportLayout`: `-Profile <yol.json>` ya da `Belgeler\FAI_WinOP\layout.json`.
+- Menü (`src/Menu.ps1`): 1 profil (gömülü / yol / URL) · 2 kategori → onay kutulu liste (risk renkli; `1 3-5`, h / y) →
+  c çalıştır · 3 son oturumu geri al · 4 Windows Update · 5 araçlar. Her çalıştırmada Ö önizle / U uygula / G geri.
+  Girdi `IPromptProvider.ReadLine` (yeni; Fake kuyruğu ile test).
+- `profiles/fedai.json`: 3.2'deki tweak'ler (setup.updates-staged en sonda: yeniden başlatma isterse diğerleri uygulanmış
+  olur), 12 uygulama (Telegram / WhatsApp keepAutostart), autoConfirm boş. `input.mouse` katalogda yok → profilde yok.
+- `release.yml`: `v*` etiketi → lint + birim → `Bundle.ps1 -Version <etiket>` → install.ps1, install.ps1.sha256, get.ps1
+  sürüme. CI windows işi `tests/Integration/OneLiner.ps1`: yerel HTTP (python) → tek satır `-Profile fedai -DryRun` 0
+  dönmeli; install.ps1'i kurcalanmış kopyada çıkış ≠ 0 ve eklenen satır çalışmamış olmalı.
+- Birim: 374 (Cli.Tests 34: gömülü veri, CLI, menü, dışa aktarma, SHA-256), lint temiz; 5.1'de `-List` ve bundle
+  yükleme geçti.
 
 ### Faz 9 — Gerçek donanım doğrulaması
 **Kontrol listesi (kullanıcı ile birlikte, hedef dizüstünde):**
