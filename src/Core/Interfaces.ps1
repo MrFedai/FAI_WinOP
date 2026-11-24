@@ -41,6 +41,12 @@ class ITaskProvider {
     [string] GetTaskState([string] $TaskPath) { throw [System.NotImplementedException]::new('ITaskProvider.GetTaskState') }
     # YAZMA.
     [void] SetTaskEnabled([string] $TaskPath, [bool] $Enabled) { throw [System.NotImplementedException]::new('ITaskProvider.SetTaskEnabled') }
+    # Görevin çalıştırdığı komut: @{ Execute; Arguments }; görev yoksa $null.
+    [hashtable] GetTaskAction([string] $TaskPath) { throw [System.NotImplementedException]::new('ITaskProvider.GetTaskAction') }
+    # Açılışta SYSTEM hesabıyla (en yüksek yetki) çalışan görevi kaydeder; varsa üzerine yazar. YAZMA.
+    [void] RegisterStartupTask([string] $TaskPath, [string] $Execute, [string] $Arguments, [string] $Description) { throw [System.NotImplementedException]::new('ITaskProvider.RegisterStartupTask') }
+    # Görevi siler; yoksa sessizce geçer. YAZMA.
+    [void] UnregisterTask([string] $TaskPath) { throw [System.NotImplementedException]::new('ITaskProvider.UnregisterTask') }
 }
 
 # Appx (Store) paketleri: kullanıcı ve provisioned.
@@ -165,4 +171,14 @@ class ITimerResolutionProvider {
 class IShellProvider {
     # YAZMA (kullanıcıya pencere açar; dry-run'da çağrılmaz).
     [void] OpenUri([string] $Uri) { throw [System.NotImplementedException]::new('IShellProvider.OpenUri') }
+}
+
+# Microsoft Edge (Chromium) ve WebView2 Runtime. Sürüm boşsa kurulu değil. WebView2'ye hiçbir yöntem dokunmaz.
+class IEdgeProvider {
+    [string] GetEdgeVersion() { throw [System.NotImplementedException]::new('IEdgeProvider.GetEdgeVersion') }
+    [string] GetWebView2Version() { throw [System.NotImplementedException]::new('IEdgeProvider.GetWebView2Version') }
+    # Edge'i sistem düzeyinde kaldırır (EdgeUpdate ve WebView2 kalır); kaldırılamazsa hata fırlatır. YAZMA.
+    [void] UninstallEdge() { throw [System.NotImplementedException]::new('IEdgeProvider.UninstallEdge') }
+    # Edge'i yeniden kurar (geri alma). YAZMA.
+    [void] InstallEdge() { throw [System.NotImplementedException]::new('IEdgeProvider.InstallEdge') }
 }

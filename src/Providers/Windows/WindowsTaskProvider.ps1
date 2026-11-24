@@ -31,4 +31,29 @@ class WindowsTaskProvider : ITaskProvider {
         if ($Enabled) { Enable-ScheduledTask -TaskPath $p[0] -TaskName $p[1] -ErrorAction Stop | Out-Null }
         else { Disable-ScheduledTask -TaskPath $p[0] -TaskName $p[1] -ErrorAction Stop | Out-Null }
     }
+
+    [hashtable] GetTaskAction([string] $TaskPath) {
+        $t = $this.Find($TaskPath)
+        if ($null -eq $t) { return $null }
+        $exec = @($t.Actions | Where-Object { $_.Execute })
+        if ($exec.Count -eq 0) { return @{ Execute = ''; Arguments = '' } }
+        return @{ Execute = [string]$exec[0].Execute; Arguments = [string]$exec[0].Arguments }
+    }
+
+    # Açılışta, SYSTEM hesabıyla, en yüksek yetkiyle; pil ile de çalışır; 1 saatte bitmezse durdurulur.
+    [void] RegisterStartupTask([string] $TaskPath, [string] $Execute, [string] $Arguments, [string] $Description) {
+        $p = [WindowsTaskProvider]::SplitPath($TaskPath)
+        $action = New-ScheduledTaskAction -Execute $Execute -Argument $Arguments
+        $trigger = New-ScheduledTaskTrigger -AtStartup
+        $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+        $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 1)
+        Register-ScheduledTask -TaskPath $p[0] -TaskName $p[1] -Action $action -Trigger $trigger -Principal $principal -Settings $settings `
+            -Description $Description -Force -ErrorAction Stop | Out-Null
+    }
+
+    [void] UnregisterTask([string] $TaskPath) {
+        $t = $this.Find($TaskPath)
+        if ($null -eq $t) { return }
+        Unregister-ScheduledTask -TaskPath $t.TaskPath -TaskName $t.TaskName -Confirm:$false -ErrorAction Stop
+    }
 }

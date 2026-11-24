@@ -17,6 +17,9 @@
       Volume          varsayılan çıkış aygıtı (yoksa ATLA: sunucu / CI)
       TimerResolution FAI_TimerResolution servisi derle → kur → kaldır
       Motor           gerçek sağlayıcılarla tweak uygula → -Undo (diskteki oturumdan)
+      AppxCleanup     açılış görevi \FAI_WinOP_Test\BloatCleanup (SYSTEM) + betik; paket listesi makinede olmayan ad
+      Edge            salt okunur: Edge ve WebView2 sürümü
+      Faz 5 dry-run   gerçek paket listesiyle bloat.remove / persistence / edge-remove önizlemesi: korunan paket yok
     Her döngüde snapshot JSON'a yazılıp okunur (BackupStore gibi). Test hedefleri sonda temizlenir.
 
     GÜVENLİK: yalnız GitHub Actions'ta (GITHUB_ACTIONS=true) ya da Windows Sandbox'ta (WDAGUtilityAccount) çalışır;
@@ -65,7 +68,7 @@ $failed = 0
 $skipped = 0
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 $stepNo = 0
-$stepTotal = 13
+$stepTotal = 16
 function Step([string] $Name, [scriptblock] $Body) {
     $script:stepNo++
     $t = [System.Diagnostics.Stopwatch]::StartNew()
@@ -208,6 +211,61 @@ try {
         ''
     }
 
+    Step 'AppxCleanup (açılış görevi SYSTEM + betik, geri alma siler)' {
+        $cleanupTask = '\FAI_WinOP_Test\BloatCleanup'
+        $scriptFile = Join-Path $testRoot 'BloatCleanup.ps1'
+        $def = @{ Type = 'AppxCleanup'; Names = @('FAI.WinOP.Yok'); TaskPath = $cleanupTask; ScriptPath = '%TEMP%\FAI_WinOP_Test\BloatCleanup.ps1' }
+        $state = { '{0}|{1}' -f ($null -ne $ctx.Tasks.GetTaskAction($cleanupTask)), (Test-Path -LiteralPath $scriptFile) }
+        $action = New-FaiAction -Definition $def
+        $snap = [hashtable](ConvertFrom-JsonText -Json ($action.Snapshot($ctx) | ConvertTo-Json -Depth 10))
+        $before = & $state
+        $action.Apply($ctx)
+        Assert $action.Test($ctx) 'uygulandıktan sonra Test $false'
+        Assert ((& $state) -eq 'True|True') ('beklenmeyen: ' + (& $state))
+        $p = [WindowsTaskProvider]::SplitPath($cleanupTask)
+        $t = Get-ScheduledTask -TaskPath $p[0] -TaskName $p[1]
+        Assert ($t.Principal.UserId -match 'SYSTEM') ('görev hesabı: ' + $t.Principal.UserId)
+        Assert (@($t.Triggers | Where-Object { $_.CimClass.CimClassName -eq 'MSFT_TaskBootTrigger' }).Count -eq 1) 'açılış tetikleyicisi yok'
+        $tokens = $null; $parseErrors = $null
+        [void][System.Management.Automation.Language.Parser]::ParseFile($scriptFile, [ref]$tokens, [ref]$parseErrors)
+        Assert (@($parseErrors).Count -eq 0) ('betik 5.1''de ayrışmıyor: ' + (@($parseErrors) -join '; '))
+        $action.Revert($ctx, $snap)
+        Assert ((& $state) -eq $before) ('geri alma farklı: ' + (& $state))
+        ''
+    }
+
+    Step 'Edge sağlayıcısı (salt okunur: Edge + WebView2 sürümü)' {
+        $edge = $ctx.Edge.GetEdgeVersion()
+        $wv = $ctx.Edge.GetWebView2Version()
+        if (-not $edge -and -not $wv) { return 'ATLA Edge ve WebView2 yok (Sandbox / sunucu imajı)' }
+        "(Edge: $edge; WebView2: $wv)"
+    }
+
+    Step 'Faz 5 dry-run: bloat önizlemesinde korunan paket yok' {
+        $catalog = Import-FaiTweakCatalog -Path (Join-Path $repoRoot 'tweaks')
+        $faiProfile = [Profile]::FromHashtable(@{ name = 'bloat-dry'; tweaks = @('bloat.remove', 'bloat.persistence', 'bloat.edge-remove') }, 'test')
+        $ctx.DryRun = $true
+        try { $dry = Invoke-FaiEngine -Profile $faiProfile -Context $ctx -Catalog $catalog }
+        finally { $ctx.DryRun = $false }
+        Assert (-not $dry.HasFailures()) ('dry-run hatası: ' + $dry.Render())
+        $protected = [string[]]@((Get-FaiBloatProtected).Keys)
+        $installed = @($ctx.Appx.GetInstalled())
+        $planned = New-Object 'System.Collections.Generic.List[string]'
+        foreach ($item in $dry.Items) {
+            foreach ($l in @($item.Lines)) {
+                if ($l -match '^Appx: (\S+) kaldırılır') {
+                    Assert (-not (Test-FaiAppxProtected -Name $Matches[1] -Patterns $protected)) "korunan paket listede: $($Matches[1])"
+                    $planned.Add($Matches[1])
+                }
+            }
+        }
+        foreach ($n in $installed) {
+            if (Test-FaiAppxProtected -Name $n -Patterns $protected) { Assert ($planned -notcontains $n) "korunan kurulu paket planlandı: $n" }
+        }
+        Write-Host ($dry.Render())
+        "(kurulu $($installed.Count) paket; kaldırılacak $($planned.Count): $($planned -join ', '))"
+    }
+
     Step 'Appx (listeleme + kullanıcı paketi kaldır / geri kaydet)' {
         $installed = @($ctx.Appx.GetInstalled())
         $provisioned = @($ctx.Appx.GetProvisioned())
@@ -346,6 +404,7 @@ finally {
     if (Get-Service -Name $svcName -ErrorAction SilentlyContinue) { & sc.exe delete $svcName | Out-Null }
     $p = [WindowsTaskProvider]::SplitPath($taskPath)
     Unregister-ScheduledTask -TaskPath $p[0] -TaskName $p[1] -Confirm:$false -ErrorAction SilentlyContinue
+    Unregister-ScheduledTask -TaskPath $p[0] -TaskName 'BloatCleanup' -Confirm:$false -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $testRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 

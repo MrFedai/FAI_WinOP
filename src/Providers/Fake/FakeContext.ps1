@@ -32,6 +32,7 @@ function New-FakeContext {
     $ctx.Audio = [FakeAudioProvider]::new()
     $ctx.TimerResolution = [FakeTimerResolutionProvider]::new()
     $ctx.Shell = [FakeShellProvider]::new()
+    $ctx.Edge = [FakeEdgeProvider]::new()
     $prompt = [FakePromptProvider]::new()
     if ($Answers.Count -gt 0) { $prompt.Enqueue($Answers) }
     $ctx.Prompt = $prompt
@@ -49,5 +50,5 @@ function Get-FakeWriteCount {
     return ([int]$Ctx.Registry.WriteCount + [int]$Ctx.Services.WriteCount + [int]$Ctx.Tasks.WriteCount +
         [int]$Ctx.Appx.WriteCount + [int]$Ctx.Packages.WriteCount + [int]$Ctx.Files.WriteCount +
         [int]$Ctx.Shortcuts.WriteCount + [int]$Ctx.Power.WriteCount + [int]$Ctx.Scripts.WriteCount +
-        [int]$Ctx.Audio.WriteCount + [int]$Ctx.TimerResolution.WriteCount + [int]$Ctx.Shell.WriteCount)
+        [int]$Ctx.Audio.WriteCount + [int]$Ctx.TimerResolution.WriteCount + [int]$Ctx.Shell.WriteCount + [int]$Ctx.Edge.WriteCount)
 }

@@ -10,7 +10,7 @@
 # rapor, snapshot ve -Undo tweak'lerle aynı yoldan geçer.
 
 function Get-FaiAppIdPattern { return '^[a-z0-9]+(-[a-z0-9]+)*$' }
-function Get-FaiAppKey { return [string[]]@('id', 'name', 'source', 'packageId', 'notes', 'quietUninstall', 'postInstall') }
+function Get-FaiAppKey { return [string[]]@('id', 'name', 'source', 'packageId', 'notes', 'appxNames', 'quietUninstall', 'postInstall') }
 function Get-FaiAppPostInstallKey {
     return [string[]]@('removeAutostart', 'startupRegistryNames', 'startupFolderNames', 'startupTaskNames',
         'removeDesktopShortcut', 'desktopShortcutNames', 'flattenStartMenu', 'startMenuFolders')
@@ -55,6 +55,15 @@ function Get-FaiAppCatalogError {
             else { $packages[$app['packageId'].ToLowerInvariant()] = $true }
         }
         if ($app.Contains('notes') -and $app['notes'] -isnot [string]) { $errs.Add("${at}.notes: metin olmalı") }
+        if ($app.Contains('appxNames')) {
+            $an = $app['appxNames']
+            if ($an -is [string] -or $an -isnot [System.Collections.IEnumerable] -or @($an).Count -eq 0) { $errs.Add("${at}.appxNames: boş olmayan paket adı listesi olmalı") }
+            else {
+                foreach ($n in @($an)) {
+                    if ($n -isnot [string] -or $n -notmatch '^[A-Za-z0-9][A-Za-z0-9.\-]*$') { $errs.Add("${at}.appxNames: '$n' birebir Appx paket adı olmalı") }
+                }
+            }
+        }
         if ($app.Contains('quietUninstall')) {
             $qu = $app['quietUninstall']
             if ($qu -isnot [System.Collections.IDictionary]) { $errs.Add("${at}.quietUninstall: nesne olmalı ({ path, args })") }

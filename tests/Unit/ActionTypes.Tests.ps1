@@ -474,6 +474,8 @@ Describe 'Fabrika, arayüzler ve Windows sağlayıcıları' {
         { ([ITimerResolutionProvider]::new()).IsInstalled() } | Should -Throw -ExceptionType ([System.NotImplementedException])
         { ([IAppxProvider]::new()).RestoreInstalled('a') } | Should -Throw -ExceptionType ([System.NotImplementedException])
         { ([IRegistryProvider]::new()).DeleteEmptyKey('a') } | Should -Throw -ExceptionType ([System.NotImplementedException])
+        { ([IEdgeProvider]::new()).UninstallEdge() } | Should -Throw -ExceptionType ([System.NotImplementedException])
+        { ([ITaskProvider]::new()).RegisterStartupTask('a', 'b', 'c', 'd') } | Should -Throw -ExceptionType ([System.NotImplementedException])
     }
 
     It 'her Windows sağlayıcısı kendi arayüzünden türer' {
@@ -482,7 +484,7 @@ Describe 'Fabrika, arayüzler ve Windows sağlayıcıları' {
             WindowsAppxProvider = 'IAppxProvider'; WindowsPackageProvider = 'IPackageProvider'; WindowsSystemInfoProvider = 'ISystemInfoProvider'
             WindowsPromptProvider = 'IPromptProvider'; WindowsFileProvider = 'IFileProvider'; WindowsShortcutProvider = 'IShortcutProvider'
             WindowsPowerProvider = 'IPowerProvider'; WindowsScriptHost = 'IScriptHost'; WindowsAudioProvider = 'IAudioProvider'
-            WindowsTimerResolutionProvider = 'ITimerResolutionProvider'
+            WindowsTimerResolutionProvider = 'ITimerResolutionProvider'; WindowsEdgeProvider = 'IEdgeProvider'
         }
         foreach ($k in $pairs.Keys) { ($k -as [type]).BaseType.Name | Should -Be $pairs[$k] -Because $k }
     }
@@ -490,7 +492,7 @@ Describe 'Fabrika, arayüzler ve Windows sağlayıcıları' {
     It 'Windows sağlayıcıları arayüzün bütün yöntemlerini ezer' {
         foreach ($name in @('WindowsRegistryProvider', 'WindowsServiceManager', 'WindowsTaskProvider', 'WindowsAppxProvider', 'WindowsPackageProvider',
                 'WindowsSystemInfoProvider', 'WindowsPromptProvider', 'WindowsFileProvider', 'WindowsShortcutProvider', 'WindowsPowerProvider',
-                'WindowsScriptHost', 'WindowsAudioProvider', 'WindowsTimerResolutionProvider')) {
+                'WindowsScriptHost', 'WindowsAudioProvider', 'WindowsTimerResolutionProvider', 'WindowsEdgeProvider')) {
             $t = $name -as [type]
             foreach ($m in $t.BaseType.GetMethods() | Where-Object { $_.DeclaringType -eq $t.BaseType }) {
                 $own = $t.GetMethod($m.Name, [type[]]@($m.GetParameters() | ForEach-Object { $_.ParameterType }))

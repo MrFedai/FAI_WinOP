@@ -28,6 +28,7 @@ class Engine {
         else { $report.Heading = "Profil '$($FaiProfile.Name)' — uygulama" }
         $this.Ctx.Logger.Info($report.Heading)
         $this.Session = $null
+        $this.Ctx.ProtectedAppx = $this.ProtectedAppxFor($FaiProfile)
 
         foreach ($app in $FaiProfile.Apps) {
             $id = 'app.' + [string]$app['Id']
@@ -54,6 +55,18 @@ class Engine {
         }
         $this.Ctx.Logger.Info($report.Summary())
         return $report
+    }
+
+    # Sabit korunan liste + profildeki uygulamaların katalogdaki Appx adları (bloat.remove onlara dokunmaz).
+    [string[]] ProtectedAppxFor([Profile] $FaiProfile) {
+        $list = New-Object 'System.Collections.Generic.List[string]'
+        foreach ($k in @((Get-FaiBloatProtected).Keys)) { $list.Add([string]$k) }
+        foreach ($app in $FaiProfile.Apps) {
+            $entry = $this.AppCatalog[[string]$app['Id']]
+            if ($null -eq $entry -or -not $entry.Contains('appxNames')) { continue }
+            foreach ($n in @($entry['appxNames'])) { if ($list -notcontains [string]$n) { $list.Add([string]$n) } }
+        }
+        return $list.ToArray()
     }
 
     hidden [void] ProcessTweak([Profile] $FaiProfile, [string] $Id, [hashtable] $Overrides, [Reporter] $Report) {
@@ -88,8 +101,12 @@ class Engine {
             return
         }
 
-        # 4) risk politikası / onay
-        $decision = [RiskPolicy]::Decide($cx, $tweak.Risk, $tweak.Title, $tweak.Confirm, $FaiProfile.IsAutoConfirmed($Id))
+        # 4) risk politikası / onay (soruda bekleyen eylemlerin tablosu gösterilir)
+        $details = New-Object 'System.Collections.Generic.List[string]'
+        if ($tweak.Risk -ne 'Safe' -and -not $cx.DryRun -and -not $cx.Unattended) {
+            foreach ($i in $pending) { $details.Add($tweak.Actions[$i].Preview($cx)) }
+        }
+        $decision = [RiskPolicy]::Decide($cx, $tweak.Risk, $tweak.Title, $tweak.Confirm, $FaiProfile.IsAutoConfirmed($Id), $details.ToArray())
         if (-not $decision.Apply) {
             [void]$Report.Add($Id, $tweak.Title, 'Skipped', $decision.Reason, [string[]]@())
             $cx.Logger.Info("${Id}: atlandı ($($decision.Reason))")

@@ -7,6 +7,9 @@ Değişiklikler varsayılan parametrelerle listelenir; profil parametreleri geç
 
 | Id | Başlık | Risk | Koşul | Parametre |
 | --- | --- | --- | --- | --- |
+| [`bloat.edge-remove`](#bloatedge-remove) | Microsoft Edge'i kaldır (WebView2 kalır) | ⚠ Caution | — | — |
+| [`bloat.persistence`](#bloatpersistence) | Kaldırılan uygulamaların geri gelmesini engelle | ⚠ Caution | — | — |
+| [`bloat.remove`](#bloatremove) | Gereksiz Store uygulamalarını kaldır | ⚠ Caution | — | — |
 | [`privacy.app-permissions`](#privacyapp-permissions) | Uygulama izinlerini kapat (kamera ve mikrofon açık) | Safe | — | — |
 | [`privacy.search-ads`](#privacysearch-ads) | Arama ve Başlat reklamlarını kapat | Safe | — | — |
 | [`privacy.telemetry`](#privacytelemetry) | Telemetriyi en aza indir | Safe | — | — |
@@ -16,6 +19,103 @@ Değişiklikler varsayılan parametrelerle listelenir; profil parametreleri geç
 | [`ui.explorer`](#uiexplorer) | Dosya Gezgini düzeni | Safe | — | — |
 | [`ui.notifications`](#uinotifications) | Bildirimleri kapat (istisna listesi hariç) | Safe | — | `exceptions` |
 | [`ui.visual-effects`](#uivisual-effects) | Görsel efektleri azalt (yazı yumuşatma açık) | Safe | — | — |
+
+## bloat
+
+### bloat.edge-remove
+
+**Microsoft Edge'i kaldır (WebView2 kalır)** · Risk: ⚠ Caution
+
+Edge'i (Chromium) kendi kurucusuyla sistem düzeyinde kaldırır. WebView2 Runtime'a ve EdgeUpdate'e dokunmaz: WhatsApp gibi WebView2 kullanan uygulamalar çalışmaya, WebView2 güncellenmeye devam eder. EdgeUpdate ilkesiyle Edge'in yeniden kurulması engellenir (Install{Edge}=0), WebView2'nin kurulması ve güncellenmesi açıkça izinli kalır. microsoft-edge: bağlantıları (Ayarlar, Widget'lar, arama sonuçları) küçük bir yönlendirme betiğiyle varsayılan tarayıcıda açılır; yalnız http / https adresi kabul edilir. Sınırlar: Windows Update ayrı bir Edge paketi gönderirse Edge geri gelebilir (EdgeUpdate ilkesi onu durdurmaz); msedge.exe'yi doğrudan çağıran sistem bileşenleri açılmaz; microsoft-edge: için kullanıcı seçimi (UserChoice) önceden Edge'e bağlıysa Windows bir kez "nasıl açılsın" sorabilir. Geri alma: önce ilke ve yönlendirme kalkar, sonra Edge winget ile yeniden kurulur.
+
+Onay uyarısı: Edge kaldırılacak. Sık kullanılanları / parolaları önce Chrome'a aktarın. WebView2 kalır.
+
+Değişiklikler (8):
+
+- `Microsoft Edge kaldırılır (WebView2 Runtime ve güncellemesi kalır)`
+- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate\Install{56EB18F8-B008-4CBD-B6D2-8C97FE7E9062} = 0 (DWord)`
+- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate\Install{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5} = 1 (DWord)`
+- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate\Update{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5} = 1 (DWord)`
+- `Dosya: %ProgramData%\FAI_WinOP\EdgeRedirect.ps1 yazılır (570 karakter, UTF8BOM)`
+- `Kayıt defteri: HKLM:\SOFTWARE\Classes\microsoft-edge\ = URL:microsoft-edge (String)`
+- `Kayıt defteri: HKLM:\SOFTWARE\Classes\microsoft-edge\URL Protocol =  (String)`
+- `Kayıt defteri: HKLM:\SOFTWARE\Classes\microsoft-edge\shell\open\command\ = "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "%ProgramData%\FAI_WinOP\EdgeRedirect.ps1" "%1" (ExpandString)`
+
+### bloat.persistence
+
+**Kaldırılan uygulamaların geri gelmesini engelle** · Risk: ⚠ Caution
+
+bloat.remove listesindeki paketlerin provisioned kopyalarını kaldırır (yeni kullanıcılara ve güncellemeden sonra yeniden kurulmasınlar), Windows'un önerilen / sponsorlu uygulamaları kendiliğinden kurmasını kapatır (ContentDeliveryManager ve CloudContent ilkesi) ve açılışta Windows yapı numarası değiştiyse (büyük ya da aylık güncelleme) aynı listeyi bütün kullanıcılardan yeniden kaldıran bir zamanlanmış görev (\\FAI\_WinOP\\BloatCleanup, SYSTEM) kurar; görev %ProgramData%\\FAI\_WinOP\\BloatCleanup.log dosyasına yazar. Korunan liste ve profildeki uygulamalar görev betiğine de girmez. Provisioned kaldırmanın geri dönüşü yoktur: geri alma görevi ve betiği siler, ayarları döndürür; uygulamalar Store'dan yeniden kurulur. DisableWindowsConsumerFeatures ilkesi resmî olarak yalnız Enterprise / Education'da etkilidir; Pro'da asıl işi ContentDeliveryManager değerleri yapar.
+
+Onay uyarısı: Provisioned paket kaldırma geri alınamaz (uygulama gerekirse Store'dan kurulur).
+
+Değişiklikler (10):
+
+- `Bloatware kalıcılığı: 44 paketin provisioned kopyası kaldırılır, açılış görevi \FAI_WinOP\BloatCleanup güncelleme sonrası yineler`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SilentInstalledAppsEnabled = 0 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\PreInstalledAppsEnabled = 0 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\PreInstalledAppsEverEnabled = 0 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\OemPreInstalledAppsEnabled = 0 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SubscribedContentEnabled = 0 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\FeatureManagementEnabled = 0 (DWord)`
+- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent\DisableWindowsConsumerFeatures = 1 (DWord)`
+- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent\DisableConsumerAccountStateContent = 1 (DWord)`
+- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent\DisableCloudOptimizedContent = 1 (DWord)`
+
+### bloat.remove
+
+**Gereksiz Store uygulamalarını kaldır** · Risk: ⚠ Caution
+
+Açık kara listedeki (joker yok, her paket adıyla) önceden kurulu Store uygulamalarını oturumdaki kullanıcıdan kaldırır. Çalışmadan önce kurulu olanlar tablo olarak gösterilir ve onay istenir. Korunan liste (src/Core/Bloat.ps1, Get-FaiBloatProtected) ve profildeki uygulamaların Appx adları (apps/catalog.json appxNames) hiçbir koşulda kaldırılmaz: Store, winget (App Installer), Ekran Alıntısı Aracı, WhatsApp, Claude, kabuk / sistem bileşenleri, kodekler, Fotoğraflar, Paint, Not Defteri, Terminal, Hesap Makinesi, Medya Oynatıcı, sürücü panelleri, Xbox kimliği. Geri alma: provisioned kopyası makinede durdukça paket yeniden kaydedilir; bloat.persistence provisioned kopyayı da kaldırdıysa geri alma uyarı verir, uygulama Store'dan yeniden kurulur.
+
+Onay uyarısı: Yukarıdaki uygulamalar kaldırılacak (Store'dan yeniden kurulabilir).
+
+Değişiklikler (44):
+
+- `Appx: Clipchamp.Clipchamp kaldırılır (kullanıcı)`
+- `Appx: Microsoft.549981C3F5F10 kaldırılır (kullanıcı)`
+- `Appx: Microsoft.BingFinance kaldırılır (kullanıcı)`
+- `Appx: Microsoft.BingNews kaldırılır (kullanıcı)`
+- `Appx: Microsoft.BingSearch kaldırılır (kullanıcı)`
+- `Appx: Microsoft.BingSports kaldırılır (kullanıcı)`
+- `Appx: Microsoft.BingWeather kaldırılır (kullanıcı)`
+- `Appx: Microsoft.Copilot kaldırılır (kullanıcı)`
+- `Appx: Microsoft.GamingApp kaldırılır (kullanıcı)`
+- `Appx: Microsoft.GetHelp kaldırılır (kullanıcı)`
+- `Appx: Microsoft.Getstarted kaldırılır (kullanıcı)`
+- `Appx: Microsoft.Messaging kaldırılır (kullanıcı)`
+- `Appx: Microsoft.Microsoft3DViewer kaldırılır (kullanıcı)`
+- `Appx: Microsoft.MicrosoftOfficeHub kaldırılır (kullanıcı)`
+- `Appx: Microsoft.MicrosoftSolitaireCollection kaldırılır (kullanıcı)`
+- `Appx: Microsoft.MicrosoftStickyNotes kaldırılır (kullanıcı)`
+- `Appx: Microsoft.MixedReality.Portal kaldırılır (kullanıcı)`
+- `Appx: Microsoft.MSPaint kaldırılır (kullanıcı)`
+- `Appx: Microsoft.Office.OneNote kaldırılır (kullanıcı)`
+- `Appx: Microsoft.OneConnect kaldırılır (kullanıcı)`
+- `Appx: Microsoft.OutlookForWindows kaldırılır (kullanıcı)`
+- `Appx: Microsoft.People kaldırılır (kullanıcı)`
+- `Appx: Microsoft.PowerAutomateDesktop kaldırılır (kullanıcı)`
+- `Appx: Microsoft.Print3D kaldırılır (kullanıcı)`
+- `Appx: Microsoft.SkypeApp kaldırılır (kullanıcı)`
+- `Appx: Microsoft.Todos kaldırılır (kullanıcı)`
+- `Appx: Microsoft.Wallet kaldırılır (kullanıcı)`
+- `Appx: Microsoft.Windows.DevHome kaldırılır (kullanıcı)`
+- `Appx: Microsoft.WindowsAlarms kaldırılır (kullanıcı)`
+- `Appx: Microsoft.WindowsFeedbackHub kaldırılır (kullanıcı)`
+- `Appx: Microsoft.WindowsMaps kaldırılır (kullanıcı)`
+- `Appx: Microsoft.WindowsSoundRecorder kaldırılır (kullanıcı)`
+- `Appx: Microsoft.XboxApp kaldırılır (kullanıcı)`
+- `Appx: Microsoft.YourPhone kaldırılır (kullanıcı)`
+- `Appx: Microsoft.ZuneVideo kaldırılır (kullanıcı)`
+- `Appx: MicrosoftCorporationII.QuickAssist kaldırılır (kullanıcı)`
+- `Appx: MicrosoftTeams kaldırılır (kullanıcı)`
+- `Appx: MSTeams kaldırılır (kullanıcı)`
+- `Appx: 5A894077.McAfeeSecurity kaldırılır (kullanıcı)`
+- `Appx: AmazonVideo.PrimeVideo kaldırılır (kullanıcı)`
+- `Appx: BytedancePte.Ltd.TikTok kaldırılır (kullanıcı)`
+- `Appx: Disney.37853FC22B2CE kaldırılır (kullanıcı)`
+- `Appx: king.com.CandyCrushSaga kaldırılır (kullanıcı)`
+- `Appx: king.com.CandyCrushSodaSaga kaldırılır (kullanıcı)`
 
 ## privacy
 

@@ -302,6 +302,31 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
 
 **Kabul:** Dry-run listesinde korunan hiçbir paket yok; birim testi korunan listeyi kara listeyle kesişmeye karşı doğruluyor.
 
+**Faz 5 notları (uygulama kararları):**
+- Kara liste veri: `tweaks/bloat/remove.psd1` (44 `Appx` eylemi, `Scope=User`, joker yok). Korunan liste kod:
+  `Get-FaiBloatProtected` (`src/Core/Bloat.ps1`, `-like` kalıbı + gerekçe; Ultimate "breaks …" notları dahil). Korumada
+  joker güvenli tarafta (fazla korur). Profil uygulamaları: katalogda yeni alan `appxNames` (WhatsApp, Spotify).
+- Çalışma anı koruması: motor her çalıştırmada `ExecutionContext.ProtectedAppx`'i doldurur; `Appx` ve `AppxCleanup`
+  eşleşen pakete dokunmaz (Test `$true`, önizlemede "korunuyor"). Kara listeye yanlışlıkla korunan ad girse de silinmez.
+- Onay tablosu: Caution / Risk sorusunda bekleyen eylemlerin önizlemesi numaralı tablo olarak gösterilir
+  (`RiskPolicy.Decide(..., $Details)`; bütün Caution tweak'ler için genel).
+- `bloat.remove` yalnız kullanıcı paketi (geri alınabilir); `bloat.persistence` provisioned kopyayı kaldırır (geri
+  alınamaz) + ContentDeliveryManager / CloudContent + açılış görevi. Yeni eylem `AppxCleanup`: görev `\FAI_WinOP\BloatCleanup`
+  (SYSTEM, açılışta) `%ProgramData%\FAI_WinOP\BloatCleanup.ps1`'i çalıştırır; yapı numarası (CurrentBuild.UBR)
+  değiştiyse listeyi bütün kullanıcılardan + provisioned'dan yeniden kaldırır, günlük `BloatCleanup.log`. Ad listesi
+  remove ile birebir (birim testi). Yeni arayüz yöntemleri: `ITaskProvider.GetTaskAction / RegisterStartupTask / UnregisterTask`.
+- `bloat.edge-remove`: yeni eylem `EdgeRemove` + `IEdgeProvider` (Edge'in kendi `setup.exe --uninstall --system-level
+  --force-uninstall`; AB dışı engeli için geçici SystemApps\…\MicrosoftEdge.exe; yalnız `msedge` süreçleri durur).
+  EdgeUpdate'e dokunulmaz (WebView2 güncellemesi onunla): ilke `Install{56EB18F8…}=0` (Edge), `Install/Update{F3017226…}=1`
+  (WebView2). `microsoft-edge:` → `HKLM\SOFTWARE\Classes\microsoft-edge` + `EdgeRedirect.ps1` (yalnız http / https).
+  `EdgeRemove` tweak'te ilk eylem: geri alma ters sırada, ilke kalkınca Edge winget ile kurulur.
+- Bu makinede salt okunur dry-run (5.1): `bloat.remove` ZATEN UYGUN (Ultimate temizlemiş), Edge 158 + WebView2 158;
+  Claude'un Appx adı `Claude` (korunuyor). CI `windows` işine 3 adım: AppxCleanup gerçek görev döngüsü, Edge salt okunur,
+  Faz 5 dry-run (korunan paket planlanmamalı).
+- Açık (VM'de doğrulanacak): Edge kaldırıcısının gerçek davranışı ve WebView2'nin kaldığı, `microsoft-edge:` yönlendirmesi
+  (UserChoice Edge'e bağlıysa Windows bir kez sorabilir), Appx kaldır → geri kaydet döngüsü, açılış görevinin büyük
+  güncelleme sonrası çalışması. Windows Update ayrı Edge paketi gönderirse Edge geri gelebilir.
+
 ### Faz 6 — Masaüstü ve görev çubuğu düzeni
 **Prompt:**
 > 3.1'deki hedef masaüstünü uygulayan tweak'leri yaz: `ui.theme-black` (koyu tema, saydamlık kapalı, düz siyah duvar kağıdı), `ui.taskbar` (ortalı, otomatik gizle — StuckRects3, sabitlemeler sadece Dosya Gezgini + Chrome, arama/görev görünümü/widgets/copilot düğmeleri kapalı), `ui.desktop-icons` (Bu Bilgisayar + Geri Dönüşüm Kutusu; sağ alt hizalama en iyi çaba), `ui.lockscreen-black`, `ui.account-pictures-black`, `ui.widgets-off`, `ui.copilot-off`, `ui.notepad-settings`. `-ExportLayout` komutunu yaz: mevcut sabitlemeleri, Başlat düzenini ve masaüstü simge ayarlarını profile `layout` bölümü olarak kaydetsin; uygularken aynı düzeni geri yüklesin.

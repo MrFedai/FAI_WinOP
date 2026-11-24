@@ -34,7 +34,11 @@ BeforeAll {
             if ($Uri -like '*registeredApp*') { $reg.Seed($choice, 'ProgId', 'ChromeHTML', 'String') }
             elseif ($Uri -eq 'ms-settings:defaultapps') { $reg.Seed($choice, 'ProgId', 'MSEdgeHTM', 'String') }
         }.GetNewClosure()
-        $ctx.Prompt.Enqueue([string[]]@('E', 'E'))
+        # Faz 5: kara listeden bir paket (kullanıcı + provisioned), korunan Store, kurulu Edge + WebView2.
+        $ctx.Appx.Seed([string[]]@('Microsoft.BingNews', 'Microsoft.WindowsStore'), [string[]]@('Microsoft.BingNews', 'Microsoft.WindowsStore'))
+        $ctx.Edge.EdgeVersion = '131.0.2903.70'
+        $ctx.Edge.WebView2Version = '131.0.2903.70'
+        $ctx.Prompt.Enqueue([string[]]@('E', 'E', 'E', 'E', 'E'))
         return $ctx
     }
 

@@ -18,7 +18,7 @@
       }
     },
     {
-      "id": "whatsapp", "name": "WhatsApp", "source": "msstore", "packageId": "9NKSQGP7F2NH",
+      "id": "whatsapp", "name": "WhatsApp", "source": "msstore", "packageId": "9NKSQGP7F2NH", "appxNames": ["5319275A.WhatsAppDesktop"],
       "notes": "Store (MSIX) uygulaması; WebView2 çalışma zamanı gerekir (docs/APPS.md). Otomatik başlatması MSIX StartupTask ile, bu katalogda yönetilmez.",
       "postInstall": { "removeDesktopShortcut": true }
     },
@@ -77,7 +77,7 @@
       }
     },
     {
-      "id": "spotify", "name": "Spotify", "source": "msstore", "packageId": "9NCBCSZSJRSB",
+      "id": "spotify", "name": "Spotify", "source": "msstore", "packageId": "9NCBCSZSJRSB", "appxNames": ["SpotifyAB.SpotifyMusic"],
       "notes": "Store (MSIX) sürümü: winget sürümünün kurucusu yönetici oturumunda çalışmıyor. Otomatik başlatması MSIX StartupTask ile, bu katalogda yönetilmez.",
       "postInstall": { "removeDesktopShortcut": true, "desktopShortcutNames": ["Spotify.lnk"] }
     },

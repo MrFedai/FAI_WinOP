@@ -3,7 +3,7 @@
 
 function Get-FaiActionType {
     <# .SYNOPSIS  Bilinen eylem türü adları. #>
-    return [string[]]@('Registry', 'RegistryEach', 'Service', 'ScheduledTask', 'Appx', 'Winget', 'Power', 'File', 'Shortcut', 'Script', 'Volume', 'TimerResolution', 'App', 'DefaultBrowser')
+    return [string[]]@('Registry', 'RegistryEach', 'Service', 'ScheduledTask', 'Appx', 'Winget', 'Power', 'File', 'Shortcut', 'Script', 'Volume', 'TimerResolution', 'App', 'DefaultBrowser', 'AppxCleanup', 'EdgeRemove')
 }
 
 function New-FaiAction {
@@ -26,6 +26,8 @@ function New-FaiAction {
         'TimerResolution' { return [TimerResolutionAction]::new($Definition) }
         'App' { return [AppAction]::new($Definition) }
         'DefaultBrowser' { return [DefaultBrowserAction]::new($Definition) }
+        'AppxCleanup' { return [AppxCleanupAction]::new($Definition) }
+        'EdgeRemove' { return [EdgeRemoveAction]::new($Definition) }
         default { throw ("Bilinmeyen eylem türü: '{0}' (bilinenler: {1})" -f $Definition['Type'], ((Get-FaiActionType) -join ', ')) }
     }
 }
@@ -68,6 +70,8 @@ function Get-FaiActionError {
         'TimerResolution' { $messages = [TimerResolutionAction]::Validate($Definition) }
         'App' { $messages = [AppAction]::Validate($Definition) }
         'DefaultBrowser' { $messages = [DefaultBrowserAction]::Validate($Definition) }
+        'AppxCleanup' { $messages = [AppxCleanupAction]::Validate($Definition) }
+        'EdgeRemove' { $messages = [EdgeRemoveAction]::Validate($Definition) }
     }
     foreach ($m in $messages) { $errs.Add("${Path}.$m") }
     return $errs.ToArray()

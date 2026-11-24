@@ -24,6 +24,33 @@ class FakeTaskProvider : ITaskProvider {
         if ($Enabled) { $state = 'Enabled' }
         $this.Tasks[$TaskPath.ToLowerInvariant()] = $state
     }
+
+    # küçük harf görev yolu → @{ Execute; Arguments; Description } (yalnız kayıtlı ya da komutu tohumlanmış görevler)
+    [hashtable] $Commands = @{}
+
+    [hashtable] GetTaskAction([string] $TaskPath) {
+        $k = $TaskPath.ToLowerInvariant()
+        if (-not $this.Tasks.ContainsKey($k)) { return $null }
+        if (-not $this.Commands.ContainsKey($k)) { return @{ Execute = ''; Arguments = '' } }
+        return @{ Execute = [string]$this.Commands[$k]['Execute']; Arguments = [string]$this.Commands[$k]['Arguments'] }
+    }
+
+    [void] RegisterStartupTask([string] $TaskPath, [string] $Execute, [string] $Arguments, [string] $Description) {
+        $this.WriteCount++
+        [void]$this.WriteLog.Add("RegisterStartupTask $TaskPath")
+        $k = $TaskPath.ToLowerInvariant()
+        $this.Tasks[$k] = 'Enabled'
+        $this.Commands[$k] = @{ Execute = $Execute; Arguments = $Arguments; Description = $Description }
+    }
+
+    [void] UnregisterTask([string] $TaskPath) {
+        $k = $TaskPath.ToLowerInvariant()
+        if (-not $this.Tasks.ContainsKey($k)) { return }
+        $this.WriteCount++
+        [void]$this.WriteLog.Add("UnregisterTask $TaskPath")
+        $this.Tasks.Remove($k)
+        $this.Commands.Remove($k)
+    }
 }
 
 class FakeAppxProvider : IAppxProvider {
@@ -170,5 +197,32 @@ class FakeShellProvider : IShellProvider {
         $this.WriteCount++
         [void]$this.Opened.Add($Uri)
         if ($null -ne $this.OnOpen) { [void](& $this.OnOpen $Uri) }
+    }
+}
+
+# Edge / WebView2: sürüm metinleri; kaldırma ve kurma yalnız sürümü değiştirir.
+class FakeEdgeProvider : IEdgeProvider {
+    [string] $EdgeVersion = ''
+    [string] $WebView2Version = ''
+    # $true: UninstallEdge hiçbir şey yapmaz (kaldırıcının başarısız olmasını taklit eder).
+    [bool] $UninstallFails = $false
+    [int] $WriteCount = 0
+    [System.Collections.ArrayList] $WriteLog = (New-Object System.Collections.ArrayList)
+
+    FakeEdgeProvider() { }
+
+    [string] GetEdgeVersion() { return $this.EdgeVersion }
+    [string] GetWebView2Version() { return $this.WebView2Version }
+
+    [void] UninstallEdge() {
+        $this.WriteCount++
+        [void]$this.WriteLog.Add('UninstallEdge')
+        if (-not $this.UninstallFails) { $this.EdgeVersion = '' }
+    }
+
+    [void] InstallEdge() {
+        $this.WriteCount++
+        [void]$this.WriteLog.Add('InstallEdge')
+        $this.EdgeVersion = '999.0.0.0'
     }
 }

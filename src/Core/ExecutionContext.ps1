@@ -14,6 +14,7 @@ class ExecutionContext {
     [IAudioProvider] $Audio
     [ITimerResolutionProvider] $TimerResolution
     [IShellProvider] $Shell
+    [IEdgeProvider] $Edge
 
     [BackupStore] $Backup
     [Logger] $Logger
@@ -22,6 +23,9 @@ class ExecutionContext {
     [bool] $DryRun = $false
     # -Unattended: soru sorulmaz; Risk asla, Caution yalnız profilde autoConfirm varsa uygulanır.
     [bool] $Unattended = $false
+    # Asla kaldırılmayacak Appx paketleri (-like kalıpları): sabit korunan liste (Get-FaiBloatProtected) + profildeki
+    # uygulamaların Appx adları. Motor her çalıştırmada doldurur; Appx / AppxCleanup eylemleri bunlara dokunmaz.
+    [string[]] $ProtectedAppx = @()
 
     ExecutionContext() {
         $this.Logger = [Logger]::new()

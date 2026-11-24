@@ -5,6 +5,8 @@
 # Name: paket adı birebir (joker yok). Scope: User | Provisioned | All (varsayılan All).
 # Geri alma sınırı: kullanıcı paketi, makinede provisioned kopyası durdukça yeniden kaydedilir; provisioned kopya
 # kaldırıldıysa geri dönüş yoktur (Store'dan yeniden kurulur). Geri alınamayan adım uyarı olarak günlüğe yazılır.
+# Koruma: ad $Ctx.ProtectedAppx kalıplarından birine uyuyorsa eylem hiçbir şey yapmaz (Test $true), önizlemede
+# "korunuyor" yazar. Kara liste yanlışlıkla korunan bir paketi içerse de o paket silinmez.
 
 class AppxAction : ActionBase {
     AppxAction([hashtable] $Definition) : base($Definition) { }
@@ -37,7 +39,10 @@ class AppxAction : ActionBase {
     [bool] IsInstalled([ExecutionContext] $Ctx) { return (@($Ctx.Appx.GetInstalled()) -contains $this.PackageName()) }
     [bool] IsProvisioned([ExecutionContext] $Ctx) { return (@($Ctx.Appx.GetProvisioned()) -contains $this.PackageName()) }
 
+    [bool] IsProtected([ExecutionContext] $Ctx) { return (Test-FaiAppxProtected -Name $this.PackageName() -Patterns $Ctx.ProtectedAppx) }
+
     [bool] Test([ExecutionContext] $Ctx) {
+        if ($this.IsProtected($Ctx)) { return $true }
         if ($this.CoversUser() -and $this.IsInstalled($Ctx)) { return $false }
         if ($this.CoversProvisioned() -and $this.IsProvisioned($Ctx)) { return $false }
         return $true
@@ -49,6 +54,10 @@ class AppxAction : ActionBase {
 
     # Önce kullanıcı paketi: provisioned kopya yerinde durduğu sürece kullanıcı paketi geri kaydedilebilir.
     [void] Apply([ExecutionContext] $Ctx) {
+        if ($this.IsProtected($Ctx)) {
+            $Ctx.Logger.Warn('Korunan paket kaldırılmadı: ' + $this.PackageName())
+            return
+        }
         if ($this.CoversUser() -and $this.IsInstalled($Ctx)) { $Ctx.Appx.RemoveInstalled($this.PackageName()) }
         if ($this.CoversProvisioned() -and $this.IsProvisioned($Ctx)) { $Ctx.Appx.RemoveProvisioned($this.PackageName()) }
     }
@@ -72,6 +81,7 @@ class AppxAction : ActionBase {
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
+        if ($this.IsProtected($Ctx)) { return ('{0} [korunuyor, dokunulmaz]' -f $this.Describe()) }
         $state = New-Object 'System.Collections.Generic.List[string]'
         if ($this.IsInstalled($Ctx)) { $state.Add('kullanıcıda kurulu') }
         if ($this.IsProvisioned($Ctx)) { $state.Add('provisioned') }

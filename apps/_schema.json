@@ -20,6 +20,7 @@
           "source": { "enum": [ "winget", "msstore" ] },
           "packageId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9.\\-_+]*$", "description": "winget / Store kimliği (tests/Integration/App-Ids.ps1 doğrular)." },
           "notes": { "type": "string" },
+          "appxNames": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9.\\-]*$" }, "description": "Uygulamanın Appx (MSIX) paket adları: profilde olduğu sürece bloat.remove / bloat.persistence bunlara dokunmaz." },
           "quietUninstall": {
             "type": "object",
             "additionalProperties": false,
