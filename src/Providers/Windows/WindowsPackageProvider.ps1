@@ -5,6 +5,8 @@ class WindowsPackageProvider : IPackageProvider {
     # winget çıkış kodları (APPINSTALLER_CLI_ERROR_*)
     static [int] $NoPackageFound = -1978335212          # 0x8A150014
     static [int] $UpdateNotApplicable = -1978335189     # 0x8A15002B (zaten kurulu / güncel)
+    # Kaldırma sonrası paketin listeden düşmesi için en çok bekleme.
+    static [int] $UninstallWaitSeconds = 120
 
     hidden [string] $WingetPath = ''
     [string] $LastOutput = ''
@@ -52,7 +54,17 @@ class WindowsPackageProvider : IPackageProvider {
     [void] Uninstall([string] $PackageId, [string] $Source) {
         $code = $this.Invoke([string[]]@('uninstall', '--id', $PackageId, '--exact', '--source', $Source, '--silent',
                 '--accept-source-agreements', '--disable-interactivity'))
-        if ($code -eq 0 -or $code -eq [WindowsPackageProvider]::NoPackageFound) { return }
-        throw ('winget uninstall {0} başarısız ({1}): {2}' -f $PackageId, $code, $this.Tail())
+        if ($code -ne 0 -and $code -ne [WindowsPackageProvider]::NoPackageFound) {
+            throw ('winget uninstall {0} başarısız ({1}): {2}' -f $PackageId, $code, $this.Tail())
+        }
+        # Bazı kaldırıcılar (NSIS: Steam) kendini geçici klasöre kopyalayıp hemen çıkar; winget başarı döner ama
+        # kaldırma sürer. Paket listeden düşene kadar beklenir; düşmezse sessizce geçilmez.
+        $deadline = [DateTime]::UtcNow.AddSeconds([WindowsPackageProvider]::UninstallWaitSeconds)
+        while ($this.IsInstalled($PackageId, $Source)) {
+            if ([DateTime]::UtcNow -gt $deadline) {
+                throw ('winget uninstall {0}: kaldırıcı {1} sn içinde bitmedi (paket hâlâ kurulu)' -f $PackageId, [WindowsPackageProvider]::UninstallWaitSeconds)
+            }
+            Start-Sleep -Seconds 3
+        }
     }
 }
