@@ -187,6 +187,31 @@ class FakeSystemControlProvider : ISystemControlProvider {
     }
 }
 
+# Bellek yöneticisi özellikleri; Windows 11 varsayılanı: hepsi açık.
+class FakeMemoryAgentProvider : IMemoryAgentProvider {
+    [hashtable] $Features = @{ MemoryCompression = $true; PageCombining = $true; ApplicationLaunchPrefetching = $true; ApplicationPreLaunch = $true; OperationAPI = $true }
+    [int] $WriteCount = 0
+
+    FakeMemoryAgentProvider() { }
+
+    [hashtable] GetState() {
+        $h = @{}
+        foreach ($k in $this.Features.Keys) { $h[$k] = [bool]$this.Features[$k] }
+        return $h
+    }
+
+    [void] SetFeature([string] $Feature, [bool] $Enabled) {
+        $this.WriteCount++
+        if (-not $this.Features.ContainsKey($Feature)) { throw "Bilinmeyen MMAgent özelliği: $Feature" }
+        $this.Features[$Feature] = $Enabled
+    }
+
+    # Sıralı döküm: 'özellik=bool'.
+    [string[]] Dump() {
+        return [string[]]@($this.Features.Keys | Sort-Object | ForEach-Object { '{0}={1}' -f $_, $this.Features[$_] })
+    }
+}
+
 # Önceden verilmiş yanıt listesiyle çalışır. Liste biterse güvenli varsayılan: reddet.
 # Confirm: 'E' / 'Evet' / 'Y' / 'Yes' → evet. ConfirmExact: yanıt Expected ile birebir (büyük/küçük harf duyarlı) eşit olmalı.
 class FakePromptProvider : IPromptProvider {

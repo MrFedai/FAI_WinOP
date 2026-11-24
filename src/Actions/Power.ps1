@@ -5,6 +5,11 @@
 #   @{ Type='Power'; Scheme='SCHEME_MAX'; Subgroup='...'; Setting='...'; AC=1 }           # belirli plan
 # Scheme / ActiveScheme / Subgroup / Setting: GUID ya da powercfg takma adı. Scheme varsayılanı SCHEME_CURRENT.
 # AC = prizde, DC = pilde; en az biri. Snapshot planın GUID'ini tutar: etkin plan sonradan değişse de doğru plana döner.
+# Verilen plan yoksa Test $false döner (aynı tweak'te önce PowerScheme onu oluşturur); Snapshot / Apply anında yoksa hata.
+#
+# Aynı dosyada:
+#   @{ Type='PowerScheme'; Guid='46414900-...'; Name='FAI_WinOP'; Base='381b4222-...' }   # kendi planını kur + etkinleştir
+#   @{ Type='Hibernate'; Enabled=$true }                                                  # powercfg /hibernate on|off
 
 class PowerAction : ActionBase {
     PowerAction([hashtable] $Definition) : base($Definition) { }
@@ -60,7 +65,9 @@ class PowerAction : ActionBase {
             $g = $Ctx.Power.ResolveScheme([string]$this.Definition['ActiveScheme'])
             return ($g -and $g -eq $Ctx.Power.GetActiveScheme())
         }
-        $g = $this.TargetScheme($Ctx)
+        # Açıkça verilen plan henüz yoksa (aynı tweak'teki PowerScheme oluşturacak) yapılacak iş var.
+        $g = $Ctx.Power.ResolveScheme($this.SchemeName())
+        if (-not $g) { return $false }
         foreach ($side in $this.Sides()) {
             $now = $Ctx.Power.GetValue($g, [string]$this.Definition['Subgroup'], [string]$this.Definition['Setting'], ($side -eq 'AC'))
             if ($now -ne [long]$this.Definition[$side]) { return $false }
@@ -126,7 +133,7 @@ class PowerAction : ActionBase {
     [string] Preview([ExecutionContext] $Ctx) {
         if ($this.IsSchemeSwitch()) { return ('{0} [şu an: {1}]' -f $this.Describe(), $Ctx.Power.GetActiveScheme()) }
         $g = $Ctx.Power.ResolveScheme($this.SchemeName())
-        if (-not $g) { return ('{0} [plan yok]' -f $this.Describe()) }
+        if (-not $g) { return ('{0} [plan yok, oluşturulacak]' -f $this.Describe()) }
         $parts = New-Object 'System.Collections.Generic.List[string]'
         foreach ($side in $this.Sides()) {
             $label = 'pilde'
@@ -134,5 +141,113 @@ class PowerAction : ActionBase {
             $parts.Add(('{0} = {1}' -f $label, $Ctx.Power.GetValue($g, [string]$this.Definition['Subgroup'], [string]$this.Definition['Setting'], ($side -eq 'AC'))))
         }
         return ('{0} [şu an: {1}]' -f $this.Describe(), ($parts -join ', '))
+    }
+}
+
+# PowerSchemeAction: aracın kendi güç planı. Yoksa Base'den kopyalanır (Base kopyalanamazsa — ör. Balanced silinmiş —
+# uyarı + etkin planın kopyası), adı verilir ve etkin yapılır. Var olmayan plan varsayılmaz.
+# Undo: önceki etkin plan (artık yoksa Balanced) etkin olur; plan bu çalıştırmada oluşturulduysa silinir.
+class PowerSchemeAction : ActionBase {
+    PowerSchemeAction([hashtable] $Definition) : base($Definition) { }
+
+    static [string] GuidPattern() { return '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' }
+
+    static [string[]] Validate([object] $Def) {
+        $e = New-Object 'System.Collections.Generic.List[string]'
+        foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Guid', 'Name', 'Base'))) { $e.Add($m) }
+        if (-not $Def.Contains('Guid')) { $e.Add('Guid: zorunlu alan eksik') }
+        elseif ($Def['Guid'] -isnot [string] -or $Def['Guid'] -notmatch [PowerSchemeAction]::GuidPattern()) { $e.Add('Guid: plan GUID''i olmalı (takma ad değil)') }
+        if (-not $Def.Contains('Name')) { $e.Add('Name: zorunlu alan eksik') }
+        elseif ($Def['Name'] -isnot [string] -or [string]::IsNullOrWhiteSpace($Def['Name']) -or $Def['Name'].Length -gt 64) { $e.Add('Name: boş olmayan, en çok 64 karakterlik metin olmalı') }
+        if (-not $Def.Contains('Base')) { $e.Add('Base: zorunlu alan eksik') }
+        elseif ($Def['Base'] -isnot [string] -or $Def['Base'] -notmatch [PowerAction]::IdPattern()) { $e.Add('Base: plan GUID''i ya da takma adı olmalı') }
+        return $e.ToArray()
+    }
+
+    [string] Guid() { return ([string]$this.Definition['Guid']).ToLowerInvariant() }
+
+    [bool] Test([ExecutionContext] $Ctx) {
+        return ([bool]$Ctx.Power.ResolveScheme($this.Guid()) -and $Ctx.Power.GetActiveScheme() -eq $this.Guid())
+    }
+
+    [hashtable] Snapshot([ExecutionContext] $Ctx) {
+        return @{ Active = $Ctx.Power.GetActiveScheme(); Existed = [bool]$Ctx.Power.ResolveScheme($this.Guid()) }
+    }
+
+    [void] Apply([ExecutionContext] $Ctx) {
+        $g = $this.Guid()
+        $name = [string]$this.Definition['Name']
+        if (-not $Ctx.Power.ResolveScheme($g)) {
+            $base = [string]$this.Definition['Base']
+            try { $Ctx.Power.CreateScheme($base, $g, $name) }
+            catch {
+                $Ctx.Logger.Warn(('Güç planı {0} kopyalanamadı ({1}); etkin plan temel alınıyor' -f $base, $_.Exception.Message))
+                $Ctx.Power.CreateScheme($Ctx.Power.GetActiveScheme(), $g, $name)
+            }
+        }
+        if ($Ctx.Power.GetActiveScheme() -ne $g) { $Ctx.Power.SetActiveScheme($g) }
+    }
+
+    [void] Revert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
+        $g = $this.Guid()
+        $target = $Ctx.Power.ResolveScheme([string]$Snapshot['Active'])
+        if (-not $target) {
+            $target = $Ctx.Power.ResolveScheme('SCHEME_BALANCED')
+            if ($target) { $Ctx.Logger.Warn(('Önceki güç planı artık yok ({0}); Balanced etkin yapılıyor' -f $Snapshot['Active'])) }
+        }
+        if ($target -and $target -ne $Ctx.Power.GetActiveScheme()) { $Ctx.Power.SetActiveScheme($target) }
+        if ($Snapshot['Existed'] -or -not $Ctx.Power.ResolveScheme($g)) { return }
+        if ($Ctx.Power.GetActiveScheme() -eq $g) {
+            $Ctx.Logger.Warn(('Etkin yapılacak başka plan yok; {0} silinmedi' -f $g))
+            return
+        }
+        $Ctx.Power.DeleteScheme($g)
+    }
+
+    [string] Describe() {
+        return ("Güç planı '{0}' ({1}): yoksa {2} kopyası olarak kurulur, etkin olur" -f $this.Definition['Name'], $this.Guid(), $this.Definition['Base'])
+    }
+
+    [string] Preview([ExecutionContext] $Ctx) {
+        $state = 'plan yok'
+        if ($Ctx.Power.ResolveScheme($this.Guid())) { $state = 'plan var' }
+        return ('{0} [şu an: {1}, etkin {2}]' -f $this.Describe(), $state, $Ctx.Power.GetActiveScheme())
+    }
+}
+
+# HibernateAction: hazırda bekletme (powercfg /hibernate). Kapalıyken pil planındaki "hazırda beklet" ayarı işlemez.
+class HibernateAction : ActionBase {
+    HibernateAction([hashtable] $Definition) : base($Definition) { }
+
+    static [string[]] Validate([object] $Def) {
+        $e = New-Object 'System.Collections.Generic.List[string]'
+        foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Enabled'))) { $e.Add($m) }
+        if (-not $Def.Contains('Enabled')) { $e.Add('Enabled: zorunlu alan eksik') }
+        elseif ($Def['Enabled'] -isnot [bool] -and -not (Test-FaiHasPlaceholder $Def['Enabled'])) { $e.Add('Enabled: $true / $false olmalı') }
+        return $e.ToArray()
+    }
+
+    [bool] Want() { return [bool]$this.Definition['Enabled'] }
+
+    [bool] Test([ExecutionContext] $Ctx) { return ($Ctx.Power.GetHibernate() -eq $this.Want()) }
+
+    [hashtable] Snapshot([ExecutionContext] $Ctx) { return @{ Enabled = $Ctx.Power.GetHibernate() } }
+
+    [void] Apply([ExecutionContext] $Ctx) { if ($Ctx.Power.GetHibernate() -ne $this.Want()) { $Ctx.Power.SetHibernate($this.Want()) } }
+
+    [void] Revert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
+        $was = [bool]$Snapshot['Enabled']
+        if ($Ctx.Power.GetHibernate() -ne $was) { $Ctx.Power.SetHibernate($was) }
+    }
+
+    [string] Describe() {
+        if ($this.Want()) { return 'Hazırda bekletme açılır' }
+        return 'Hazırda bekletme kapatılır'
+    }
+
+    [string] Preview([ExecutionContext] $Ctx) {
+        $now = 'kapalı'
+        if ($Ctx.Power.GetHibernate()) { $now = 'açık' }
+        return ('{0} [şu an: {1}]' -f $this.Describe(), $now)
     }
 }

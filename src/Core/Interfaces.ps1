@@ -102,6 +102,15 @@ class ISystemControlProvider {
     [void] RestartToFirmware([int] $DelaySeconds) { throw [System.NotImplementedException]::new('ISystemControlProvider.RestartToFirmware') }
 }
 
+# Bellek yöneticisi özellikleri (Get-MMAgent): MemoryCompression, PageCombining, ApplicationLaunchPrefetching,
+# ApplicationPreLaunch, OperationAPI. Değişikliklerin bir kısmı yeniden başlatınca etkinleşir.
+class IMemoryAgentProvider {
+    # Özellik adı → açık mı (bool).
+    [hashtable] GetState() { throw [System.NotImplementedException]::new('IMemoryAgentProvider.GetState') }
+    # YAZMA.
+    [void] SetFeature([string] $Feature, [bool] $Enabled) { throw [System.NotImplementedException]::new('IMemoryAgentProvider.SetFeature') }
+}
+
 # Kullanıcıya soru. Onaylar yalnız buradan gelir (Unattended modda motor bunu hiç çağırmaz).
 class IPromptProvider {
     # E/H sorusu (Caution). Evet ise $true.
@@ -152,6 +161,14 @@ class IPowerProvider {
     [long] GetValue([string] $Scheme, [string] $Subgroup, [string] $Setting, [bool] $OnAC) { throw [System.NotImplementedException]::new('IPowerProvider.GetValue') }
     # Plan etkinse değişiklik hemen uygulanır. YAZMA.
     [void] SetValue([string] $Scheme, [string] $Subgroup, [string] $Setting, [bool] $OnAC, [long] $Value) { throw [System.NotImplementedException]::new('IPowerProvider.SetValue') }
+    # Source planını (GUID ya da takma ad) Guid kimliğiyle kopyalar ve Name adını verir; kopyalanamazsa hata. YAZMA.
+    [void] CreateScheme([string] $Source, [string] $Guid, [string] $Name) { throw [System.NotImplementedException]::new('IPowerProvider.CreateScheme') }
+    # Planı siler (etkin plan silinemez: hata). YAZMA.
+    [void] DeleteScheme([string] $Guid) { throw [System.NotImplementedException]::new('IPowerProvider.DeleteScheme') }
+    # Hazırda bekletme (hiberfil) açık mı.
+    [bool] GetHibernate() { throw [System.NotImplementedException]::new('IPowerProvider.GetHibernate') }
+    # powercfg /hibernate on|off. YAZMA.
+    [void] SetHibernate([bool] $Enabled) { throw [System.NotImplementedException]::new('IPowerProvider.SetHibernate') }
 }
 
 # PowerShell betiği çalıştırıcı (Script eylemi). Kod tek bağımsız değişken alır: param($Snapshot).
@@ -227,6 +244,7 @@ class IImageProvider {
 }
 
 # Paketli (Store) uygulamanın ayar deposu: %LOCALAPPDATA%\Packages\<paket>\Settings\settings.dat, LocalState anahtarı.
+# Name 'Alt\Ad' biçiminde olabilir: alt anahtar LocalState'e göreli (ör. 'PersistentSettings\PersonalizationEnabled').
 # Değerler özel türlüdür (ör. 0x5F5E10B = bool, 0x5F5E104 = int32); veri = yük + 8 bayt FILETIME zaman damgası.
 class IAppSettingsProvider {
     # Paketin ayar dosyası var mı (uygulama kurulu ve en az bir kez açılmış).

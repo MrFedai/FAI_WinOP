@@ -120,6 +120,25 @@ class WindowsSystemControlProvider : ISystemControlProvider {
     }
 }
 
+# Bellek yöneticisi (MMAgent modülü; SysMain servisi çalışıyor olmalı).
+class WindowsMemoryAgentProvider : IMemoryAgentProvider {
+    WindowsMemoryAgentProvider() { }
+
+    [hashtable] GetState() {
+        $agent = Get-MMAgent -ErrorAction Stop
+        $h = @{}
+        foreach ($p in $agent.PSObject.Properties) { if ($p.Value -is [bool]) { $h[$p.Name] = [bool]$p.Value } }
+        return $h
+    }
+
+    [void] SetFeature([string] $Feature, [bool] $Enabled) {
+        $splat = @{ ErrorAction = 'Stop' }
+        $splat[$Feature] = $true
+        if ($Enabled) { Enable-MMAgent @splat }
+        else { Disable-MMAgent @splat }
+    }
+}
+
 class WindowsPromptProvider : IPromptProvider {
     WindowsPromptProvider() { }
 

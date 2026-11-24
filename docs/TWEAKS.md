@@ -10,13 +10,19 @@ Değişiklikler varsayılan parametrelerle listelenir; profil parametreleri geç
 | [`bloat.edge-remove`](#bloatedge-remove) | Microsoft Edge'i kaldır (WebView2 kalır) | ⚠ Caution | — | — |
 | [`bloat.persistence`](#bloatpersistence) | Kaldırılan uygulamaların geri gelmesini engelle | ⚠ Caution | — | — |
 | [`bloat.remove`](#bloatremove) | Gereksiz Store uygulamalarını kaldır | ⚠ Caution | — | — |
+| [`graphics.amd-settings`](#graphicsamd-settings) | AMD: Adrenalin sadeleştirme ve düşük gecikme | Safe | HasAmdGpu | — |
+| [`graphics.nvidia-settings`](#graphicsnvidia-settings) | NVIDIA: tepsi simgesi ve eski keskinleştirme kapalı | Safe | HasNvidia | — |
 | [`graphics.p0-state`](#graphicsp0-state) | NVIDIA: P0 güç durumunda sabit tut | ⚠ Caution | HasNvidia | — |
+| [`power.plan`](#powerplan) | Güç planı: prizde yüksek performans, pilde dengeli | Safe | — | `hibernateOnBatterySec`, `sleepOnBatterySec` |
 | [`privacy.app-permissions`](#privacyapp-permissions) | Uygulama izinlerini kapat (kamera ve mikrofon açık) | Safe | — | — |
 | [`privacy.search-ads`](#privacysearch-ads) | Arama ve Başlat reklamlarını kapat | Safe | — | — |
 | [`privacy.telemetry`](#privacytelemetry) | Telemetriyi en aza indir | Safe | — | — |
 | [`refresh.reboot-to-bios`](#refreshreboot-to-bios) | UEFI (BIOS) ayarlarına yeniden başlat | ⚠ Caution | — | `delay` |
+| [`setup.background-apps-off`](#setupbackground-apps-off) | Arka plan uygulamalarını kapat (istisna listesi hariç) | Safe | — | `exceptions` |
 | [`setup.default-browser`](#setupdefault-browser) | Varsayılan tarayıcı (Ayarlar üzerinden) | ⚠ Caution | — | `appName`, `progId`, `scope` |
 | [`setup.edition-pro`](#setupedition-pro) | Windows Home → Pro yükseltmesi (Ayarlar üzerinden) | ⚠ Caution | Edition Core | — |
+| [`setup.mmagent-off`](#setupmmagent-off) | Bellek sıkıştırma ve ön getirmeyi kapat | Safe | MinRamGB 16 | — |
+| [`setup.store-optimize`](#setupstore-optimize) | Microsoft Store: otomatik güncelleme, video ve kişiselleştirme kapalı | Safe | — | — |
 | [`sound.startup-sound-off`](#soundstartup-sound-off) | Açılış sesini kapat | Safe | — | — |
 | [`sound.volume`](#soundvolume) | Ses seviyesini ayarla | Safe | — | `level` |
 | [`system.restore-point`](#systemrestore-point) | Sistem Geri Yükleme noktası | Safe | — | `description` |
@@ -132,6 +138,43 @@ Değişiklikler (44):
 
 ## graphics
 
+### graphics.amd-settings
+
+**AMD: Adrenalin sadeleştirme ve düşük gecikme** · Risk: Safe
+
+AMD Software (Adrenalin) ayarları, yalnız kayıt defteriyle: otomatik güncelleme, sistem tepsisi, web içeriği, animasyonlar, bildirim baloncukları ve oyun içi kaplama kapalı. Sağlayıcısı AMD olan ekran bağdaştırıcısı sınıf anahtarında Radeon Anti-Lag açık (KMD\_DeLagEnabled=1); UMD altında dikey eşitleme her zaman kapalı, doku filtreleme kalitesi performans, mozaikleme uygulama ayarını geçersiz kılar; power\_v1 altında Vari-Bright (abmlevel) kapalı. UMD değerleri UTF-16 metin rakamıdır (ör. 30 00 = "0"). Değerler Ultimate referansından alındı, gerçek AMD donanımında doğrulanmadı; sürücü güncellemesi bazılarını sıfırlayabilir.
+
+Koşul: HasAmdGpu
+
+Değişiklikler (12):
+
+- `Kayıt defteri: HKCU:\Software\AMD\CN\AutoUpdate = 0 (DWord)`
+- `Kayıt defteri: HKCU:\Software\AMD\CN\SystemTray = false (String)`
+- `Kayıt defteri: HKCU:\Software\AMD\CN\AllowWebContent = false (String)`
+- `Kayıt defteri: HKCU:\Software\AMD\CN\AnimationEffect = false (String)`
+- `Kayıt defteri: HKCU:\Software\AMD\CN\CN_Hide_Toast_Notification = true (String)`
+- `Kayıt defteri: HKCU:\Software\AMD\DVR\ShowRSOverlay = false (String)`
+- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\KMD_DeLagEnabled = 1 (DWord) — yalnız: [0-9][0-9][0-9][0-9] — ProviderName: Advanced Micro Devices* / AMD* / ATI*`
+- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\UMD\VSyncControl = 48,0 (Binary) — yalnız: [0-9][0-9][0-9][0-9] — ProviderName: Advanced Micro Devices* / AMD* / ATI*`
+- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\UMD\TFQ = 50,0 (Binary) — yalnız: [0-9][0-9][0-9][0-9] — ProviderName: Advanced Micro Devices* / AMD* / ATI*`
+- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\UMD\Tessellation = 49,0 (Binary) — yalnız: [0-9][0-9][0-9][0-9] — ProviderName: Advanced Micro Devices* / AMD* / ATI*`
+- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\UMD\Tessellation_OPTION = 50,0 (Binary) — yalnız: [0-9][0-9][0-9][0-9] — ProviderName: Advanced Micro Devices* / AMD* / ATI*`
+- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\power_v1\abmlevel = 0,0,0,0 (Binary) — yalnız: [0-9][0-9][0-9][0-9] — ProviderName: Advanced Micro Devices* / AMD* / ATI*`
+
+### graphics.nvidia-settings
+
+**NVIDIA: tepsi simgesi ve eski keskinleştirme kapalı** · Risk: Safe
+
+Yalnız kayıt defteriyle yapılabilen NVIDIA ayarları: oturum açılışında NVIDIA tepsi simgesi başlamaz (NvTray\\StartOnLogin=0) ve eski görüntü keskinleştirme ölçekleyicisi kapanır (nvlddmkm FTS\\EnableGR535=0; yalnız sürücünün oluşturduğu FTS anahtarı varsa yazılır). Denetim Masası ayarları (düşük gecikme, güç yönetimi, dikey eşitleme, doku filtreleme…) NVIDIA DRS veritabanındadır; imzasız üçüncü parti araç (Profile Inspector) kullanılmadığından bu tweak'in kapsamı dışındadır (NVAPI ile sonra). Gerçek NVIDIA donanımında doğrulanmadı.
+
+Koşul: HasNvidia
+
+Değişiklikler (3):
+
+- `Kayıt defteri: HKCU:\Software\NVIDIA Corporation\NvTray\StartOnLogin = 0 (DWord)`
+- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Services\nvlddmkm\*\EnableGR535 = 0 (DWord) — yalnız: FTS`
+- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Services\nvlddmkm\*\FTS\EnableGR535 = 0 (DWord) — yalnız: Parameters`
+
 ### graphics.p0-state
 
 **NVIDIA: P0 güç durumunda sabit tut** · Risk: ⚠ Caution
@@ -147,6 +190,31 @@ Koşul: HasNvidia
 Değişiklikler (1):
 
 - `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\DisableDynamicPstate = 1 (DWord) — yalnız: [0-9][0-9][0-9][0-9] — ProviderName: NVIDIA*`
+
+## power
+
+### power.plan
+
+**Güç planı: prizde yüksek performans, pilde dengeli** · Risk: Safe
+
+Aracın kendi güç planını (FAI\_WinOP, sabit GUID) Balanced'dan kopyalayıp etkin yapar; var olan bir planın varlığı varsayılmaz (Balanced silinmişse etkin planın kopyası alınır). Prizde (AC): işlemci en düşük / en yüksek durum %100, çekirdek park etme kapalı (en az çekirdek %100), soğutma etkin, USB seçici askıya alma ve PCIe bağlantı durumu güç yönetimi kapalı, disk kapanmaz, kablosuz bağdaştırıcı en yüksek performans, uyku ve hazırda bekletme yok. Pilde (DC): Balanced varsayılanları kalır; uyku (sleepOnBatterySec, varsayılan 900 sn) ve hazırda bekletme (hibernateOnBatterySec, varsayılan 10800 sn) açıkça açık. Dizüstünde hazırda bekletme (powercfg /hibernate on) da açılır. Ekran ve parlaklığa dokunulmaz. Geri alma önceki etkin plana döner ve aracın planını siler.
+
+Parametreler (varsayılan): `hibernateOnBatterySec` = `10800` · `sleepOnBatterySec` = `900`
+
+Değişiklikler (12):
+
+- `Güç planı 'FAI_WinOP' (46414900-5769-4e4f-9000-000000000001): yoksa 381b4222-f694-41f0-9685-ff5bb260df2e kopyası olarak kurulur, etkin olur`
+- `Güç: 46414900-5769-4e4f-9000-000000000001 / SUB_PROCESSOR / PROCTHROTTLEMIN → prizde = 100`
+- `Güç: 46414900-5769-4e4f-9000-000000000001 / SUB_PROCESSOR / PROCTHROTTLEMAX → prizde = 100`
+- `Güç: 46414900-5769-4e4f-9000-000000000001 / SUB_PROCESSOR / CPMINCORES → prizde = 100`
+- `Güç: 46414900-5769-4e4f-9000-000000000001 / SUB_PROCESSOR / SYSCOOLPOL → prizde = 1`
+- `Güç: 46414900-5769-4e4f-9000-000000000001 / 2a737441-1930-4402-8d77-b2bebba308a3 / 48e6b7a6-50f5-4782-a5d4-53bb8f07e226 → prizde = 0`
+- `Güç: 46414900-5769-4e4f-9000-000000000001 / SUB_PCIEXPRESS / ASPM → prizde = 0`
+- `Güç: 46414900-5769-4e4f-9000-000000000001 / SUB_DISK / DISKIDLE → prizde = 0`
+- `Güç: 46414900-5769-4e4f-9000-000000000001 / 19cbb8fa-5279-450e-9fac-8a3d5fedd0c1 / 12bbebe6-58d6-4636-95bb-3217ef867c1a → prizde = 0`
+- `Güç: 46414900-5769-4e4f-9000-000000000001 / SUB_SLEEP / STANDBYIDLE → prizde = 0, pilde = 900`
+- `Güç: 46414900-5769-4e4f-9000-000000000001 / SUB_SLEEP / HIBERNATEIDLE → prizde = 0, pilde = 10800`
+- `Hazırda bekletme açılır`
 
 ## privacy
 
@@ -266,6 +334,19 @@ Değişiklikler (1):
 
 ## setup
 
+### setup.background-apps-off
+
+**Arka plan uygulamalarını kapat (istisna listesi hariç)** · Risk: Safe
+
+Gizlilik ilkesiyle (AppPrivacy\\LetAppsRunInBackground=2, "zorla reddet") Store / paketli uygulamaların arka planda çalışması kapatılır; exceptions parametresindeki paket aile adları (varsayılan WhatsApp: 5319275A.WhatsAppDesktop\_cv1g1gvanyjgm) LetAppsRunInBackground\_ForceAllowTheseApps ile açık kalır. İlke sonradan kurulan uygulamaları da kapsar; Ayarlar'daki uygulama başına seçenek ilke yüzünden gri görünür. Win32 uygulamaları (ör. winget ile kurulan Telegram Desktop) bu ayardan etkilenmez, bu yüzden listede yok. Kullanıcı genel anahtarı (GlobalUserDisabled) kullanılmadı: o istisnaları da kapatır.
+
+Parametreler (varsayılan): `exceptions` = `5319275A.WhatsAppDesktop_cv1g1gvanyjgm`
+
+Değişiklikler (2):
+
+- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy\LetAppsRunInBackground = 2 (DWord)`
+- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy\LetAppsRunInBackground_ForceAllowTheseApps = 5319275A.WhatsAppDesktop_cv1g1gvanyjgm (MultiString)`
+
 ### setup.default-browser
 
 **Varsayılan tarayıcı (Ayarlar üzerinden)** · Risk: ⚠ Caution
@@ -293,6 +374,34 @@ Koşul: Edition Core
 Değişiklikler (1):
 
 - `Ayarlar açılır (ms-settings:activation): Etkinleştirme sayfası açıldı: "Ürün anahtarını değiştir" ile kendi Pro anahtarınızı girin ya da Store'dan Pro yükseltmesini alın. Yükseltme sonrası Windows yeniden başlar.`
+
+### setup.mmagent-off
+
+**Bellek sıkıştırma ve ön getirmeyi kapat** · Risk: Safe
+
+Bellek yöneticisinde (MMAgent) bellek sıkıştırma, uygulama başlatma ön getirmesi (prefetch) ve uygulama ön yüklemesi (PreLaunch) kapatılır; ayrıca PrefetchParameters\\EnablePrefetcher=0. Bol RAM'li (en az 16 GB) makine içindir: sıkıştırma için harcanan işlemci zamanı ve arka plan disk okumaları kalkar. Sayfa birleştirme ve OperationAPI'ye dokunulmaz. Bellek sıkıştırma yeniden başlatınca etkinleşir. Get-MMAgent SysMain servisinin çalışmasını ister.
+
+Koşul: MinRamGB 16
+
+Değişiklikler (4):
+
+- `Bellek yöneticisi: MemoryCompression → kapalı`
+- `Bellek yöneticisi: ApplicationLaunchPrefetching → kapalı`
+- `Bellek yöneticisi: ApplicationPreLaunch → kapalı`
+- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters\EnablePrefetcher = 0 (DWord)`
+
+### setup.store-optimize
+
+**Microsoft Store: otomatik güncelleme, video ve kişiselleştirme kapalı** · Risk: Safe
+
+Store uygulamalarının otomatik indirilip güncellenmesi kapatılır (WindowsStore\\WindowsUpdate\\AutoDownload=2); Store uygulamaları bunun yerine winget upgrade ile güncellenir. Store'un kendi ayarlarında (settings.dat) videoların otomatik oynatılması, uygulama kurulum bildirimleri ve kişiselleştirilmiş deneyim kapatılır. Store hiç açılmamışsa ayar dosyası yoktur: o adımlar atlanır, Store bir kez açıldıktan sonraki çalıştırmada uygulanır. Yazarken Store açıksa kapatılır.
+
+Değişiklikler (4):
+
+- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsStore\WindowsUpdate\AutoDownload = 2 (DWord)`
+- `Uygulama ayarı: Microsoft.WindowsStore VideoAutoplay = False (Bool)`
+- `Uygulama ayarı: Microsoft.WindowsStore EnableAppInstallNotifications = False (Bool)`
+- `Uygulama ayarı: Microsoft.WindowsStore PersistentSettings\PersonalizationEnabled = False (Bool)`
 
 ## sound
 

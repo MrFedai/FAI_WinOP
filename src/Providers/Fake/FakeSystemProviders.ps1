@@ -167,6 +167,11 @@ class FakePowerProvider : IPowerProvider {
     [string] $Active = '381b4222-f694-41f0-9685-ff5bb260df2e'
     # küçük harf plan GUID'i → (küçük harf 'alt grup|ayar' → @{ AC; DC })
     [hashtable] $Schemes = @{}
+    # GUID → plan adı (CreateScheme verir).
+    [hashtable] $Names = @{}
+    [bool] $Hibernate = $false
+    # Kopyalanamayan kaynak planlar (silinmiş varsayılan plan taklidi).
+    [string[]] $NoCopy = @()
     [int] $WriteCount = 0
     [System.Collections.ArrayList] $WriteLog = (New-Object System.Collections.ArrayList)
 
@@ -227,7 +232,37 @@ class FakePowerProvider : IPowerProvider {
         else { $this.Schemes[$g][$k]['DC'] = $Value }
     }
 
-    # Sıralı döküm: 'etkin=...' + 'plan|alt grup|ayar|AC|DC'.
+    [void] CreateScheme([string] $Source, [string] $Guid, [string] $Name) {
+        $this.WriteCount++
+        [void]$this.WriteLog.Add("CreateScheme $Source $Guid $Name")
+        $src = $this.Resolve($Source)
+        $g = $Guid.ToLowerInvariant()
+        if (-not $this.Schemes.ContainsKey($src) -or $this.NoCopy -contains $src) { throw "Güç planı kopyalanamadı: $Source" }
+        if ($this.Schemes.ContainsKey($g)) { throw "Güç planı zaten var: $Guid" }
+        $copy = @{}
+        foreach ($k in $this.Schemes[$src].Keys) { $copy[$k] = @{ AC = $this.Schemes[$src][$k]['AC']; DC = $this.Schemes[$src][$k]['DC'] } }
+        $this.Schemes[$g] = $copy
+        $this.Names[$g] = $Name
+    }
+
+    [void] DeleteScheme([string] $Guid) {
+        $this.WriteCount++
+        [void]$this.WriteLog.Add("DeleteScheme $Guid")
+        $g = $Guid.ToLowerInvariant()
+        if ($g -eq $this.Active) { throw "Etkin güç planı silinemez: $Guid" }
+        $this.Schemes.Remove($g)
+        $this.Names.Remove($g)
+    }
+
+    [bool] GetHibernate() { return $this.Hibernate }
+
+    [void] SetHibernate([bool] $Enabled) {
+        $this.WriteCount++
+        [void]$this.WriteLog.Add("SetHibernate $Enabled")
+        $this.Hibernate = $Enabled
+    }
+
+    # Sıralı döküm: 'etkin=...' + 'hibernate=...' + 'plan|alt grup|ayar|AC|DC'.
     [string[]] Dump() {
         $lines = New-Object 'System.Collections.Generic.List[string]'
         foreach ($g in $this.Schemes.Keys) {
@@ -235,7 +270,7 @@ class FakePowerProvider : IPowerProvider {
         }
         $arr = $lines.ToArray()
         [System.Array]::Sort($arr, [System.StringComparer]::Ordinal)
-        return [string[]](@('etkin=' + $this.Active) + $arr)
+        return [string[]](@('etkin=' + $this.Active, 'hibernate=' + $this.Hibernate) + $arr)
     }
 }
 

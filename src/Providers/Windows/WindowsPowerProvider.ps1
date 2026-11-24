@@ -58,4 +58,44 @@ class WindowsPowerProvider : IPowerProvider {
         $target = $this.ResolveScheme($Scheme)
         if ($target -and $target -eq $this.GetActiveScheme()) { [void]$this.Invoke([string[]]@('/setactive', $target)) }
     }
+
+    # Takma ad → GUID (SCHEME_CURRENT etkin plan); GUID olduğu gibi (listede olmasa da: silinmiş varsayılan plan
+    # powercfg'nin varsayılan deposundan yine kopyalanabilir).
+    hidden [string] SourceGuid([string] $Scheme) {
+        $s = $Scheme.ToUpperInvariant()
+        if ($s -eq 'SCHEME_CURRENT') { return $this.GetActiveScheme() }
+        $aliases = [WindowsPowerProvider]::SchemeAliases()
+        if ($aliases.ContainsKey($s)) { return [string]$aliases[$s] }
+        return $Scheme.ToLowerInvariant()
+    }
+
+    [void] CreateScheme([string] $Source, [string] $Guid, [string] $Name) {
+        [void]$this.Invoke([string[]]@('/duplicatescheme', $this.SourceGuid($Source), $Guid.ToLowerInvariant()))
+        if (-not $this.ResolveScheme($Guid)) { throw ('Güç planı kopyalanamadı: {0} → {1}' -f $Source, $Guid) }
+        [void]$this.Invoke([string[]]@('/changename', $Guid.ToLowerInvariant(), $Name))
+    }
+
+    [void] DeleteScheme([string] $Guid) { [void]$this.Invoke([string[]]@('/delete', $Guid.ToLowerInvariant())) }
+
+    # HibernateEnabled (yoksa HibernateEnabledDefault) = 1.
+    [bool] GetHibernate() {
+        $base = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryView]::Registry64)
+        try {
+            $k = $base.OpenSubKey('SYSTEM\CurrentControlSet\Control\Power')
+            if ($null -eq $k) { return $false }
+            try {
+                $v = $k.GetValue('HibernateEnabled')
+                if ($null -eq $v) { $v = $k.GetValue('HibernateEnabledDefault') }
+                return ($null -ne $v -and [int]$v -eq 1)
+            }
+            finally { $k.Dispose() }
+        }
+        finally { $base.Dispose() }
+    }
+
+    [void] SetHibernate([bool] $Enabled) {
+        $state = 'off'
+        if ($Enabled) { $state = 'on' }
+        [void]$this.Invoke([string[]]@('/hibernate', $state))
+    }
 }

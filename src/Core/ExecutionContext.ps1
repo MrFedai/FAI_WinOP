@@ -19,6 +19,7 @@ class ExecutionContext {
     [IImageProvider] $Images
     [IAppSettingsProvider] $AppSettings
     [ISystemControlProvider] $SystemControl
+    [IMemoryAgentProvider] $MemoryAgent
 
     [BackupStore] $Backup
     [Logger] $Logger

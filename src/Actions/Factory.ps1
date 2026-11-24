@@ -3,7 +3,7 @@
 
 function Get-FaiActionType {
     <# .SYNOPSIS  Bilinen eylem türü adları. #>
-    return [string[]]@('Registry', 'RegistryEach', 'Service', 'ScheduledTask', 'Appx', 'Winget', 'Power', 'File', 'Shortcut', 'Script', 'Volume', 'TimerResolution', 'App', 'DefaultBrowser', 'AppxCleanup', 'EdgeRemove', 'RegistryByte', 'TaskbarPins', 'SolidImage', 'AppSetting', 'RestorePoint', 'Reboot', 'OpenSettings')
+    return [string[]]@('Registry', 'RegistryEach', 'Service', 'ScheduledTask', 'Appx', 'Winget', 'Power', 'File', 'Shortcut', 'Script', 'Volume', 'TimerResolution', 'App', 'DefaultBrowser', 'AppxCleanup', 'EdgeRemove', 'RegistryByte', 'TaskbarPins', 'SolidImage', 'AppSetting', 'RestorePoint', 'Reboot', 'OpenSettings', 'PowerScheme', 'Hibernate', 'MMAgent')
 }
 
 function New-FaiAction {
@@ -44,6 +44,9 @@ function New-FaiAction {
         'RestorePoint' { return [RestorePointAction]::new($Definition) }
         'Reboot' { return [RebootAction]::new($Definition) }
         'OpenSettings' { return [OpenSettingsAction]::new($Definition) }
+        'PowerScheme' { return [PowerSchemeAction]::new($Definition) }
+        'Hibernate' { return [HibernateAction]::new($Definition) }
+        'MMAgent' { return [MMAgentAction]::new($Definition) }
         default { throw ("Bilinmeyen eylem türü: '{0}' (bilinenler: {1})" -f $Definition['Type'], ((Get-FaiActionType) -join ', ')) }
     }
 }
@@ -102,6 +105,9 @@ function Get-FaiActionError {
         'RestorePoint' { $messages = [RestorePointAction]::Validate($Definition) }
         'Reboot' { $messages = [RebootAction]::Validate($Definition) }
         'OpenSettings' { $messages = [OpenSettingsAction]::Validate($Definition) }
+        'PowerScheme' { $messages = [PowerSchemeAction]::Validate($Definition) }
+        'Hibernate' { $messages = [HibernateAction]::Validate($Definition) }
+        'MMAgent' { $messages = [MMAgentAction]::Validate($Definition) }
     }
     foreach ($m in $messages) { $errs.Add("${Path}.$m") }
     return $errs.ToArray()

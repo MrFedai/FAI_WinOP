@@ -478,6 +478,8 @@ Describe 'Fabrika, arayüzler ve Windows sağlayıcıları' {
         { ([ITaskProvider]::new()).RegisterStartupTask('a', 'b', 'c', 'd') } | Should -Throw -ExceptionType ([System.NotImplementedException])
         { ([ISystemControlProvider]::new()).CreateRestorePoint('a') } | Should -Throw -ExceptionType ([System.NotImplementedException])
         { ([ISystemInfoProvider]::new()).GetCoreCount() } | Should -Throw -ExceptionType ([System.NotImplementedException])
+        { ([IMemoryAgentProvider]::new()).GetState() } | Should -Throw -ExceptionType ([System.NotImplementedException])
+        { ([IPowerProvider]::new()).CreateScheme('a', 'b', 'c') } | Should -Throw -ExceptionType ([System.NotImplementedException])
     }
 
     It 'her Windows sağlayıcısı kendi arayüzünden türer' {
@@ -487,7 +489,7 @@ Describe 'Fabrika, arayüzler ve Windows sağlayıcıları' {
             WindowsPromptProvider = 'IPromptProvider'; WindowsFileProvider = 'IFileProvider'; WindowsShortcutProvider = 'IShortcutProvider'
             WindowsPowerProvider = 'IPowerProvider'; WindowsScriptHost = 'IScriptHost'; WindowsAudioProvider = 'IAudioProvider'
             WindowsTimerResolutionProvider = 'ITimerResolutionProvider'; WindowsEdgeProvider = 'IEdgeProvider'
-            WindowsSystemControlProvider = 'ISystemControlProvider'
+            WindowsSystemControlProvider = 'ISystemControlProvider'; WindowsMemoryAgentProvider = 'IMemoryAgentProvider'
         }
         foreach ($k in $pairs.Keys) { ($k -as [type]).BaseType.Name | Should -Be $pairs[$k] -Because $k }
     }
@@ -495,7 +497,8 @@ Describe 'Fabrika, arayüzler ve Windows sağlayıcıları' {
     It 'Windows sağlayıcıları arayüzün bütün yöntemlerini ezer' {
         foreach ($name in @('WindowsRegistryProvider', 'WindowsServiceManager', 'WindowsTaskProvider', 'WindowsAppxProvider', 'WindowsPackageProvider',
                 'WindowsSystemInfoProvider', 'WindowsPromptProvider', 'WindowsFileProvider', 'WindowsShortcutProvider', 'WindowsPowerProvider',
-                'WindowsScriptHost', 'WindowsAudioProvider', 'WindowsTimerResolutionProvider', 'WindowsEdgeProvider', 'WindowsSystemControlProvider')) {
+                'WindowsScriptHost', 'WindowsAudioProvider', 'WindowsTimerResolutionProvider', 'WindowsEdgeProvider', 'WindowsSystemControlProvider',
+                'WindowsMemoryAgentProvider')) {
             $t = $name -as [type]
             foreach ($m in $t.BaseType.GetMethods() | Where-Object { $_.DeclaringType -eq $t.BaseType }) {
                 $own = $t.GetMethod($m.Name, [type[]]@($m.GetParameters() | ForEach-Object { $_.ParameterType }))
@@ -511,12 +514,15 @@ Describe 'Fabrika, arayüzler ve Windows sağlayıcıları' {
         { [WindowsRegistryProvider]::SplitPath('HKXX:\a') } | Should -Throw
         [WindowsTaskProvider]::SplitPath('\Microsoft\Windows\A B\Görev') | Should -Be @('\Microsoft\Windows\A B\', 'Görev')
         [WindowsTaskProvider]::SplitPath('\Kok') | Should -Be @('\', 'Kok')
+        [WindowsAppSettingsProvider]::SplitName('PersistentSettings\PersonalizationEnabled') | Should -Be @('PersistentSettings', 'PersonalizationEnabled')
+        [WindowsAppSettingsProvider]::SplitName('VideoAutoplay') | Should -Be @('', 'VideoAutoplay')
+        [WindowsAppSettingsProvider]::KeyPath('M', 'A\B') | Should -Be 'M\LocalState\A\B'
     }
 
     It 'eylemler doğrudan Windows API''sine dokunmaz (kaynak taraması, Faz 2 komutları)' {
         $forbidden = 'Get-ScheduledTask', 'Enable-ScheduledTask', 'Disable-ScheduledTask', 'Get-AppxPackage', 'Remove-AppxPackage',
         'Add-AppxPackage', 'Get-AppxProvisionedPackage', 'Remove-AppxProvisionedPackage', 'winget.exe', 'powercfg.exe', 'Add-Type',
-        'WScript.Shell', 'System.IO.File', 'Get-CimInstance', 'Microsoft.Win32'
+        'WScript.Shell', 'System.IO.File', 'Get-CimInstance', 'Microsoft.Win32', 'Get-MMAgent', 'Enable-MMAgent', 'Disable-MMAgent'
         foreach ($f in Get-ChildItem -LiteralPath (Join-Path $script:FaiRepoRoot 'src/Actions') -Filter '*.ps1') {
             $text = Get-Content -LiteralPath $f.FullName -Raw
             foreach ($cmd in $forbidden) {
@@ -730,5 +736,91 @@ Describe 'Tek seferlik sistem eylemleri: RestorePoint, Reboot, OpenSettings (Faz
         $ctx.SystemInfo.GetLogicalProcessorCount() | Should -Be 16
         $ctx.SystemInfo.GetCoreCount() | Should -Be 8
         $ctx.ResumeCommand | Should -Be ''
+    }
+}
+
+Describe 'Güç planı ve bellek yöneticisi eylemleri: PowerScheme, Hibernate, MMAgent (Faz 7)' {
+    BeforeAll {
+        $script:Plan = '46414900-5769-4e4f-9000-000000000001'
+        $script:Balanced = '381b4222-f694-41f0-9685-ff5bb260df2e'
+    }
+
+    It 'şema' {
+        Errs @{ Type = 'PowerScheme'; Guid = $script:Plan; Name = 'FAI_WinOP'; Base = 'SCHEME_BALANCED' } | Should -BeNullOrEmpty
+        (Errs @{ Type = 'PowerScheme'; Guid = 'SCHEME_MAX'; Name = ''; Base = 'a b' }) | Should -HaveCount 3
+        Errs @{ Type = 'Hibernate'; Enabled = $true } | Should -BeNullOrEmpty
+        Errs @{ Type = 'Hibernate'; Enabled = 1 } | Should -HaveCount 1
+        Errs @{ Type = 'MMAgent'; Feature = 'MemoryCompression'; Enabled = $false } | Should -BeNullOrEmpty
+        (Errs @{ Type = 'MMAgent'; Feature = 'Yok'; Enabled = 'h' }) | Should -HaveCount 2
+    }
+
+    It 'PowerScheme: Balanced kopyası kurulur, etkin olur; geri alma eski planı etkin yapar ve planı siler' {
+        $ctx = New-Ctx
+        $ctx.Power.Seed($script:Balanced, 'SUB_SLEEP', 'STANDBYIDLE', 1800, 900)
+        $ctx.Power.Active = '99999999-9999-9999-9999-999999999999'
+        $ctx.Power.Schemes['99999999-9999-9999-9999-999999999999'] = @{}
+        $a = Act @{ Type = 'PowerScheme'; Guid = $script:Plan; Name = 'FAI_WinOP'; Base = $script:Balanced }
+        $a.Test($ctx) | Should -BeFalse
+        $a.Preview($ctx) | Should -Match 'plan yok'
+        $after = Invoke-Cycle $ctx $a { $ctx.Power.Dump() -join ';' }
+        $after | Should -Match ('etkin=' + $script:Plan)
+        $after | Should -Match ([regex]::Escape($script:Plan) + '\|sub_sleep\|standbyidle\|1800\|900')
+        $ctx.Power.ResolveScheme($script:Plan) | Should -BeNullOrEmpty
+        $ctx.Power.Active | Should -Be '99999999-9999-9999-9999-999999999999'
+    }
+
+    It 'PowerScheme: Balanced kopyalanamazsa etkin plan temel alınır (uyarı)' {
+        $ctx = New-Ctx
+        $ctx.Power.Schemes.Remove($script:Balanced)
+        $ctx.Power.NoCopy = @($script:Balanced)
+        $ctx.Power.Active = 'a1841308-3541-4fab-bc81-f71556f20b4a'
+        $ctx.Power.Seed('SCHEME_MAX', 'SUB_SLEEP', 'STANDBYIDLE', 0, 0)
+        $a = Act @{ Type = 'PowerScheme'; Guid = $script:Plan; Name = 'FAI_WinOP'; Base = $script:Balanced }
+        $a.Apply($ctx)
+        $ctx.Power.Active | Should -Be $script:Plan
+        $ctx.Power.GetValue($script:Plan, 'SUB_SLEEP', 'STANDBYIDLE', $true) | Should -Be 0
+        @($ctx.Logger.Entries | Where-Object { $_.Message -match 'kopyalanamadı' }).Count | Should -BeGreaterThan 0
+    }
+
+    It 'PowerScheme: plan zaten varsa (önceki çalıştırma) geri alma onu silmez, yalnız eski planı etkin yapar' {
+        $ctx = New-Ctx
+        $ctx.Power.Schemes[$script:Plan] = @{}
+        $a = Act @{ Type = 'PowerScheme'; Guid = $script:Plan; Name = 'FAI_WinOP'; Base = $script:Balanced }
+        $snap = RoundTrip ($a.Snapshot($ctx))
+        $a.Apply($ctx)
+        $a.Revert($ctx, $snap)
+        $ctx.Power.Active | Should -Be $script:Balanced
+        $ctx.Power.ResolveScheme($script:Plan) | Should -Be $script:Plan
+    }
+
+    It 'Power: verilen plan henüz yoksa Test hata değil $false, önizleme "oluşturulacak" der' {
+        $ctx = New-Ctx
+        $a = Act @{ Type = 'Power'; Scheme = $script:Plan; Subgroup = 'SUB_SLEEP'; Setting = 'STANDBYIDLE'; AC = 0 }
+        $a.Test($ctx) | Should -BeFalse
+        $a.Preview($ctx) | Should -Match 'plan yok, oluşturulacak'
+    }
+
+    It 'Hibernate ve MMAgent: uygula → geri al' {
+        $ctx = New-Ctx
+        $h = Act @{ Type = 'Hibernate'; Enabled = $true }
+        $h.Test($ctx) | Should -BeFalse
+        $h.Preview($ctx) | Should -Match 'şu an: kapalı'
+        [void](Invoke-Cycle $ctx $h { [string]$ctx.Power.GetHibernate() })
+        $m = Act @{ Type = 'MMAgent'; Feature = 'MemoryCompression'; Enabled = $false }
+        $m.Preview($ctx) | Should -Match 'MemoryCompression → kapalı \[şu an: açık\]'
+        $after = Invoke-Cycle $ctx $m { $ctx.MemoryAgent.Dump() -join ';' }
+        $after | Should -Match 'MemoryCompression=False'
+        $after | Should -Match 'PageCombining=True'
+    }
+
+    It 'AppSetting Key: LocalState altındaki anahtara yazar' {
+        $ctx = New-Ctx
+        $ctx.AppSettings.SeedPackage('Microsoft.WindowsStore_8wekyb3d8bbwe')
+        Errs @{ Type = 'AppSetting'; Package = 'Microsoft.WindowsStore_8wekyb3d8bbwe'; Key = '\Kok'; Name = 'A\B'; Kind = 'Bool'; Value = $false } | Should -HaveCount 2
+        $a = Act @{ Type = 'AppSetting'; Package = 'Microsoft.WindowsStore_8wekyb3d8bbwe'; Key = 'PersistentSettings'; Name = 'PersonalizationEnabled'; Kind = 'Bool'; Value = $false }
+        $a.Describe() | Should -Match 'PersistentSettings\\PersonalizationEnabled'
+        [void](Invoke-Cycle $ctx $a { @($ctx.AppSettings.Packages['microsoft.windowsstore_8wekyb3d8bbwe'].Keys | Sort-Object) -join ';' })
+        $a.Apply($ctx)
+        $ctx.AppSettings.GetValue('Microsoft.WindowsStore_8wekyb3d8bbwe', 'PersistentSettings\PersonalizationEnabled')['Data'][0] | Should -Be 0
     }
 }

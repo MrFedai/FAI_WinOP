@@ -186,7 +186,20 @@ class WindowsAppSettingsProvider : IAppSettingsProvider {
         Start-Sleep -Milliseconds 500
     }
 
+    # 'Alt\Ad' → @(alt yol, ad): alt yol LocalState'e göreli ('' = LocalState).
+    static [string[]] SplitName([string] $Name) {
+        $i = $Name.LastIndexOf('\')
+        if ($i -lt 0) { return [string[]]@('', $Name) }
+        return [string[]]@($Name.Substring(0, $i), $Name.Substring($i + 1))
+    }
+
+    static [string] KeyPath([string] $Mount, [string] $Sub) {
+        if ($Sub) { return ('{0}\LocalState\{1}' -f $Mount, $Sub) }
+        return ('{0}\LocalState' -f $Mount)
+    }
+
     [hashtable] GetValue([string] $Package, [string] $Name) {
+        $parts = [WindowsAppSettingsProvider]::SplitName($Name)
         $src = [WindowsAppSettingsProvider]::DatPath($Package)
         if (-not [System.IO.File]::Exists($src)) { return $null }
         $t = Get-FaiShellNativeType
@@ -195,12 +208,12 @@ class WindowsAppSettingsProvider : IAppSettingsProvider {
         try {
             $mount = [WindowsAppSettingsProvider]::Mount($tmp)
             try {
-                $key = [Microsoft.Win32.Registry]::Users.OpenSubKey("$mount\LocalState")
+                $key = [Microsoft.Win32.Registry]::Users.OpenSubKey([WindowsAppSettingsProvider]::KeyPath($mount, $parts[0]))
                 if ($null -eq $key) { return $null }
                 try {
                     $type = 0
                     $data = $null
-                    if (-not $t::QueryRaw($key, $Name, [ref]$type, [ref]$data)) { return $null }
+                    if (-not $t::QueryRaw($key, $parts[1], [ref]$type, [ref]$data)) { return $null }
                     return @{ Type = [int]$type; Data = [byte[]]$data }
                 }
                 finally { $key.Dispose() }
@@ -213,12 +226,12 @@ class WindowsAppSettingsProvider : IAppSettingsProvider {
     }
 
     # Yazma için açar: @{ Mount; Key }. CloseWrite ile kapatılmalı.
-    hidden [hashtable] OpenWrite([string] $Package) {
+    hidden [hashtable] OpenWrite([string] $Package, [string] $Sub) {
         $src = [WindowsAppSettingsProvider]::DatPath($Package)
         if (-not [System.IO.File]::Exists($src)) { throw "Paket ayar dosyası yok: $src" }
         [WindowsAppSettingsProvider]::StopPackage($Package)
         $mount = [WindowsAppSettingsProvider]::Mount($src)
-        try { $key = [Microsoft.Win32.Registry]::Users.CreateSubKey("$mount\LocalState") }
+        try { $key = [Microsoft.Win32.Registry]::Users.CreateSubKey([WindowsAppSettingsProvider]::KeyPath($mount, $Sub)) }
         catch {
             [WindowsAppSettingsProvider]::Unmount($mount)
             throw
@@ -233,14 +246,16 @@ class WindowsAppSettingsProvider : IAppSettingsProvider {
 
     [void] SetValue([string] $Package, [string] $Name, [int] $Type, [byte[]] $Data) {
         $t = Get-FaiShellNativeType
-        $h = $this.OpenWrite($Package)
-        try { $t::SetRaw($h['Key'], $Name, $Type, $Data) }
+        $parts = [WindowsAppSettingsProvider]::SplitName($Name)
+        $h = $this.OpenWrite($Package, $parts[0])
+        try { $t::SetRaw($h['Key'], $parts[1], $Type, $Data) }
         finally { $this.CloseWrite($h) }
     }
 
     [void] DeleteValue([string] $Package, [string] $Name) {
-        $h = $this.OpenWrite($Package)
-        try { $h['Key'].DeleteValue($Name, $false) }
+        $parts = [WindowsAppSettingsProvider]::SplitName($Name)
+        $h = $this.OpenWrite($Package, $parts[0])
+        try { $h['Key'].DeleteValue($parts[1], $false) }
         finally { $this.CloseWrite($h) }
     }
 }
