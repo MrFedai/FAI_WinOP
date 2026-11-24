@@ -78,16 +78,25 @@ class FakePackageProvider : IPackageProvider {
 
     [bool] IsInstalled([string] $PackageId, [string] $Source) { return $this.Packages.ContainsKey([FakePackageProvider]::Key($PackageId, $Source)) }
 
+    # 'kaynak:kimlik' → kurulumda / kaldırmada çağrılan betik bloğu (kurucunun kısayol / Run değeri bırakmasını,
+    # kaldırıcının onları silmesini taklit eder).
+    [hashtable] $OnInstall = @{}
+    [hashtable] $OnUninstall = @{}
+
     [void] Install([string] $PackageId, [string] $Source) {
         $this.WriteCount++
         [void]$this.WriteLog.Add("Install $Source $PackageId")
-        $this.Packages[[FakePackageProvider]::Key($PackageId, $Source)] = $true
+        $key = [FakePackageProvider]::Key($PackageId, $Source)
+        $this.Packages[$key] = $true
+        if ($this.OnInstall.ContainsKey($key)) { [void](& $this.OnInstall[$key]) }
     }
 
     [void] Uninstall([string] $PackageId, [string] $Source) {
         $this.WriteCount++
         [void]$this.WriteLog.Add("Uninstall $Source $PackageId")
-        $this.Packages.Remove([FakePackageProvider]::Key($PackageId, $Source))
+        $key = [FakePackageProvider]::Key($PackageId, $Source)
+        $this.Packages.Remove($key)
+        if ($this.OnUninstall.ContainsKey($key)) { [void](& $this.OnUninstall[$key]) }
     }
 }
 
@@ -140,5 +149,21 @@ class FakePromptProvider : IPromptProvider {
         $answer = $this.Next()
         [void]$this.Asked.Add(@{ Kind = 'ConfirmExact'; Message = $Message; Answer = $answer })
         return ($answer.Trim() -ceq $Expected)
+    }
+}
+
+# Açılan URI'leri kaydeder.
+class FakeShellProvider : IShellProvider {
+    [int] $WriteCount = 0
+    [System.Collections.ArrayList] $Opened = (New-Object System.Collections.ArrayList)
+    # Doluysa OpenUri çağrıldığında çalışır (kullanıcının Ayarlar'da yaptığını taklit eder).
+    [scriptblock] $OnOpen = $null
+
+    FakeShellProvider() { }
+
+    [void] OpenUri([string] $Uri) {
+        $this.WriteCount++
+        [void]$this.Opened.Add($Uri)
+        if ($null -ne $this.OnOpen) { [void](& $this.OnOpen $Uri) }
     }
 }

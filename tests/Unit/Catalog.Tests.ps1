@@ -25,6 +25,16 @@ BeforeAll {
         $ctx.Registry.Seed("$script:NotifRoot\Discord.Discord", 'Enabled', 1, 'DWord')
         $ctx.Registry.Seed('HKCU:\Control Panel\Desktop', 'UserPreferencesMask', @(0x9E, 0x3E, 0x07, 0x80, 0x12, 0x00, 0x00, 0x00), 'Binary')
         $ctx.Registry.Seed('HKCU:\Software\Microsoft\Siuf\Rules', 'PeriodInNanoSeconds', 0, 'QWord')
+        # setup.default-browser: Caution onayı + Ayarlar'da kullanıcının basması (Shell.OnOpen taklit eder).
+        $choice = 'HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoiceLatest\ProgId'
+        $ctx.Registry.Seed($choice, 'ProgId', 'MSEdgeHTM', 'String')
+        $reg = $ctx.Registry
+        $ctx.Shell.OnOpen = {
+            param($Uri)
+            if ($Uri -like '*registeredApp*') { $reg.Seed($choice, 'ProgId', 'ChromeHTML', 'String') }
+            elseif ($Uri -eq 'ms-settings:defaultapps') { $reg.Seed($choice, 'ProgId', 'MSEdgeHTM', 'String') }
+        }.GetNewClosure()
+        $ctx.Prompt.Enqueue([string[]]@('E', 'E'))
         return $ctx
     }
 

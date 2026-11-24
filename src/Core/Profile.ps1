@@ -5,7 +5,8 @@
 #     "name": "fedai", "description": "...",
 #     "tweaks": [ "sound.startup-sound-off", { "id": "sound.volume", "params": { "level": 15 } } ],
 #     "autoConfirm": [ "graphics.p0-state" ],     // -Unattended'da onaysız uygulanacak Caution tweak'ler
-#     "apps": [], "games": [], "layout": {}, "exceptions": {}    // sonraki fazlar
+#     "apps": [ "chrome", { "id": "telegram", "keepAutostart": true } ],   // apps/catalog.json kimlikleri
+#     "games": [], "layout": {}, "exceptions": {}    // sonraki fazlar
 #   }
 
 class Profile {
@@ -14,7 +15,8 @@ class Profile {
     # Sıralı liste; her eleman @{ Id = '...'; Params = @{...} }
     [hashtable[]] $Tweaks = @()
     [string[]] $AutoConfirm = @()
-    [object[]] $Apps = @()
+    # Sıralı liste; her eleman @{ Id = 'chrome'; KeepAutostart = $false } (tweak'lerden SONRA kurulur).
+    [hashtable[]] $Apps = @()
     [object[]] $Games = @()
     [hashtable] $Layout = @{}
     [hashtable] $Exceptions = @{}
@@ -42,7 +44,14 @@ class Profile {
         }
         $p.Tweaks = $list.ToArray()
         if ($Data.ContainsKey('autoConfirm')) { $p.AutoConfirm = [string[]]@($Data['autoConfirm']) }
-        if ($Data.ContainsKey('apps')) { $p.Apps = [object[]]@($Data['apps']) }
+        $appList = New-Object 'System.Collections.Generic.List[hashtable]'
+        if ($Data.ContainsKey('apps')) {
+            foreach ($a in @($Data['apps'])) {
+                if ($a -is [string]) { $appList.Add(@{ Id = $a; KeepAutostart = $false }) }
+                else { $appList.Add(@{ Id = [string]$a['id']; KeepAutostart = [bool]$a['keepAutostart'] }) }
+            }
+        }
+        $p.Apps = $appList.ToArray()
         if ($Data.ContainsKey('games')) { $p.Games = [object[]]@($Data['games']) }
         if ($Data.ContainsKey('layout')) { $p.Layout = $Data['layout'] }
         if ($Data.ContainsKey('exceptions')) { $p.Exceptions = $Data['exceptions'] }

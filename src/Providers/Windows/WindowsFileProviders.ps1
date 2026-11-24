@@ -21,6 +21,33 @@ class WindowsFileProvider : IFileProvider {
     [void] DeleteFile([string] $Path) {
         if ([System.IO.File]::Exists($Path)) { [System.IO.File]::Delete($Path) }
     }
+
+    [string[]] ListFiles([string] $Directory) {
+        if (-not [System.IO.Directory]::Exists($Directory)) { return [string[]]@() }
+        $arr = [string[]]@([System.IO.Directory]::GetFiles($Directory))
+        [System.Array]::Sort($arr, [System.StringComparer]::OrdinalIgnoreCase)
+        return $arr
+    }
+
+    [void] DeleteEmptyDirectory([string] $Directory) {
+        if (-not [System.IO.Directory]::Exists($Directory)) { return }
+        if (@([System.IO.Directory]::GetFileSystemEntries($Directory)).Count -gt 0) { return }
+        [System.IO.Directory]::Delete($Directory)
+    }
+
+    [string] GetKnownFolder([string] $Name) {
+        $folder = $null
+        try { $folder = [System.Enum]::Parse([System.Environment+SpecialFolder], $Name, $true) }
+        catch { return '' }
+        return [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]$folder)
+    }
+}
+
+# Kabuk: Start-Process ile URI açar (ms-settings:, http(s):).
+class WindowsShellProvider : IShellProvider {
+    WindowsShellProvider() { }
+
+    [void] OpenUri([string] $Uri) { Start-Process -FilePath $Uri }
 }
 
 class WindowsShortcutProvider : IShortcutProvider {

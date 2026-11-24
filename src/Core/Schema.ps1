@@ -148,7 +148,35 @@ function Get-FaiProfileError {
             }
         }
     }
-    foreach ($listKey in @('apps', 'games')) {
+    if ($Data.Contains('apps')) {
+        if (-not (Test-FaiIsList $Data['apps'])) { $errs.Add('apps: dizi olmalı') }
+        else {
+            $appIds = @{}
+            $i = 0
+            foreach ($a in $Data['apps']) {
+                $path = "apps[$i]"
+                $i++
+                $id = $null
+                if ($a -is [string]) { $id = $a }
+                elseif ($a -is [System.Collections.IDictionary]) {
+                    foreach ($k in @($a.Keys)) {
+                        if (@('id', 'keepAutostart') -cnotcontains [string]$k) { $errs.Add("${path}.${k}: bilinmeyen alan (izin verilenler: id, keepAutostart)") }
+                    }
+                    if (-not $a.Contains('id')) { $errs.Add("${path}.id: zorunlu alan eksik") }
+                    elseif ($a['id'] -isnot [string]) { $errs.Add("${path}.id: metin olmalı") }
+                    else { $id = $a['id'] }
+                    if ($a.Contains('keepAutostart') -and $a['keepAutostart'] -isnot [bool]) { $errs.Add("${path}.keepAutostart: true ya da false olmalı") }
+                }
+                else { $errs.Add("${path}: uygulama kimliği (metin) ya da { id, keepAutostart } nesnesi olmalı") }
+                if ($null -ne $id) {
+                    if ($id -cnotmatch (Get-FaiAppIdPattern)) { $errs.Add("${path}: '$id' geçerli bir uygulama kimliği değil") }
+                    elseif ($appIds.ContainsKey($id)) { $errs.Add("${path}: '$id' birden çok kez listelenmiş") }
+                    else { $appIds[$id] = $true }
+                }
+            }
+        }
+    }
+    foreach ($listKey in @('games')) {
         if ($Data.Contains($listKey) -and -not (Test-FaiIsList $Data[$listKey])) { $errs.Add("${listKey}: dizi olmalı") }
     }
     foreach ($objKey in @('layout', 'exceptions')) {

@@ -10,6 +10,7 @@ Değişiklikler varsayılan parametrelerle listelenir; profil parametreleri geç
 | [`privacy.app-permissions`](#privacyapp-permissions) | Uygulama izinlerini kapat (kamera ve mikrofon açık) | Safe | — | — |
 | [`privacy.search-ads`](#privacysearch-ads) | Arama ve Başlat reklamlarını kapat | Safe | — | — |
 | [`privacy.telemetry`](#privacytelemetry) | Telemetriyi en aza indir | Safe | — | — |
+| [`setup.default-browser`](#setupdefault-browser) | Varsayılan tarayıcı (Ayarlar üzerinden) | ⚠ Caution | — | `appName`, `progId`, `scope` |
 | [`sound.startup-sound-off`](#soundstartup-sound-off) | Açılış sesini kapat | Safe | — | — |
 | [`sound.volume`](#soundvolume) | Ses seviyesini ayarla | Safe | — | `level` |
 | [`ui.explorer`](#uiexplorer) | Dosya Gezgini düzeni | Safe | — | — |
@@ -113,6 +114,22 @@ Değişiklikler (30):
 - `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\System\PublishUserActivities = 0 (DWord)`
 - `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\System\UploadUserActivities = 0 (DWord)`
 - `Kayıt defteri: HKCU:\Software\Microsoft\Input\TIPC\Enabled = 0 (DWord)`
+
+## setup
+
+### setup.default-browser
+
+**Varsayılan tarayıcı (Ayarlar üzerinden)** · Risk: ⚠ Caution
+
+https için varsayılan tarayıcı appName değilse Ayarlar \> Varsayılan uygulamalar sayfasını o uygulamada açar; "Varsayılan olarak ayarla" düğmesine kullanıcı basar, sonra sonuç denetlenir. Windows 11 UserChoice karma koruması ve UCPD sürücüsü yüzünden programla güvenilir yol yok (docs/APPS.md). Etkileşimsiz kipte uygulanmaz; geri alma da Ayarlar sayfasından elle yapılır.
+
+Onay uyarısı: Ayarlar sayfası açılacak; "Varsayılan olarak ayarla" düğmesine sizin basmanız gerekir.
+
+Parametreler (varsayılan): `appName` = `Google Chrome` · `progId` = `ChromeHTML` · `scope` = `Machine`
+
+Değişiklikler (1):
+
+- `Varsayılan tarayıcı: Google Chrome (ChromeHTML) — Ayarlar'da tek tıkla, elle`
 
 ## sound
 

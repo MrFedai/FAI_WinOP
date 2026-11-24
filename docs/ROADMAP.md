@@ -270,6 +270,25 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
 
 **Kabul:** Tüm paket kimlikleri doğrulanmış; kurulum sonrası masaüstünde yeni kısayol kalmıyor.
 
+**Faz 4 notları (uygulama kararları):** ayrıntı `docs/APPS.md`.
+- Profil `apps`: `"chrome"` ya da `{ "id": "telegram", "keepAutostart": true }`. Motor uygulamaları tweak'lerden SONRA
+  `app.<id>` tweak'i olarak işler (`ConvertTo-FaiAppTweak`; `Invoke-FaiEngine -AppCatalog`). Katalog alanları roadmap'teki
+  listeye ek: `startupFolderNames` (Başlangıç klasörü .lnk), `desktopShortcutNames`, `startMenuFolders`, `notes`.
+- Yeni eylem `App` (kurulum + düzen tek eylemde): otomatik başlatma Run değeri silinerek değil `StartupApproved` kapalı
+  işaretiyle (Görev Yöneticisi gibi; uygulama Run'ı yeniden yazsa da kapalı); jokersiz ad önceden kapatılır. Masaüstü:
+  kurulum anındaki önce / sonra farkı + bilinen adlar. Başlat: klasör köke düzleştirilir.
+- Geri alma günlüğü: `App.Apply` dokunduğu her şeyin eski hâlini snapshot'a ekler, motor Apply sonrası oturumu yeniden
+  kaydeder (`Session.Save()`); kurulduğu çalıştırma geri alınırsa uygulama kaldırılır.
+- Yeni arayüzler: `IRegistryProvider.GetValueNames`, `IFileProvider.ListFiles / DeleteEmptyDirectory / GetKnownFolder`
+  (OneDrive yönlendirmeli masaüstü için), `IShellProvider.OpenUri`.
+- Varsayılan tarayıcı: `setup.default-browser` (Caution, eylem `DefaultBrowser`) — UserChoice karması + UCPD yüzünden
+  programla yazılmaz; `ms-settings:defaultapps?registeredAppMachine=Google%20Chrome` açılır, kullanıcı tek tıklar, sonuç
+  `UserChoiceLatest\ProgId` (yoksa `UserChoice`) ile denetlenir. Etkileşimsiz kipte uygulanmaz.
+- Kimlikler: 12/12 `winget show` ile doğrulandı; `tests/Integration/App-Ids.ps1` Windows CI'da her push'ta. Gerçek kurulum
+  `tests/Integration/Apps-Install.ps1` (CI `apps` işi yalnız elle tetikleme; Hyper-V VM'de `-Force -Undo`): masaüstünde
+  yeni kısayol kalırsa HATA + Run / Başlangıç / Başlat keşif dökümü → katalogdaki tahmini adlar bununla düzeltilir.
+- WhatsApp Temmuz 2025'ten beri WebView2 tabanlı → Faz 5'te WebView2 Runtime + güncellemesi korunmalı.
+
 ### Faz 5 — Bloatware ve Edge
 **Prompt:**
 > `bloat.remove` için açık bir kara liste yaz (joker yok, her paket adıyla). Korunan liste: Store, Ekran Alıntısı Aracı, WhatsApp, Claude, profildeki tüm uygulamalar, sistem bileşenleri (Ultimate'teki `13 Bloatware.ps1` içindeki "breaks …" notlarını referans al). Çalışmadan önce silinecekleri tablo halinde göster ve onay iste. `bloat.persistence`: provisioned paket kaldırma, ContentDeliveryManager/önerilen uygulama kapatma, büyük güncelleme sonrası temizliği tekrarlayan zamanlanmış görev. `bloat.edge-remove`: Edge'i kaldır, WebView2'ye dokunma, `microsoft-edge:` protokolünü varsayılan tarayıcıya yönlendir, EdgeUpdate politikasıyla Edge'in yeniden kurulmasını engelle ama WebView2 güncellemesine izin ver.

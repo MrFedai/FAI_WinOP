@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/MrFedai/FAI_WinOP/apps/_schema.json",
+  "title": "FAI_WinOP uygulama kataloğu",
+  "description": "BELGE / editör desteği. Asıl doğrulama src/Core/AppCatalog.ps1 (Get-FaiAppCatalogError) içindedir. Alan adları ikisinde birebir aynı tutulur (tests/Unit/Apps.Tests.ps1 denetler).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [ "apps" ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "apps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [ "id", "name", "source", "packageId" ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "Profilde kullanılan kısa ad; motorda app.<id> tweak'i olur." },
+          "name": { "type": "string" },
+          "source": { "enum": [ "winget", "msstore" ] },
+          "packageId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9.\\-_+]*$", "description": "winget / Store kimliği (tests/Integration/App-Ids.ps1 doğrular)." },
+          "notes": { "type": "string" },
+          "postInstall": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "removeAutostart": { "type": "boolean", "description": "Otomatik başlatmayı Görev Yöneticisi gibi kapat (StartupApproved). Profilde keepAutostart bunu devre dışı bırakır." },
+              "startupRegistryNames": { "type": "array", "items": { "type": "string" }, "description": "Run değeri adları (-like kalıbı; jokersiz ad önceden kapatılır)." },
+              "startupFolderNames": { "type": "array", "items": { "type": "string", "pattern": "\\.lnk$" }, "description": "Başlangıç klasöründeki kısayol adları." },
+              "startupTaskNames": { "type": "array", "items": { "type": "string", "pattern": "^\\\\" }, "description": "Oturum açılışında uygulamayı başlatan zamanlanmış görev yolları." },
+              "removeDesktopShortcut": { "type": "boolean", "description": "Kurulumda masaüstüne eklenen kısayolları ve desktopShortcutNames'i sil." },
+              "desktopShortcutNames": { "type": "array", "items": { "type": "string", "pattern": "\\.lnk$" } },
+              "flattenStartMenu": { "type": "boolean", "description": "startMenuFolders klasörlerindeki kısayolları Programlar köküne taşı." },
+              "startMenuFolders": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    }
+  }
+}

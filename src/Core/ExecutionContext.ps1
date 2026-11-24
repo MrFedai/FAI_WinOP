@@ -13,6 +13,7 @@ class ExecutionContext {
     [IScriptHost] $Scripts
     [IAudioProvider] $Audio
     [ITimerResolutionProvider] $TimerResolution
+    [IShellProvider] $Shell
 
     [BackupStore] $Backup
     [Logger] $Logger

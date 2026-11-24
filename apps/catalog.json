@@ -1,0 +1,91 @@
+{
+  "$schema": "./_schema.json",
+  "apps": [
+    {
+      "id": "claude", "name": "Claude", "source": "winget", "packageId": "Anthropic.Claude",
+      "postInstall": {
+        "removeAutostart": true, "startupRegistryNames": ["*Claude*"],
+        "removeDesktopShortcut": true, "desktopShortcutNames": ["Claude.lnk"],
+        "flattenStartMenu": true, "startMenuFolders": ["Anthropic", "Claude"]
+      }
+    },
+    {
+      "id": "telegram", "name": "Telegram Desktop", "source": "winget", "packageId": "Telegram.TelegramDesktop",
+      "postInstall": {
+        "removeAutostart": true, "startupRegistryNames": ["Telegram Desktop"],
+        "removeDesktopShortcut": true, "desktopShortcutNames": ["Telegram.lnk"],
+        "flattenStartMenu": true, "startMenuFolders": ["Telegram Desktop"]
+      }
+    },
+    {
+      "id": "whatsapp", "name": "WhatsApp", "source": "msstore", "packageId": "9NKSQGP7F2NH",
+      "notes": "Store (MSIX) uygulaması; WebView2 çalışma zamanı gerekir (docs/APPS.md). Otomatik başlatması MSIX StartupTask ile, bu katalogda yönetilmez.",
+      "postInstall": { "removeDesktopShortcut": true }
+    },
+    {
+      "id": "discord", "name": "Discord", "source": "winget", "packageId": "Discord.Discord",
+      "postInstall": {
+        "removeAutostart": true, "startupRegistryNames": ["Discord"],
+        "removeDesktopShortcut": true, "desktopShortcutNames": ["Discord.lnk"],
+        "flattenStartMenu": true, "startMenuFolders": ["Discord Inc"]
+      }
+    },
+    {
+      "id": "steam", "name": "Steam", "source": "winget", "packageId": "Valve.Steam",
+      "postInstall": {
+        "removeAutostart": true, "startupRegistryNames": ["Steam"],
+        "removeDesktopShortcut": true, "desktopShortcutNames": ["Steam.lnk"],
+        "flattenStartMenu": true, "startMenuFolders": ["Steam"]
+      }
+    },
+    {
+      "id": "tradingview", "name": "TradingView", "source": "winget", "packageId": "TradingView.TradingViewDesktop",
+      "notes": "MSIX paketi.",
+      "postInstall": { "removeDesktopShortcut": true, "desktopShortcutNames": ["TradingView.lnk"] }
+    },
+    {
+      "id": "ollama", "name": "Ollama", "source": "winget", "packageId": "Ollama.Ollama",
+      "postInstall": {
+        "removeAutostart": true, "startupFolderNames": ["Ollama.lnk"],
+        "removeDesktopShortcut": true, "desktopShortcutNames": ["Ollama.lnk"]
+      }
+    },
+    {
+      "id": "vscode", "name": "Visual Studio Code", "source": "winget", "packageId": "Microsoft.VisualStudioCode",
+      "postInstall": {
+        "removeDesktopShortcut": true, "desktopShortcutNames": ["Visual Studio Code.lnk"],
+        "flattenStartMenu": true, "startMenuFolders": ["Visual Studio Code"]
+      }
+    },
+    {
+      "id": "protonvpn", "name": "Proton VPN", "source": "winget", "packageId": "Proton.ProtonVPN",
+      "postInstall": {
+        "removeAutostart": true, "startupRegistryNames": ["ProtonVPN", "Proton VPN"],
+        "removeDesktopShortcut": true, "desktopShortcutNames": ["Proton VPN.lnk"],
+        "flattenStartMenu": true, "startMenuFolders": ["Proton VPN", "Proton AG"]
+      }
+    },
+    {
+      "id": "chrome", "name": "Google Chrome", "source": "winget", "packageId": "Google.Chrome",
+      "notes": "Varsayılan tarayıcı ayrı tweak: setup.default-browser.",
+      "postInstall": {
+        "removeAutostart": true, "startupRegistryNames": ["GoogleChromeAutoLaunch_*"],
+        "removeDesktopShortcut": true, "desktopShortcutNames": ["Google Chrome.lnk"]
+      }
+    },
+    {
+      "id": "spotify", "name": "Spotify", "source": "winget", "packageId": "Spotify.Spotify",
+      "postInstall": {
+        "removeAutostart": true, "startupRegistryNames": ["Spotify"],
+        "removeDesktopShortcut": true, "desktopShortcutNames": ["Spotify.lnk"]
+      }
+    },
+    {
+      "id": "obs", "name": "OBS Studio", "source": "winget", "packageId": "OBSProject.OBSStudio",
+      "postInstall": {
+        "removeDesktopShortcut": true, "desktopShortcutNames": ["OBS Studio.lnk"],
+        "flattenStartMenu": true, "startMenuFolders": ["OBS Studio"]
+      }
+    }
+  ]
+}

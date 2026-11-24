@@ -38,6 +38,38 @@ class FakeFileProvider : IFileProvider {
         $this.Files.Remove([FakeFileProvider]::Norm($Path))
     }
 
+    [string[]] ListFiles([string] $Directory) {
+        $prefix = [FakeFileProvider]::Norm($Directory).TrimEnd('\') + '\'
+        $found = New-Object 'System.Collections.Generic.List[string]'
+        foreach ($k in $this.Files.Keys) {
+            if ($k.StartsWith($prefix) -and $k.Substring($prefix.Length) -notmatch '\\') { $found.Add([string]$this.Files[$k]['Path']) }
+        }
+        $arr = $found.ToArray()
+        [System.Array]::Sort($arr, [System.StringComparer]::OrdinalIgnoreCase)
+        return $arr
+    }
+
+    # Klasörler örtük (dosya varsa klasör var); boş klasör zaten yok sayılır. Yalnız çağrıyı kaydeder.
+    [void] DeleteEmptyDirectory([string] $Directory) {
+        $this.WriteCount++
+        [void]$this.WriteLog.Add("DeleteEmptyDirectory $Directory")
+    }
+
+    # Testte değiştirilebilir bilinen klasör tablosu.
+    [hashtable] $KnownFolders = @{
+        DesktopDirectory       = 'C:\Users\fai\Desktop'
+        CommonDesktopDirectory = 'C:\Users\Public\Desktop'
+        Programs               = 'C:\Users\fai\AppData\Roaming\Microsoft\Windows\Start Menu\Programs'
+        CommonPrograms         = 'C:\ProgramData\Microsoft\Windows\Start Menu\Programs'
+        Startup                = 'C:\Users\fai\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup'
+        CommonStartup          = 'C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup'
+    }
+
+    [string] GetKnownFolder([string] $Name) {
+        if ($this.KnownFolders.ContainsKey($Name)) { return [string]$this.KnownFolders[$Name] }
+        return ''
+    }
+
     # Sıralı döküm: 'yol|base64'.
     [string[]] Dump() {
         $lines = New-Object 'System.Collections.Generic.List[string]'

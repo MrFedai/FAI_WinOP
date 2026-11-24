@@ -8,6 +8,8 @@ class IRegistryProvider {
     [bool] ValueExists([string] $Path, [string] $Name) { throw [System.NotImplementedException]::new('IRegistryProvider.ValueExists') }
     # Doğrudan alt anahtar adları (yalnız son parça); anahtar yoksa boş dizi.
     [string[]] GetSubKeyNames([string] $Path) { throw [System.NotImplementedException]::new('IRegistryProvider.GetSubKeyNames') }
+    # Anahtardaki değer adları (varsayılan değer hariç); anahtar yoksa boş dizi.
+    [string[]] GetValueNames([string] $Path) { throw [System.NotImplementedException]::new('IRegistryProvider.GetValueNames') }
     # Değer yoksa $null.
     [object] GetValue([string] $Path, [string] $Name) { throw [System.NotImplementedException]::new('IRegistryProvider.GetValue') }
     # String | ExpandString | Binary | DWord | MultiString | QWord; değer yoksa boş metin.
@@ -93,6 +95,13 @@ class IFileProvider {
     [void] WriteBytes([string] $Path, [byte[]] $Bytes) { throw [System.NotImplementedException]::new('IFileProvider.WriteBytes') }
     # Dosya yoksa sessizce geçer. YAZMA.
     [void] DeleteFile([string] $Path) { throw [System.NotImplementedException]::new('IFileProvider.DeleteFile') }
+    # Klasördeki dosyaların tam yolları (alt klasörler hariç, sıralı); klasör yoksa boş dizi.
+    [string[]] ListFiles([string] $Directory) { throw [System.NotImplementedException]::new('IFileProvider.ListFiles') }
+    # Klasör boşsa siler; yoksa ya da doluysa sessizce geçer. YAZMA.
+    [void] DeleteEmptyDirectory([string] $Directory) { throw [System.NotImplementedException]::new('IFileProvider.DeleteEmptyDirectory') }
+    # Bilinen klasör ([Environment+SpecialFolder] adı: DesktopDirectory, CommonDesktopDirectory, Programs, CommonPrograms,
+    # Startup, CommonStartup). OneDrive yönlendirmesi dahil gerçek yol; tanımsızsa boş metin.
+    [string] GetKnownFolder([string] $Name) { throw [System.NotImplementedException]::new('IFileProvider.GetKnownFolder') }
 }
 
 # Kısayollar (.lnk). Özellikler: TargetPath, Arguments, WorkingDirectory, IconLocation, Description.
@@ -147,4 +156,10 @@ class ITimerResolutionProvider {
     [void] Install([int] $Resolution) { throw [System.NotImplementedException]::new('ITimerResolutionProvider.Install') }
     # Servisi durdurur, siler, ikiliyi kaldırır; kurulu değilse sessizce geçer. YAZMA.
     [void] Uninstall() { throw [System.NotImplementedException]::new('ITimerResolutionProvider.Uninstall') }
+}
+
+# Kabuk: URI / ms-settings: sayfası açar (varsayılan tarayıcı gibi yalnız kullanıcının yapabildiği adımlar için).
+class IShellProvider {
+    # YAZMA (kullanıcıya pencere açar; dry-run'da çağrılmaz).
+    [void] OpenUri([string] $Uri) { throw [System.NotImplementedException]::new('IShellProvider.OpenUri') }
 }

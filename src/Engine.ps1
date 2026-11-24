@@ -2,6 +2,9 @@
 #
 #   -DryRun  hiçbir sağlayıcı yazma modunda çağrılmaz, BackupStore oturumu açılmaz, soru sorulmaz; rapor "ÖNİZLEME" olur.
 #   -Undo    geri alınmamış son oturumun (ya da verilen oturumun) kayıtlarını TERS sırada Revert eder.
+# Profilin 'apps' listesi tweak'lerden SONRA, uygulama kataloğundan (apps/catalog.json) üretilen 'app.<id>' tweak'leri
+# olarak aynı yoldan işlenir. Eylem Apply sırasında snapshot'ına günlük ekleyebilir (App): oturum Apply'dan sonra
+# yeniden kaydedilir.
 # Tek tweak'in hatası diğerlerini durdurmaz; hata raporda 'Failed' olur. Yarım kalan tweak'in snapshot'ları oturumda
 # durur, -Undo onları da geri alır.
 
@@ -9,6 +12,8 @@ class Engine {
     [ExecutionContext] $Ctx
     # Id → Tweak
     [hashtable] $Catalog
+    # Uygulama kimliği → katalog kaydı (Import-FaiAppCatalog); profilde apps yoksa boş kalabilir.
+    [hashtable] $AppCatalog = @{}
     [BackupSession] $Session
 
     Engine([ExecutionContext] $Ctx, [hashtable] $Catalog) {
@@ -31,19 +36,38 @@ class Engine {
                 $this.Ctx.Logger.Error("${id}: $($_.Exception.Message)")
             }
         }
+        foreach ($app in $FaiProfile.Apps) {
+            $id = 'app.' + [string]$app['Id']
+            try {
+                if (-not $this.AppCatalog.ContainsKey([string]$app['Id'])) {
+                    [void]$report.Add($id, $id, 'Failed', 'Uygulama kataloğunda yok', [string[]]@())
+                    continue
+                }
+                $appTweak = ConvertTo-FaiAppTweak -App $this.AppCatalog[[string]$app['Id']] -KeepAutostart ([bool]$app['KeepAutostart'])
+                $this.ProcessResolved($FaiProfile, $appTweak, $report)
+            }
+            catch {
+                [void]$report.Add($id, $id, 'Failed', $_.Exception.Message, [string[]]@())
+                $this.Ctx.Logger.Error("${id}: $($_.Exception.Message)")
+            }
+        }
         $this.Ctx.Logger.Info($report.Summary())
         return $report
     }
 
     hidden [void] ProcessTweak([Profile] $FaiProfile, [string] $Id, [hashtable] $Overrides, [Reporter] $Report) {
-        # Yerel değişken adları sınıf özelliklerinden (Ctx, Session) farklı olmalı: aynı adı atamak ayrıştırma hatası.
-        $cx = $this.Ctx
         if (-not $this.Catalog.ContainsKey($Id)) {
             [void]$Report.Add($Id, $Id, 'Failed', 'Katalogda böyle bir tweak yok', [string[]]@())
             return
         }
         # 1) çöz: parametre geçersiz kılmaları uygulanır, eylemler yeniden doğrulanır
-        $tweak = $this.Catalog[$Id].WithParams($Overrides)
+        $this.ProcessResolved($FaiProfile, $this.Catalog[$Id].WithParams($Overrides), $Report)
+    }
+
+    hidden [void] ProcessResolved([Profile] $FaiProfile, [Tweak] $tweak, [Reporter] $Report) {
+        # Yerel değişken adları sınıf özelliklerinden (Ctx, Session) farklı olmalı: aynı adı atamak ayrıştırma hatası.
+        $cx = $this.Ctx
+        $Id = $tweak.Id
 
         # 2) koşullar
         $failedCondition = $tweak.FirstFailedCondition($cx.SystemInfo)
@@ -89,6 +113,7 @@ class Engine {
             $snapshot = $action.Snapshot($cx)
             $this.Session.AddEntry($Id, $i, $action.Definition, $snapshot)
             $action.Apply($cx)
+            $this.Session.Save()
             $lines.Add($action.Describe())
         }
         [void]$Report.Add($Id, $tweak.Title, 'Applied', '', $lines.ToArray())
@@ -149,6 +174,8 @@ function Invoke-FaiEngine {
         Sağlayıcıları ve DryRun / Unattended kipini taşıyan ExecutionContext.
     .PARAMETER Catalog
         Id → Tweak hashtable (Import-FaiTweakCatalog).
+    .PARAMETER AppCatalog
+        Uygulama kimliği → katalog kaydı (Import-FaiAppCatalog). Profilde apps varsa gerekir.
     .PARAMETER Session
         -Undo ile birlikte: geri alınacak oturum kimliği (boşsa geri alınmamış son oturum).
     #>
@@ -158,10 +185,12 @@ function Invoke-FaiEngine {
         [Parameter(Mandatory = $true)] [ExecutionContext] $Context,
         [Parameter(Mandatory = $true)] [hashtable] $Catalog,
         [switch] $Undo,
-        [string] $Session = ''
+        [string] $Session = '',
+        [hashtable] $AppCatalog = @{}
     )
 
     $engine = [Engine]::new($Context, $Catalog)
+    $engine.AppCatalog = $AppCatalog
     if ($Undo.IsPresent) { return $engine.Undo($Session) }
     if ($null -eq $FaiProfile) { throw 'Profil verilmedi.' }
     return $engine.Run($FaiProfile)

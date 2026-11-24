@@ -40,12 +40,34 @@
       "description": "-Unattended modda onaysız uygulanacak Caution tweak'ler (tweaks listesinde olmalı). Risk düzeyi hiçbir zaman otomatik onaylanmaz.",
       "items": { "$ref": "#/definitions/tweakId" }
     },
-    "apps": { "type": "array", "description": "Faz 4: kurulacak uygulamalar." },
+    "apps": {
+      "type": "array",
+      "description": "Kurulacak uygulamalar (apps/catalog.json kimlikleri), tweak'lerden sonra bu sırayla. Tekrar eden kimlik hatadır.",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/definitions/appId" },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [ "id" ],
+            "properties": {
+              "id": { "$ref": "#/definitions/appId" },
+              "keepAutostart": { "type": "boolean", "description": "Katalogdaki otomatik başlatma kapatma kuralını uygulama (ör. WhatsApp, Telegram)." }
+            }
+          }
+        ]
+      }
+    },
     "games": { "type": "array", "description": "Faz 7: oyun başına ayarlar." },
     "layout": { "type": "object", "description": "Faz 6: görev çubuğu / masaüstü düzeni." },
     "exceptions": { "type": "object", "description": "Faz 5+: korunan / istisna listeleri." }
   },
   "definitions": {
+    "appId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "apps/catalog.json'daki uygulama kimliği, ör. chrome"
+    },
     "tweakId": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9]*\\.[a-z0-9]+(-[a-z0-9]+)*$",

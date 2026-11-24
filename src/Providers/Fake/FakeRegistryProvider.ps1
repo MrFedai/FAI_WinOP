@@ -64,6 +64,12 @@ class FakeRegistryProvider : IRegistryProvider {
         return ($this.Keys.ContainsKey($p) -and $this.Keys[$p].ContainsKey($Name.ToLowerInvariant()))
     }
 
+    [string[]] GetValueNames([string] $Path) {
+        $p = [FakeRegistryProvider]::NormPath($Path)
+        if (-not $this.Keys.ContainsKey($p)) { return [string[]]@() }
+        return [string[]]@($this.Keys[$p].Values | ForEach-Object { [string]$_['Name'] } | Sort-Object)
+    }
+
     [object] GetValue([string] $Path, [string] $Name) {
         if (-not $this.ValueExists($Path, $Name)) { return $null }
         return $this.Keys[[FakeRegistryProvider]::NormPath($Path)][$Name.ToLowerInvariant()]['Value']

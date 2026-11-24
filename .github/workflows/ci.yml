@@ -100,3 +100,28 @@ jobs:
         run: |
           .\tests\Integration\Windows-Actions.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # Faz 4: katalogdaki paket kimlikleri winget'te var mı (salt okunur).
+      - name: Uygulama kataloğu kimlikleri (winget show)
+        run: |
+          .\tests\Integration\App-Ids.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  apps:
+    name: Windows · uygulama kurulumu + masaüstü / başlangıç düzeni (yalnız elle tetikleme)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bundle (5.1 ile üret)
+        run: .\build\Bundle.ps1
+
+      - name: Uygulamaları kur → doğrula → keşif dökümü → geri al
+        run: |
+          .\tests\Integration\Apps-Install.ps1 -Undo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
