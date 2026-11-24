@@ -72,6 +72,8 @@ class Tweak {
     [string] $Risk = 'Safe'
     # Caution / Risk sorusunda gösterilen ek uyarı metni (isteğe bağlı).
     [string] $Confirm = ''
+    # Uygulama / geri alma sonrası kabuk yenilemeleri (Get-FaiRefreshKind): Shell, Desktop, Settings, StartMenu.
+    [string[]] $Refresh = @()
     [Condition[]] $Conditions = @()
     # Ham eylem tanımları (yer tutucular açılmamış).
     [hashtable[]] $ActionDefs = @()
@@ -95,6 +97,7 @@ class Tweak {
         if ($Data.ContainsKey('Risk')) { $t.Risk = [string]$Data['Risk'] }
         if ($Data.ContainsKey('Confirm')) { $t.Confirm = [string]$Data['Confirm'] }
         if ($Data.ContainsKey('Params')) { $t.Params = $Data['Params'] }
+        if ($Data.ContainsKey('Refresh')) { $t.Refresh = [string[]]@($Data['Refresh']) }
         $conds = New-Object 'System.Collections.Generic.List[Condition]'
         if ($Data.ContainsKey('Conditions')) {
             foreach ($c in @($Data['Conditions'])) { $conds.Add([Condition]::Parse($c)) }
@@ -142,6 +145,7 @@ class Tweak {
         $t.Category = $this.Category
         $t.Risk = $this.Risk
         $t.Confirm = $this.Confirm
+        $t.Refresh = $this.Refresh
         $t.Conditions = $this.Conditions
         $t.ActionDefs = $this.ActionDefs
         $t.Params = $merged

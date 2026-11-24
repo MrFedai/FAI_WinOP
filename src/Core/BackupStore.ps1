@@ -14,11 +14,17 @@ class BackupSession {
 
     # Eylemin tanımı + snapshot'ı eklenir ve oturum diske yazılır. Uygulamadan ÖNCE çağrılır.
     [void] AddEntry([string] $TweakId, [int] $ActionIndex, [hashtable] $ActionDefinition, [hashtable] $Snapshot) {
+        $this.AddEntry($TweakId, $ActionIndex, $ActionDefinition, $Snapshot, [string[]]@())
+    }
+
+    # Refresh: geri almadan sonra gereken kabuk yenilemeleri (tweak'in Refresh listesi).
+    [void] AddEntry([string] $TweakId, [int] $ActionIndex, [hashtable] $ActionDefinition, [hashtable] $Snapshot, [string[]] $Refresh) {
         [void]$this.Entries.Add(@{
                 TweakId     = $TweakId
                 ActionIndex = $ActionIndex
                 Action      = $ActionDefinition
                 Snapshot    = $Snapshot
+                Refresh     = $Refresh
             })
         $this.Save()
     }

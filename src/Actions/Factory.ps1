@@ -3,7 +3,7 @@
 
 function Get-FaiActionType {
     <# .SYNOPSIS  Bilinen eylem türü adları. #>
-    return [string[]]@('Registry', 'RegistryEach', 'Service', 'ScheduledTask', 'Appx', 'Winget', 'Power', 'File', 'Shortcut', 'Script', 'Volume', 'TimerResolution', 'App', 'DefaultBrowser', 'AppxCleanup', 'EdgeRemove')
+    return [string[]]@('Registry', 'RegistryEach', 'Service', 'ScheduledTask', 'Appx', 'Winget', 'Power', 'File', 'Shortcut', 'Script', 'Volume', 'TimerResolution', 'App', 'DefaultBrowser', 'AppxCleanup', 'EdgeRemove', 'RegistryByte', 'TaskbarPins', 'SolidImage', 'AppSetting')
 }
 
 function New-FaiAction {
@@ -28,6 +28,10 @@ function New-FaiAction {
         'DefaultBrowser' { return [DefaultBrowserAction]::new($Definition) }
         'AppxCleanup' { return [AppxCleanupAction]::new($Definition) }
         'EdgeRemove' { return [EdgeRemoveAction]::new($Definition) }
+        'RegistryByte' { return [RegistryByteAction]::new($Definition) }
+        'TaskbarPins' { return [TaskbarPinsAction]::new($Definition) }
+        'SolidImage' { return [SolidImageAction]::new($Definition) }
+        'AppSetting' { return [AppSettingAction]::new($Definition) }
         default { throw ("Bilinmeyen eylem türü: '{0}' (bilinenler: {1})" -f $Definition['Type'], ((Get-FaiActionType) -join ', ')) }
     }
 }
@@ -72,6 +76,10 @@ function Get-FaiActionError {
         'DefaultBrowser' { $messages = [DefaultBrowserAction]::Validate($Definition) }
         'AppxCleanup' { $messages = [AppxCleanupAction]::Validate($Definition) }
         'EdgeRemove' { $messages = [EdgeRemoveAction]::Validate($Definition) }
+        'RegistryByte' { $messages = [RegistryByteAction]::Validate($Definition) }
+        'TaskbarPins' { $messages = [TaskbarPinsAction]::Validate($Definition) }
+        'SolidImage' { $messages = [SolidImageAction]::Validate($Definition) }
+        'AppSetting' { $messages = [AppSettingAction]::Validate($Definition) }
     }
     foreach ($m in $messages) { $errs.Add("${Path}.$m") }
     return $errs.ToArray()
@@ -118,6 +126,13 @@ function Expand-FaiPath {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true, Position = 0)] [string] $Path)
     return [Environment]::ExpandEnvironmentVariables($Path)
+}
+
+function Get-FaiFileName {
+    <# .SYNOPSIS  Windows yolunun son parçası ('\' ve '/' ayırıcı; Linux'taki birim testlerinde de doğru çalışır). #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true, Position = 0)] [AllowEmptyString()] [string] $Path)
+    return ($Path -split '[\\/]')[-1]
 }
 
 function Test-FaiScriptText {

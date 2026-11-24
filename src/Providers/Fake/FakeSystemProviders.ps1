@@ -49,6 +49,18 @@ class FakeFileProvider : IFileProvider {
         return $arr
     }
 
+    [string[]] FindFiles([string] $Directory, [string] $Filter) {
+        $prefix = [FakeFileProvider]::Norm($Directory).TrimEnd('\') + '\'
+        $found = New-Object 'System.Collections.Generic.List[string]'
+        foreach ($k in $this.Files.Keys) {
+            $full = [string]$this.Files[$k]['Path']
+            if ($k.StartsWith($prefix) -and ($full.Split('\')[-1] -like $Filter)) { $found.Add($full) }
+        }
+        $arr = $found.ToArray()
+        [System.Array]::Sort($arr, [System.StringComparer]::OrdinalIgnoreCase)
+        return $arr
+    }
+
     # Klasörler örtük (dosya varsa klasör var); boş klasör zaten yok sayılır. Yalnız çağrıyı kaydeder.
     [void] DeleteEmptyDirectory([string] $Directory) {
         $this.WriteCount++
@@ -77,6 +89,41 @@ class FakeFileProvider : IFileProvider {
         $arr = $lines.ToArray()
         [System.Array]::Sort($arr, [System.StringComparer]::Ordinal)
         return $arr
+    }
+}
+
+# Sahte görüntü: dosya içeriği 'FAKEIMG|<genişlik>|<yükseklik>|<RRGGBB>' (ASCII). Görüntü dosyalara FakeFileProvider
+# üzerinden yazılır; bu sağlayıcı yalnız okur / üretir (yazma sayacı yok).
+class FakeImageProvider : IImageProvider {
+    [FakeFileProvider] $Files
+
+    FakeImageProvider([FakeFileProvider] $Files) { $this.Files = $Files }
+
+    static [byte[]] Encode([int] $Width, [int] $Height, [string] $Color) {
+        return [System.Text.Encoding]::ASCII.GetBytes(('FAKEIMG|{0}|{1}|{2}' -f $Width, $Height, $Color.ToUpperInvariant()))
+    }
+
+    # Sahte görüntü değilse $null; değilse @(genişlik, yükseklik, renk).
+    hidden [object[]] Parse([string] $Path) {
+        if (-not $this.Files.FileExists($Path)) { return $null }
+        $parts = [System.Text.Encoding]::ASCII.GetString($this.Files.ReadBytes($Path)).Split('|')
+        if ($parts.Count -ne 4 -or $parts[0] -ne 'FAKEIMG') { return $null }
+        return @([int]$parts[1], [int]$parts[2], $parts[3])
+    }
+
+    [int[]] GetSize([string] $Path) {
+        $p = $this.Parse($Path)
+        if ($null -eq $p) { return $null }
+        return [int[]]@($p[0], $p[1])
+    }
+
+    [bool] IsSolid([string] $Path, [string] $Color) {
+        $p = $this.Parse($Path)
+        return ($null -ne $p -and [string]$p[2] -eq $Color.ToUpperInvariant())
+    }
+
+    [byte[]] NewSolid([int] $Width, [int] $Height, [string] $Color, [string] $Format) {
+        return [FakeImageProvider]::Encode($Width, $Height, $Color)
     }
 }
 

@@ -29,6 +29,13 @@ class WindowsFileProvider : IFileProvider {
         return $arr
     }
 
+    [string[]] FindFiles([string] $Directory, [string] $Filter) {
+        if (-not [System.IO.Directory]::Exists($Directory)) { return [string[]]@() }
+        $arr = [string[]]@([System.IO.Directory]::GetFiles($Directory, $Filter, [System.IO.SearchOption]::AllDirectories))
+        [System.Array]::Sort($arr, [System.StringComparer]::OrdinalIgnoreCase)
+        return $arr
+    }
+
     [void] DeleteEmptyDirectory([string] $Directory) {
         if (-not [System.IO.Directory]::Exists($Directory)) { return }
         if (@([System.IO.Directory]::GetFileSystemEntries($Directory)).Count -gt 0) { return }

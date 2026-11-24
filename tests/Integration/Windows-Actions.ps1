@@ -20,6 +20,12 @@
       AppxCleanup     açılış görevi \FAI_WinOP_Test\BloatCleanup (SYSTEM) + betik; paket listesi makinede olmayan ad
       Edge            salt okunur: Edge ve WebView2 sürümü
       Faz 5 dry-run   gerçek paket listesiyle bloat.remove / persistence / edge-remove önizlemesi: korunan paket yok
+      RegistryByte    HKCU test anahtarında ikili değerin tek biti
+      SolidImage      %TEMP%\FAI_WinOP_Test\pics (System.Drawing: oluştur, boyut korunarak boya)
+      AppSetting      sentetik paket FAI.WinOPTest_0123456789abc (reg save ile üretilen settings.dat hive'ı)
+      Kabuk           IsShellRunning, Settings / Desktop / StartMenu yenilemesi
+      Faz 6 dry-run   ui.* görünüm tweak'leri önizlemesi + Export-FaiLayout (salt okunur)
+      Faz 6 uygula    yalnız etkileşimli kabukta (Sandbox): görünüm tweak'leri uygula → düzen doğrula → -Undo (CI'da ATLA)
     Her döngüde snapshot JSON'a yazılıp okunur (BackupStore gibi). Test hedefleri sonda temizlenir.
 
     GÜVENLİK: yalnız GitHub Actions'ta (GITHUB_ACTIONS=true) ya da Windows Sandbox'ta (WDAGUtilityAccount) çalışır;
@@ -68,7 +74,7 @@ $failed = 0
 $skipped = 0
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 $stepNo = 0
-$stepTotal = 17
+$stepTotal = 23
 function Step([string] $Name, [scriptblock] $Body) {
     $script:stepNo++
     $t = [System.Diagnostics.Stopwatch]::StartNew()
@@ -264,6 +270,111 @@ try {
         }
         Write-Host ($dry.Render())
         "(kurulu $($installed.Count) paket; kaldırılacak $($planned.Count): $($planned -join ', '))"
+    }
+
+    Step 'RegistryByte (ikili değerin tek biti, değerin geri kalanı korunur)' {
+        $blob = [byte[]]@(0x30, 0, 0, 0, 0xFE, 0xFF, 0xFF, 0xFF, 0x02, 0, 0, 0, 0x03, 0, 0, 0)
+        $ctx.Registry.SetValue($hkcu, 'Stuck', $blob, 'Binary')
+        $state = { (@($ctx.Registry.GetValue($hkcu, 'Stuck')) | ForEach-Object { [string]$_ }) -join ',' }
+        $after = Invoke-Cycle @{ Type = 'RegistryByte'; Path = $hkcu; Name = 'Stuck'; Offset = 8; Mask = 1; Value = $true } $state
+        Assert ($after -eq '48,0,0,0,254,255,255,255,3,0,0,0,3,0,0,0') "beklenmeyen değer: $after"
+        "($after)"
+    }
+
+    Step 'SolidImage (System.Drawing: oluştur + klasörde boyut korunarak boya)' {
+        $pics = Join-Path $testRoot 'pics'
+        New-Item -ItemType Directory -Path $pics -Force | Out-Null
+        [System.IO.File]::WriteAllBytes((Join-Path $pics 'user.png'), $ctx.Images.NewSolid(448, 448, '0078D4', 'png'))
+        [System.IO.File]::WriteAllBytes((Join-Path $pics 'guest.bmp'), $ctx.Images.NewSolid(64, 32, 'FFFFFF', 'bmp'))
+        [System.IO.File]::WriteAllText((Join-Path $pics 'readme.txt'), 'görüntü değil')
+        $state = { (@(Get-ChildItem -LiteralPath $pics -File | Sort-Object Name | ForEach-Object { '{0}:{1}' -f $_.Name, (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.Substring(0, 12) })) -join ';' }
+        [void](Invoke-Cycle @{ Type = 'SolidImage'; Directory = $pics; Filter = @('*.png', '*.bmp', '*.txt'); Color = '000000' } $state)
+        $a = New-FaiAction @{ Type = 'SolidImage'; Directory = $pics; Filter = @('*.png', '*.bmp'); Color = '000000' }
+        $a.Apply($ctx)
+        $size = $ctx.Images.GetSize((Join-Path $pics 'guest.bmp'))
+        Assert ($size[0] -eq 64 -and $size[1] -eq 32) ('boyut korunmadı: ' + ($size -join 'x'))
+        Assert ($ctx.Images.IsSolid((Join-Path $pics 'user.png'), '000000')) 'user.png siyah değil'
+        $black = Join-Path $testRoot 'Black.png'
+        [void](Invoke-Cycle @{ Type = 'SolidImage'; Path = $black; Color = '000000'; Width = 1920; Height = 1080 } { Test-Path -LiteralPath $black })
+        "(boyut korundu: $($size -join 'x'))"
+    }
+
+    Step 'AppSetting (settings.dat hive: sentetik paket, Bool + Int32)' {
+        $pkg = 'FAI.WinOPTest_0123456789abc'
+        $pkgRoot = Join-Path $env:LOCALAPPDATA "Packages\$pkg"
+        $src = 'HKCU:\Software\FAI_WinOP_Test\Hive\LocalState'
+        New-Item -Path $src -Force | Out-Null
+        New-ItemProperty -Path $src -Name 'Dummy' -Value 1 -PropertyType DWord -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $pkgRoot 'Settings') -Force | Out-Null
+        $dat = Join-Path $pkgRoot 'Settings\settings.dat'
+        & reg.exe save 'HKCU\Software\FAI_WinOP_Test\Hive' $dat /y 2>&1 | Out-Null
+        Assert ($LASTEXITCODE -eq 0) 'reg save başarısız'
+        try {
+            Assert ($ctx.AppSettings.HasSettings($pkg)) 'settings.dat görülmedi'
+            $state = {
+                $g = $ctx.AppSettings.GetValue($pkg, 'GhostFile')
+                $o = $ctx.AppSettings.GetValue($pkg, 'OpenFile')
+                $gs = 'yok'
+                $os = 'yok'
+                if ($null -ne $g) { $gs = '{0}:{1}' -f $g['Type'], $g['Data'][0] }
+                if ($null -ne $o) { $os = '{0}:{1}' -f $o['Type'], $o['Data'][0] }
+                "$gs|$os"
+            }
+            $a1 = Invoke-Cycle @{ Type = 'AppSetting'; Package = $pkg; Name = 'GhostFile'; Kind = 'Bool'; Value = $true } $state
+            $a2 = Invoke-Cycle @{ Type = 'AppSetting'; Package = $pkg; Name = 'OpenFile'; Kind = 'Int32'; Value = 1 } $state
+            Assert ($a1 -eq '100000011:1|yok') "Bool: $a1"
+            Assert ($a2 -eq 'yok|100000004:1') "Int32: $a2"
+            "($a1 · $a2)"
+        }
+        finally { Remove-Item -LiteralPath $pkgRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    Step 'Kabuk sağlayıcısı (IsShellRunning, Settings / Desktop / StartMenu yenilemesi)' {
+        $shell = $ctx.Desktop.IsShellRunning()
+        $ctx.Desktop.Refresh('Settings')
+        $ctx.Desktop.Refresh('Desktop')
+        $ctx.Desktop.Refresh('StartMenu')
+        "(etkileşimli kabuk: $shell)"
+    }
+
+    $faz6 = @('ui.theme-black', 'ui.taskbar', 'ui.desktop-icons', 'ui.lockscreen-black', 'ui.account-pictures-black', 'ui.widgets-off', 'ui.copilot-off', 'ui.notepad-settings')
+    Step 'Faz 6 dry-run: görünüm tweak''leri + Export-FaiLayout (salt okunur)' {
+        $catalog = Import-FaiTweakCatalog -Path (Join-Path $repoRoot 'tweaks')
+        $faiProfile = [Profile]::FromHashtable(@{ name = 'faz6-dry'; tweaks = $faz6 }, 'test')
+        $ctx.DryRun = $true
+        try { $dry = Invoke-FaiEngine -Profile $faiProfile -Context $ctx -Catalog $catalog }
+        finally { $ctx.DryRun = $false }
+        Assert (-not $dry.HasFailures()) ('dry-run hatası: ' + $dry.Render())
+        Write-Host ($dry.Render())
+        $exp = Export-FaiLayout -Context $ctx
+        $pins = (@($exp.Layout['taskbar']['pins']) | ForEach-Object { @($_.Values)[0] }) -join ', '
+        Write-Host ("  sabitlemeler: {0} · otomatik gizle: {1} · uyarı: {2}" -f $pins, $exp.Layout['taskbar']['autoHide'], ($exp.Warnings -join ' | '))
+        "(planlanan $($dry.Count('Planned')), zaten uygun $($dry.Count('UpToDate')))"
+    }
+
+    Step 'Faz 6 uygula → düzen doğrula → -Undo (yalnız etkileşimli kabukta)' {
+        if (-not $ctx.Desktop.IsShellRunning()) { return 'ATLA etkileşimli kabuk yok (CI hizmet oturumu)' }
+        $catalog = Import-FaiTweakCatalog -Path (Join-Path $repoRoot 'tweaks')
+        $faiProfile = [Profile]::FromHashtable(@{ name = 'faz6'; tweaks = $faz6 }, 'test')
+        # Karşılaştırma görev çubuğu + masaüstü simgeleri üzerinden (simge konumlarını / start2.bin'i Gezgin kendisi de yazar).
+        $view = { $l = (Export-FaiLayout -Context $ctx).Layout; @{ taskbar = $l['taskbar']; desktopIcons = $l['desktopIcons'] } | ConvertTo-Json -Depth 10 -Compress }
+        $before = & $view
+        $run = Invoke-FaiEngine -Profile $faiProfile -Context $ctx -Catalog $catalog
+        Write-Host ($run.Render())
+        Assert (-not $run.HasFailures()) 'uygulamada hata'
+        $now = (Export-FaiLayout -Context $ctx).Layout
+        $pins = @($now['taskbar']['pins'])
+        Assert ($pins.Count -ge 1 -and $pins[0]['appId'] -eq 'Microsoft.Windows.Explorer') ('ilk sabitleme Gezgin değil: ' + ($now['taskbar'] | ConvertTo-Json -Compress))
+        Assert ($now['taskbar']['autoHide'] -eq $true) 'otomatik gizleme açılmadı'
+        Assert ($now['desktopIcons']['thisPC'] -and $now['desktopIcons']['recycleBin']) 'masaüstü simgeleri görünmüyor'
+        $again = Invoke-FaiEngine -Profile $faiProfile -Context $ctx -Catalog $catalog
+        Assert ($again.Find('ui.taskbar').Status -eq 'UpToDate') ('ikinci çalıştırmada ui.taskbar: ' + $again.Find('ui.taskbar').Status)
+        $ctx.Backup = [BackupStore]::new($ctx.Backup.Root)
+        $undo = Invoke-FaiEngine -Undo -Context $ctx -Catalog $catalog
+        Assert (-not $undo.HasFailures()) ('geri almada hata: ' + $undo.Render())
+        $after = & $view
+        Assert ($after -eq $before) ("geri alma düzeni getirmedi:`n  önce  $before`n  sonra $after")
+        "(sabitlemeler: $((@($pins) | ForEach-Object { @($_.Values)[0] }) -join ', '))"
     }
 
     Step 'Appx (listeleme + kullanıcı paketi kaldır / geri kaydet)' {

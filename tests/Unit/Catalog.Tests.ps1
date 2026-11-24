@@ -38,6 +38,8 @@ BeforeAll {
         $ctx.Appx.Seed([string[]]@('Microsoft.BingNews', 'Microsoft.WindowsStore'), [string[]]@('Microsoft.BingNews', 'Microsoft.WindowsStore'))
         $ctx.Edge.EdgeVersion = '131.0.2903.70'
         $ctx.Edge.WebView2Version = '131.0.2903.70'
+        # Faz 6: görev çubuğu, hesap resimleri, Not Defteri, Gezgin taklidi.
+        Initialize-FakeShellState -Ctx $ctx
         $ctx.Prompt.Enqueue([string[]]@('E', 'E', 'E', 'E', 'E'))
         return $ctx
     }
@@ -47,7 +49,11 @@ BeforeAll {
     }
 
     function Get-State([ExecutionContext] $Ctx) {
-        return (@($Ctx.Registry.Dump()) + @($Ctx.Services.Dump()) + @($Ctx.Tasks.Tasks.Keys | Sort-Object | ForEach-Object { "$_=$($Ctx.Tasks.Tasks[$_])" }) + @('ses=' + $Ctx.Audio.Volume)) -join "`n"
+        $apps = @(foreach ($pk in @($Ctx.AppSettings.Packages.Keys | Sort-Object)) {
+                foreach ($v in @($Ctx.AppSettings.Packages[$pk].Values | Sort-Object { $_['Name'] })) { '{0}|{1}|{2}|{3}' -f $pk, $v['Name'], $v['Type'], [Convert]::ToBase64String([byte[]]$v['Data']) }
+            })
+        return (@($Ctx.Registry.Dump()) + @($Ctx.Services.Dump()) + @($Ctx.Tasks.Tasks.Keys | Sort-Object | ForEach-Object { "$_=$($Ctx.Tasks.Tasks[$_])" }) + @('ses=' + $Ctx.Audio.Volume) +
+            @($Ctx.Files.Dump()) + $apps) -join "`n"
     }
 }
 

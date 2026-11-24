@@ -333,6 +333,42 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
 
 **Kabul:** Referans ekran görüntüsüyle aynı görünüm; `-ExportLayout` → `-Undo` → profil uygula döngüsü düzeni birebir geri getiriyor.
 
+**Faz 6 notları (uygulama kararları):**
+- 8 tweak `tweaks/ui/`: `theme-black` (koyu + saydamlık kapalı + vurgu #191919, paletin açık tonları gri: Ayarlar
+  düğmeleri okunur; düz siyah masaüstü: `WallPaper=''`, `Colors\Background='0 0 0'`, `BackgroundType=1`), `taskbar`,
+  `desktop-icons`, `lockscreen-black` (üretilen `C:\ProgramData\FAI_WinOP\Black.png` + PersonalizationCSP; yol C: varsayılır,
+  ilke değeri ortam değişkeni açmaz), `account-pictures-black` (varsayılan resimler boyutu korunarak siyah), `widgets-off`
+  (yalnız ilke: `TaskbarDa` UCPD korumalı), `copilot-off`, `notepad-settings` (settings.dat; değer adları Ultimate'ten,
+  anlamları VM'de doğrulanacak). Sohbet düğmesi `TaskbarMn` yerine ilke `ChatIcon=3`.
+- Yeni eylemler: `RegistryByte` (ikili değerin tek baytı + maske: StuckRects3 8. bayt 0. bit = otomatik gizle),
+  `TaskbarPins`, `SolidImage` (tek renk görüntü, `IImageProvider` System.Drawing), `AppSetting` (paketli uygulama
+  settings.dat hive'ı: `reg load` + ham tür 0x5F5E10B bool / 0x5F5E104 int32 + 8 bayt FILETIME; `IAppSettingsProvider`),
+  `File` + `Base64` (ikili içerik). Native `src/Native/ShellNative.cs`: duvar kağıdı, masaüstü rengi, WM_SETTINGCHANGE, ham
+  kayıt defteri değeri.
+- Görev çubuğu sabitlemeleri: Windows'un desteklenen yolu, tek seferlik. Taskband değerleri + `User Pinned\TaskBar`
+  silinir → `LayoutModification.xml` (`PinListPlacement="Replace"`) + HKCU "Start Layout" ilkesi (`LockedStartLayout=1`) →
+  Gezgin yeniden başlar → düzen Taskband'e yazılınca ilke ve XML eski haline döner (kullanıcı sonra serbestçe sabitler).
+  Mevcut sabitlemeler: kısayol hedefi; Windows 11'in Gezgin kısayolu hedefsizdir, kimliği (`Microsoft.Windows.Explorer`)
+  dosya içinde UTF-16 aranır; Store uygulamaları Favorites ikilisindeki AUMID'den; sıra Favorites içindeki konumdan.
+  Etkileşimli kabuk yoksa (CI) uygulanamaz: hata.
+- Motor: tweak alanı `Refresh` (`Desktop`, `Settings`, `StartMenu`, `Shell`; `IDesktopProvider`). Uygulama / geri alma
+  sonunda türü başına bir kez, bu sırayla; oturum kaydı `Refresh`'i taşır (Undo da yeniler). Hata rapora `refresh.<tür>`.
+- `-ExportLayout`: `Export-FaiLayout` (salt okunur) + `Save-FaiProfileLayout` / `Invoke-FaiExportLayout -ProfilePath`
+  (`src/Core/Layout.ps1`; CLI bağlaması Faz 8). Profil `layout`: `taskbar {alignment, autoHide, pins[appId|link|aumid]}`,
+  `desktopIcons {thisPC, recycleBin, userFiles, network, controlPanel}`, `desktop {flags, iconSize, iconLayouts}`,
+  `start {start2}`. Sabitlemeler taşınabilir: Gezgin → appId, masaüstü uygulaması → Başlat menüsündeki aynı hedefli
+  kısayol (`%ProgramData%\...`), Store → aumid. `iconLayouts` (masaüstü öğe adları) ve `start2` (start2.bin) ham: Export
+  uyarır, açık repoya koymadan gözden geçirilmeli. Motor `layout`'u tweak'lerden sonra `layout.profile` tweak'i olarak
+  uygular; -Undo geri alır. Sağ alt simge konumu: elle yerleştir → -ExportLayout → profil.
+- Kabul: birim testi (Gezgin taklidi `Enable-FakeShellLayout`) Export → Undo → profil uygula düzeni birebir getiriyor;
+  ikinci çalıştırma ZATEN UYGUN; Undo başa döner. Bu makinede salt okunur (5.1): Export → ortalı, otomatik gizli,
+  Gezgin + Chrome (sıra doğru), Bu Bilgisayar + Geri Dönüşüm, FFlags 0x40200224; `ui.account-pictures-black` ZATEN UYGUN.
+- Windows-Actions'a 6 adım (23): RegistryByte, SolidImage, AppSetting (reg save ile sentetik hive), kabuk sağlayıcısı,
+  Faz 6 dry-run + Export, Faz 6 uygula → Undo (yalnız etkileşimli kabukta: Sandbox).
+- Açık (Sandbox / VM'de doğrulanacak): Start Layout ilkesinin var olan kullanıcıda sabitlemeleri gerçekten uyguladığı,
+  start2.bin geri yazımı, Not Defteri değer anlamları, PersonalizationCSP'nin Pro'da etkisi, IconLayouts geri yazımının
+  konumları getirdiği.
+
 ### Faz 7 — Sistem, güç, grafik, oyun
 **Prompt:**
 > `system.restore-point`, `power.plan` (IsLaptop → AC/DC iki varyant), `system.timer-resolution`, `setup.mmagent-off`, `setup.background-apps-off` (istisnalı), `setup.store-optimize`, `setup.updates-staged` + `-UpdatesOn/-UpdatesOff`, `setup.edition-pro` (Caution), `graphics.nvidia-settings`, `graphics.amd-settings`, `graphics.p0-state` (Caution, dizüstü uyarısı), `gaming.per-game` (IFEO: CpuPriorityClass + affinity maskesi; SMT kapalı ve çekirdek 0 hariç maskelerini mantıksal işlemci sayısından hesapla), `refresh.reboot-to-bios`. Ultimate'teki ilgili dosyalar sadece referans.

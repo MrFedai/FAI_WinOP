@@ -3,6 +3,7 @@
 #   @{ Type='File'; Path='%LOCALAPPDATA%\Uygulama\ayar.json'; Content='{ "a": 1 }' }              # UTF-8 (BOM'suz)
 #   @{ Type='File'; Path='%USERPROFILE%\x.ini'; Content="a=1`r`n"; Encoding='Unicode' }
 #   @{ Type='File'; Path='%PUBLIC%\Desktop\Edge.lnk'; Ensure='Absent' }                           # sil
+#   @{ Type='File'; Path='%LOCALAPPDATA%\...\start2.bin'; Base64='AAEC...' }                        # ikili içerik
 # Encoding: UTF8 (BOM'suz, varsayılan) | UTF8BOM | Unicode (UTF-16 LE, BOM'lu) | ASCII.
 # Snapshot dosyanın baytlarını (base64) tutar; geri alma birebir geri yazar ya da yeni oluşanı siler.
 # Yedek sınırı MaxBackupBytes: daha büyük dosyaya dokunulmaz (Snapshot hata verir, eylem uygulanmaz).
@@ -17,7 +18,7 @@ class FileAction : ActionBase {
 
     static [string[]] Validate([object] $Def) {
         $e = New-Object 'System.Collections.Generic.List[string]'
-        foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Path', 'Content', 'Encoding', 'Ensure'))) { $e.Add($m) }
+        foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Path', 'Content', 'Base64', 'Encoding', 'Ensure'))) { $e.Add($m) }
         if (-not $Def.Contains('Path')) { $e.Add('Path: zorunlu alan eksik') }
         elseif (-not (Test-FaiWindowsPath $Def['Path'])) { $e.Add('Path: mutlak yol olmalı (C:\..., %DEĞİŞKEN%\...)') }
         $ensure = 'Present'
@@ -27,10 +28,21 @@ class FileAction : ActionBase {
         }
         if ($ensure -eq 'Absent') {
             if ($Def.Contains('Content')) { $e.Add('Content: Ensure=Absent iken verilmez') }
+            if ($Def.Contains('Base64')) { $e.Add('Base64: Ensure=Absent iken verilmez') }
             if ($Def.Contains('Encoding')) { $e.Add('Encoding: Ensure=Absent iken verilmez') }
             return $e.ToArray()
         }
-        if (-not $Def.Contains('Content')) { $e.Add('Content: zorunlu alan eksik') }
+        if ($Def.Contains('Base64')) {
+            if ($Def.Contains('Content')) { $e.Add('Content: Base64 ile birlikte verilmez') }
+            if ($Def.Contains('Encoding')) { $e.Add('Encoding: Base64 ile verilmez (içerik ikili)') }
+            if (-not (Test-FaiHasPlaceholder $Def['Base64'])) {
+                $ok = $Def['Base64'] -is [string]
+                if ($ok) { try { [void][Convert]::FromBase64String($Def['Base64']) } catch { $ok = $false } }
+                if (-not $ok) { $e.Add('Base64: geçerli base64 metni olmalı') }
+            }
+            return $e.ToArray()
+        }
+        if (-not $Def.Contains('Content')) { $e.Add('Content: zorunlu alan eksik (ya da Base64)') }
         elseif ($Def['Content'] -isnot [string]) { $e.Add('Content: metin olmalı') }
         if ($Def.Contains('Encoding') -and ($Def['Encoding'] -isnot [string] -or [FileAction]::Encodings() -cnotcontains $Def['Encoding'])) {
             $e.Add('Encoding: ' + ([FileAction]::Encodings() -join ', ') + ' değerlerinden biri olmalı')
@@ -85,7 +97,10 @@ class FileAction : ActionBase {
 
     [bool] IsAbsent() { return ([string]$this.Definition['Ensure'] -eq 'Absent') }
 
-    [byte[]] WantBytes() { return [FileAction]::Encode([string]$this.Definition['Content'], [string]$this.Definition['Encoding']) }
+    [byte[]] WantBytes() {
+        if ($this.Definition.ContainsKey('Base64')) { return [Convert]::FromBase64String([string]$this.Definition['Base64']) }
+        return [FileAction]::Encode([string]$this.Definition['Content'], [string]$this.Definition['Encoding'])
+    }
 
     [bool] Test([ExecutionContext] $Ctx) {
         $p = $this.FullPath()
@@ -110,6 +125,7 @@ class FileAction : ActionBase {
 
     [string] Describe() {
         if ($this.IsAbsent()) { return ('Dosya: {0} silinir' -f $this.Definition['Path']) }
+        if ($this.Definition.ContainsKey('Base64')) { return ('Dosya: {0} yazılır ({1} bayt, ikili)' -f $this.Definition['Path'], $this.WantBytes().Length) }
         $enc = 'UTF8'
         if ($this.Definition.ContainsKey('Encoding')) { $enc = [string]$this.Definition['Encoding'] }
         return ('Dosya: {0} yazılır ({1} karakter, {2})' -f $this.Definition['Path'], ([string]$this.Definition['Content']).Length, $enc)

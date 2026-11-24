@@ -16,9 +16,17 @@ Değişiklikler varsayılan parametrelerle listelenir; profil parametreleri geç
 | [`setup.default-browser`](#setupdefault-browser) | Varsayılan tarayıcı (Ayarlar üzerinden) | ⚠ Caution | — | `appName`, `progId`, `scope` |
 | [`sound.startup-sound-off`](#soundstartup-sound-off) | Açılış sesini kapat | Safe | — | — |
 | [`sound.volume`](#soundvolume) | Ses seviyesini ayarla | Safe | — | `level` |
+| [`ui.account-pictures-black`](#uiaccount-pictures-black) | Varsayılan hesap resimleri siyah | Safe | — | — |
+| [`ui.copilot-off`](#uicopilot-off) | Copilot'u kapat | Safe | — | — |
+| [`ui.desktop-icons`](#uidesktop-icons) | Masaüstü simgeleri: Bu Bilgisayar + Geri Dönüşüm Kutusu | Safe | — | — |
 | [`ui.explorer`](#uiexplorer) | Dosya Gezgini düzeni | Safe | — | — |
+| [`ui.lockscreen-black`](#uilockscreen-black) | Kilit ve oturum açma ekranı siyah | Safe | — | — |
+| [`ui.notepad-settings`](#uinotepad-settings) | Not Defteri ayarları | Safe | — | `aiRewrite`, `openInNewWindow`, `restoreSession` |
 | [`ui.notifications`](#uinotifications) | Bildirimleri kapat (istisna listesi hariç) | Safe | — | `exceptions` |
+| [`ui.taskbar`](#uitaskbar) | Görev çubuğu: ortalı, otomatik gizlenir, yalnız Dosya Gezgini + Chrome | Safe | — | `autoHide` |
+| [`ui.theme-black`](#uitheme-black) | Siyah tema (koyu, saydamlık kapalı, düz siyah duvar kağıdı) | Safe | — | — |
 | [`ui.visual-effects`](#uivisual-effects) | Görsel efektleri azalt (yazı yumuşatma açık) | Safe | — | — |
+| [`ui.widgets-off`](#uiwidgets-off) | Pencere öğelerini (Widgets) kapat | Safe | — | — |
 
 ## bloat
 
@@ -258,6 +266,40 @@ Değişiklikler (1):
 
 ## ui
 
+### ui.account-pictures-black
+
+**Varsayılan hesap resimleri siyah** · Risk: Safe
+
+Windows'un varsayılan kullanıcı ve konuk resimleri (%ProgramData%\\Microsoft\\User Account Pictures içindeki .png / .bmp dosyaları) aynı boyutta düz siyah görüntüyle değiştirilir; hesabına kendi resmini koymamış kullanıcılar Başlat'ta, giriş ekranında ve Ayarlar'da siyah daire görür. Alt klasörler (kullanıcıların kendi resimleri) ve kullanıcının seçtiği resim değişmez. Özgün dosyalar yedeklenir, geri alma birebir geri yazar. Etkisi oturum yeniden açılınca görülür.
+
+Değişiklikler (1):
+
+- `Görüntü: %ProgramData%\Microsoft\User Account Pictures\*.png,*.bmp tek renk #000000 (boyut korunur)`
+
+### ui.copilot-off
+
+**Copilot'u kapat** · Risk: Safe
+
+Windows Copilot ilkeyle kapatılır ("Windows Copilot'u kapat", kullanıcı ve makine) ve görev çubuğundaki Copilot düğmesi gizlenir. Copilot uygulamasının kendisi bloat.remove ile kaldırılır (Microsoft.Copilot). Yeni yapılarda Copilot ayrı bir uygulama olduğundan ilke yalnız eski bütünleşik Copilot'u etkiler; düğme ve uygulama kaldırma asıl işi yapar. Gezgin yeniden başlar.
+
+Değişiklikler (3):
+
+- `Kayıt defteri: HKCU:\Software\Policies\Microsoft\Windows\WindowsCopilot\TurnOffWindowsCopilot = 1 (DWord)`
+- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot\TurnOffWindowsCopilot = 1 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ShowCopilotButton = 0 (DWord)`
+
+### ui.desktop-icons
+
+**Masaüstü simgeleri: Bu Bilgisayar + Geri Dönüşüm Kutusu** · Risk: Safe
+
+Masaüstünde Bu Bilgisayar ve Geri Dönüşüm Kutusu gösterilir (Ayarlar \> Kişiselleştirme \> Temalar \> Masaüstü simgesi ayarları). "Simgeleri otomatik düzenle" kapatılır, "Simgeleri kılavuza hizala" açık kalır (FFlags: Windows varsayılanı 0x40200225, otomatik düzenle biti 0x1 kaldırılır); böylece simgeler sürüklendikleri yerde kalır. Sağ alt köşe konumu: simgeler bir kez elle yerleştirilip -ExportLayout ile profile alınır (desktop.iconLayouts), profil uygulanınca aynı konumlar geri gelir. Gezgin yeniden başlar.
+
+Değişiklikler (3):
+
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel\{20D04FE0-3AEA-1069-A2D8-08002B30309D} = 0 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel\{645FF040-5081-101B-9F08-00AA002F954E} = 0 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\Shell\Bags\1\Desktop\FFlags = 1075839524 (DWord)`
+
 ### ui.explorer
 
 **Dosya Gezgini düzeni** · Risk: Safe
@@ -272,6 +314,34 @@ Değişiklikler (6):
 - `Kayıt defteri: HKCU:\Software\Classes\CLSID\{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}\System.IsPinnedToNameSpaceTree = 0 (DWord)`
 - `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\HubMode = 1 (DWord)`
 - `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FolderDescriptions\{31C0DD25-9439-4F12-BF41-7FF4EDA38722}\PropertyBag\ThisPCPolicy = Hide (String)`
+
+### ui.lockscreen-black
+
+**Kilit ve oturum açma ekranı siyah** · Risk: Safe
+
+Düz siyah bir görüntü (C:\\ProgramData\\FAI\_WinOP\\Black.png, 1920x1080) üretilir ve kilit ekranı görüntüsü olarak ilkeyle (PersonalizationCSP) atanır; Windows Spotlight ve kilit ekranı ipuçları bu görüntüyle devre dışı kalır, kullanıcı Ayarlar'dan değiştiremez. Oturum açma ekranındaki bulanık (akrilik) arka plan kapatılır, böylece giriş ekranı da siyah görünür. Yol sistem sürücüsü C: varsayılarak yazılır (ilke değeri ortam değişkeni açmaz). Etkisi bir sonraki kilitlemede görülür.
+
+Değişiklikler (5):
+
+- `Görüntü: C:\ProgramData\FAI_WinOP\Black.png tek renk #000000 (1920x1080, varsa boyutu korunur)`
+- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP\LockScreenImagePath = C:\ProgramData\FAI_WinOP\Black.png (String)`
+- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP\LockScreenImageUrl = C:\ProgramData\FAI_WinOP\Black.png (String)`
+- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP\LockScreenImageStatus = 1 (DWord)`
+- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\System\DisableAcrylicBackgroundOnLogon = 1 (DWord)`
+
+### ui.notepad-settings
+
+**Not Defteri ayarları** · Risk: Safe
+
+Not Defteri (Store sürümü) kendi ayar dosyasından (settings.dat) ayarlanır: dosyalar yeni pencerede açılır (sekme yerine), açılışta önceki oturum geri yüklenmez (kaydedilmemiş sekmeler hatırlanmaz), Copilot ile yeniden yazma (AI) kapalı. Not Defteri açıksa kapatılır. Ayar dosyası uygulama ilk açılışında oluşur: Not Defteri hiç açılmadıysa tweak "zaten uygun" görünür ve bir sonraki çalıştırmada uygulanır. Değer adları ve anlamları Not Defteri sürümüne bağlıdır; gerçek makinede doğrulanacak (Faz 9).
+
+Parametreler (varsayılan): `aiRewrite` = `False` · `openInNewWindow` = `1` · `restoreSession` = `False`
+
+Değişiklikler (3):
+
+- `Uygulama ayarı: Microsoft.WindowsNotepad OpenFile = 1 (Int32)`
+- `Uygulama ayarı: Microsoft.WindowsNotepad GhostFile = False (Bool)`
+- `Uygulama ayarı: Microsoft.WindowsNotepad RewriteEnabled = False (Bool)`
 
 ### ui.notifications
 
@@ -294,6 +364,48 @@ Değişiklikler (10):
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SoftLandingEnabled = 0 (DWord)`
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\UserProfileEngagement\ScoobeSystemSettingEnabled = 0 (DWord)`
 
+### ui.taskbar
+
+**Görev çubuğu: ortalı, otomatik gizlenir, yalnız Dosya Gezgini + Chrome** · Risk: Safe
+
+Görev çubuğu ortalanır ve otomatik gizlenir (StuckRects3). Arama kutusu, Görev Görünümü, Sohbet ve Copilot düğmeleri kaldırılır (Widgets düğmesi ui.widgets-off ilkesiyle). Bildirim alanında yalnız taşma oku ve sistem simgeleri (Wi-Fi, ses, pil) kalır: uygulama simgeleri taşma menüsüne alınır, sonradan gelen uygulamalar da Windows'un varsayılanıyla oraya düşer. Sabitlemeler yalnız Dosya Gezgini ve Google Chrome olur (diğerleri kalkar; Windows'un "Start Layout" ilkesi tek seferlik kullanılır, sonra kullanıcı istediğini sabitleyebilir). Chrome kurulu değilse yalnız Gezgin sabitlenir, sonraki çalıştırmada Chrome eklenir. Gezgin yeniden başlar; etkileşimli oturum yoksa (CI) sabitleme adımı uygulanamaz.
+
+Parametreler (varsayılan): `autoHide` = `True`
+
+Değişiklikler (8):
+
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarAl = 1 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StuckRects3\Settings [8. bayt, maske 0x01] = 0x01`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Search\SearchboxTaskbarMode = 0 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ShowTaskViewButton = 0 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ShowCopilotButton = 0 (DWord)`
+- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Chat\ChatIcon = 3 (DWord)`
+- `Kayıt defteri: HKCU:\Control Panel\NotifyIconSettings\*\IsPromoted = 0 (DWord)`
+- `Görev çubuğu sabitlemeleri yalnız: Microsoft.Windows.Explorer, Google Chrome.lnk`
+
+### ui.theme-black
+
+**Siyah tema (koyu, saydamlık kapalı, düz siyah duvar kağıdı)** · Risk: Safe
+
+Uygulamalar ve Windows koyu kipe geçer, saydamlık efektleri kapanır. Vurgu rengi neredeyse siyah (#191919) yapılır ve Başlat / görev çubuğu ile pencere başlıklarında gösterilir; Ayarlar'daki açma / kapama düğmeleri okunur kalsın diye vurgu paletinin açık tonları gri bırakılır. Duvar kağıdı kaldırılır, masaüstü düz siyah renk olur (Kişiselleştir \> Arka plan: Düz renk). Değişiklikler hemen yayınlanır; bazı uygulamalar yeniden açılınca koyulaşır.
+
+Değişiklikler (14):
+
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme = 0 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\SystemUsesLightTheme = 0 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\EnableTransparency = 0 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\ColorPrevalence = 1 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Accent\AccentPalette = 128,128,128,0,107,107,107,0,85,85,85,0,25,25,25,0,17,17,17,0,10,10,10,0,0,0,0,0,0,0,0,0 (Binary)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Accent\AccentColorMenu = 4279834905 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Accent\StartColorMenu = 4279308561 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\DWM\EnableWindowColorization = 1 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\DWM\AccentColor = 4279834905 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\DWM\ColorizationColor = 3289979161 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\DWM\ColorizationAfterglow = 3289979161 (DWord)`
+- `Kayıt defteri: HKCU:\Control Panel\Desktop\WallPaper =  (String)`
+- `Kayıt defteri: HKCU:\Control Panel\Colors\Background = 0 0 0 (String)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Wallpapers\BackgroundType = 1 (DWord)`
+
 ### ui.visual-effects
 
 **Görsel efektleri azalt (yazı yumuşatma açık)** · Risk: Safe
@@ -310,3 +422,14 @@ Değişiklikler (8):
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ListviewShadow = 0 (DWord)`
 - `Kayıt defteri: HKCU:\Control Panel\Desktop\FontSmoothing = 2 (String)`
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\IconsOnly = 0 (DWord)`
+
+### ui.widgets-off
+
+**Pencere öğelerini (Widgets) kapat** · Risk: Safe
+
+Pencere öğeleri panosu ve görev çubuğundaki düğmesi ilkeyle kapatılır ("Pencere öğelerine izin ver" = Devre dışı); Windows 10 mirası Haberler ve ilgi alanları da kapalı. Düğme ilkeyle kalkar: TaskbarDa kullanıcı değeri yeni yapılarda Windows tarafından korunur (UCPD), dışarıdan yazılamaz. Pencere öğeleri uygulaması (MicrosoftWindows.Client.WebExperience) kaldırılmaz. Gezgin yeniden başlar.
+
+Değişiklikler (2):
+
+- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Dsh\AllowNewsAndInterests = 0 (DWord)`
+- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds\EnableFeeds = 0 (DWord)`

@@ -15,6 +15,9 @@ class ExecutionContext {
     [ITimerResolutionProvider] $TimerResolution
     [IShellProvider] $Shell
     [IEdgeProvider] $Edge
+    [IDesktopProvider] $Desktop
+    [IImageProvider] $Images
+    [IAppSettingsProvider] $AppSettings
 
     [BackupStore] $Backup
     [Logger] $Logger

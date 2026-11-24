@@ -36,6 +36,9 @@ function New-FaiWindowsContext {
     $ctx.TimerResolution = [WindowsTimerResolutionProvider]::new()
     $ctx.Shell = [WindowsShellProvider]::new()
     $ctx.Edge = [WindowsEdgeProvider]::new()
+    $ctx.Desktop = [WindowsDesktopProvider]::new()
+    $ctx.Images = [WindowsImageProvider]::new()
+    $ctx.AppSettings = [WindowsAppSettingsProvider]::new()
     $ctx.Backup = [BackupStore]::new($BackupRoot)
     $ctx.Logger = [Logger]::new($LogPath, (-not $ShowLog.IsPresent))
     $ctx.DryRun = $DryRun.IsPresent

@@ -6,6 +6,9 @@
 # uygulama kataloğundan (apps/catalog.json) üretilen 'app.<id>' tweak'leri
 # olarak aynı yoldan işlenir. Eylem Apply sırasında snapshot'ına günlük ekleyebilir (App): oturum Apply'dan sonra
 # yeniden kaydedilir.
+# Görünüm tweak'leri (Refresh: Shell, Desktop, Settings, StartMenu) uygulanınca / geri alınınca kabuk yenilemesi
+# çalıştırmanın SONUNDA, türü başına bir kez yapılır (Gezgin bir kez yeniden başlar). Profilin 'layout' bölümü
+# tweak'lerden SONRA 'layout.profile' tweak'i olarak işlenir (ConvertTo-FaiLayoutTweak).
 # Tek tweak'in hatası diğerlerini durdurmaz; hata raporda 'Failed' olur. Yarım kalan tweak'in snapshot'ları oturumda
 # durur, -Undo onları da geri alır.
 
@@ -16,6 +19,8 @@ class Engine {
     # Uygulama kimliği → katalog kaydı (Import-FaiAppCatalog); profilde apps yoksa boş kalabilir.
     [hashtable] $AppCatalog = @{}
     [BackupSession] $Session
+    # Bu çalıştırmada istenen kabuk yenilemeleri (Get-FaiRefreshKind adları).
+    [System.Collections.Generic.List[string]] $PendingRefresh = (New-Object 'System.Collections.Generic.List[string]')
 
     Engine([ExecutionContext] $Ctx, [hashtable] $Catalog) {
         $this.Ctx = $Ctx
@@ -28,6 +33,7 @@ class Engine {
         else { $report.Heading = "Profil '$($FaiProfile.Name)' — uygulama" }
         $this.Ctx.Logger.Info($report.Heading)
         $this.Session = $null
+        $this.PendingRefresh.Clear()
         $this.Ctx.ProtectedAppx = $this.ProtectedAppxFor($FaiProfile)
 
         foreach ($app in $FaiProfile.Apps) {
@@ -53,8 +59,38 @@ class Engine {
                 $this.Ctx.Logger.Error("${id}: $($_.Exception.Message)")
             }
         }
+        if ($null -ne $FaiProfile.Layout -and $FaiProfile.Layout.Count -gt 0) {
+            $id = 'layout.profile'
+            try { $this.ProcessResolved($FaiProfile, (ConvertTo-FaiLayoutTweak -Layout $FaiProfile.Layout), $report) }
+            catch {
+                [void]$report.Add($id, $id, 'Failed', $_.Exception.Message, [string[]]@())
+                $this.Ctx.Logger.Error("${id}: $($_.Exception.Message)")
+            }
+        }
+        $this.RunRefresh($report)
         $this.Ctx.Logger.Info($report.Summary())
         return $report
+    }
+
+    hidden [void] AddRefresh([string[]] $Kinds) {
+        foreach ($k in @($Kinds)) { if ($k -and -not $this.PendingRefresh.Contains([string]$k)) { $this.PendingRefresh.Add([string]$k) } }
+    }
+
+    # İstenen yenilemeler sabit sırayla (Desktop, Settings, StartMenu, Shell); hata rapora 'refresh.<tür>' olarak girer.
+    hidden [void] RunRefresh([Reporter] $Report) {
+        if ($this.Ctx.DryRun -or $this.PendingRefresh.Count -eq 0) { return }
+        foreach ($kind in (Get-FaiRefreshKind)) {
+            if (-not $this.PendingRefresh.Contains($kind)) { continue }
+            try {
+                $this.Ctx.Desktop.Refresh($kind)
+                $this.Ctx.Logger.Info("kabuk yenilendi: $kind")
+            }
+            catch {
+                [void]$Report.Add('refresh.' + $kind.ToLowerInvariant(), "Kabuk yenileme: $kind", 'Failed', $_.Exception.Message, [string[]]@())
+                $this.Ctx.Logger.Error("kabuk yenilenemedi (${kind}): $($_.Exception.Message)")
+            }
+        }
+        $this.PendingRefresh.Clear()
     }
 
     # Sabit korunan liste + profildeki uygulamaların katalogdaki Appx adları (bloat.remove onlara dokunmaz).
@@ -129,7 +165,9 @@ class Engine {
         foreach ($i in $pending) {
             $action = $tweak.Actions[$i]
             $snapshot = $action.Snapshot($cx)
-            $this.Session.AddEntry($Id, $i, $action.Definition, $snapshot)
+            $this.Session.AddEntry($Id, $i, $action.Definition, $snapshot, $tweak.Refresh)
+            # Yarıda kalsa da (hata) değişen görünüm yenilensin.
+            $this.AddRefresh($tweak.Refresh)
             $action.Apply($cx)
             $this.Session.Save()
             $lines.Add($action.Describe())
@@ -142,6 +180,7 @@ class Engine {
     [Reporter] Undo([string] $SessionId) {
         $report = [Reporter]::new()
         $cx = $this.Ctx
+        $this.PendingRefresh.Clear()
         $sess = $null
         if ($SessionId) { $sess = $cx.Backup.Load($SessionId) }
         else { $sess = $cx.Backup.GetLatest() }
@@ -165,6 +204,7 @@ class Engine {
                     [void]$report.Add($id, $title, 'Planned', 'geri alınacak', [string[]]@($action.Preview($cx)))
                 }
                 else {
+                    $this.AddRefresh([string[]]@($e['Refresh'] | Where-Object { $_ }))
                     $action.Revert($cx, [hashtable]$e['Snapshot'])
                     [void]$report.Add($id, $title, 'Reverted', '', [string[]]@('önceki duruma döndürüldü: ' + $action.Describe()))
                 }
@@ -175,6 +215,7 @@ class Engine {
             }
         }
 
+        $this.RunRefresh($report)
         # Başarısız adım varsa oturum geri alınmamış kalır (yeniden denenebilir).
         if (-not $cx.DryRun -and -not $report.HasFailures()) { $sess.MarkUndone() }
         $cx.Logger.Info($report.Summary())

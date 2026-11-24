@@ -226,3 +226,65 @@ class FakeEdgeProvider : IEdgeProvider {
         $this.EdgeVersion = '999.0.0.0'
     }
 }
+
+# Kabuk yenilemelerini kaydeder. OnRefresh doluysa Refresh çağrısında çalışır (ör. Gezgin'in yeniden başlarken
+# sabitleme düzenini uygulamasını taklit eder): & $OnRefresh <Kind>.
+class FakeDesktopProvider : IDesktopProvider {
+    [bool] $ShellRunning = $true
+    [int] $WriteCount = 0
+    [int] $WaitCount = 0
+    [System.Collections.ArrayList] $Refreshed = (New-Object System.Collections.ArrayList)
+    [scriptblock] $OnRefresh = $null
+
+    FakeDesktopProvider() { }
+
+    [bool] IsShellRunning() { return $this.ShellRunning }
+
+    [void] Refresh([string] $Kind) {
+        $this.WriteCount++
+        [void]$this.Refreshed.Add($Kind)
+        if ($null -ne $this.OnRefresh) { [void](& $this.OnRefresh $Kind) }
+    }
+
+    [void] Wait([int] $Milliseconds) { $this.WaitCount++ }
+}
+
+# Paket ayarları: paket → (küçük harf ad → @{ Name; Type; Data }).
+class FakeAppSettingsProvider : IAppSettingsProvider {
+    [hashtable] $Packages = @{}
+    [int] $WriteCount = 0
+    [System.Collections.ArrayList] $WriteLog = (New-Object System.Collections.ArrayList)
+
+    FakeAppSettingsProvider() { }
+
+    [void] SeedPackage([string] $Package) {
+        if (-not $this.Packages.ContainsKey($Package.ToLowerInvariant())) { $this.Packages[$Package.ToLowerInvariant()] = @{} }
+    }
+
+    [void] Seed([string] $Package, [string] $Name, [int] $Type, [byte[]] $Data) {
+        $this.SeedPackage($Package)
+        $this.Packages[$Package.ToLowerInvariant()][$Name.ToLowerInvariant()] = @{ Name = $Name; Type = $Type; Data = $Data }
+    }
+
+    [bool] HasSettings([string] $Package) { return $this.Packages.ContainsKey($Package.ToLowerInvariant()) }
+
+    [hashtable] GetValue([string] $Package, [string] $Name) {
+        if (-not $this.HasSettings($Package)) { return $null }
+        $v = $this.Packages[$Package.ToLowerInvariant()][$Name.ToLowerInvariant()]
+        if ($null -eq $v) { return $null }
+        return @{ Type = [int]$v['Type']; Data = [byte[]]$v['Data'] }
+    }
+
+    [void] SetValue([string] $Package, [string] $Name, [int] $Type, [byte[]] $Data) {
+        $this.WriteCount++
+        [void]$this.WriteLog.Add("SetValue $Package $Name")
+        if (-not $this.HasSettings($Package)) { throw "Paket ayar dosyası yok: $Package" }
+        $this.Packages[$Package.ToLowerInvariant()][$Name.ToLowerInvariant()] = @{ Name = $Name; Type = $Type; Data = $Data }
+    }
+
+    [void] DeleteValue([string] $Package, [string] $Name) {
+        $this.WriteCount++
+        [void]$this.WriteLog.Add("DeleteValue $Package $Name")
+        if ($this.HasSettings($Package)) { $this.Packages[$Package.ToLowerInvariant()].Remove($Name.ToLowerInvariant()) }
+    }
+}

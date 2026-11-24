@@ -59,7 +59,63 @@
       }
     },
     "games": { "type": "array", "description": "Faz 7: oyun başına ayarlar." },
-    "layout": { "type": "object", "description": "Faz 6: görev çubuğu / masaüstü düzeni." },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Faz 6: görev çubuğu / masaüstü / Başlat düzeni (-ExportLayout yazar). 'layout.profile' tweak'i olarak tweak'lerden sonra uygulanır, -Undo geri alır. Her alan isteğe bağlı.",
+      "properties": {
+        "taskbar": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "alignment": { "type": "string", "enum": [ "center", "left" ] },
+            "autoHide": { "type": "boolean", "description": "StuckRects3 Settings 8. bayt, 0. bit." },
+            "pins": {
+              "type": "array",
+              "description": "Sabitlemeler sırayla; listede olmayanlar kalkar.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "minProperties": 1,
+                "maxProperties": 1,
+                "properties": {
+                  "appId": { "type": "string", "enum": [ "Microsoft.Windows.Explorer" ], "description": "Bilinen masaüstü uygulama kimliği (Dosya Gezgini)." },
+                  "link": { "type": "string", "pattern": "\\.lnk$", "description": "Başlat menüsündeki kısayolun yolu, ortam değişkenli (%ProgramData%\\...)." },
+                  "aumid": { "type": "string", "description": "Store uygulamasının AppUserModelID'si (<paket ailesi>!<uygulama>)." }
+                }
+              }
+            }
+          }
+        },
+        "desktopIcons": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "thisPC": { "type": "boolean" },
+            "recycleBin": { "type": "boolean" },
+            "userFiles": { "type": "boolean" },
+            "network": { "type": "boolean" },
+            "controlPanel": { "type": "boolean" }
+          }
+        },
+        "desktop": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "flags": { "type": "integer", "description": "Bags\\1\\Desktop FFlags (1 = otomatik düzenle, 4 = kılavuza hizala)." },
+            "iconSize": { "type": "integer" },
+            "iconLayouts": { "type": "string", "description": "Simge konumları (IconLayouts, base64). Masaüstü öğe adlarını içerir." }
+          }
+        },
+        "start": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "start2": { "type": "string", "description": "Başlat sabitlemeleri (start2.bin, base64)." }
+          }
+        }
+      }
+    },
     "exceptions": { "type": "object", "description": "Faz 5+: korunan / istisna listeleri." }
   },
   "definitions": {

@@ -108,6 +108,8 @@ class IFileProvider {
     [string[]] ListFiles([string] $Directory) { throw [System.NotImplementedException]::new('IFileProvider.ListFiles') }
     # Klasör boşsa siler; yoksa ya da doluysa sessizce geçer. YAZMA.
     [void] DeleteEmptyDirectory([string] $Directory) { throw [System.NotImplementedException]::new('IFileProvider.DeleteEmptyDirectory') }
+    # Klasör ve bütün alt klasörlerdeki, -like kalıbına (ör. '*.lnk') uyan dosyaların tam yolları (sıralı); klasör yoksa boş.
+    [string[]] FindFiles([string] $Directory, [string] $Filter) { throw [System.NotImplementedException]::new('IFileProvider.FindFiles') }
     # Bilinen klasör ([Environment+SpecialFolder] adı: DesktopDirectory, CommonDesktopDirectory, Programs, CommonPrograms,
     # Startup, CommonStartup). OneDrive yönlendirmesi dahil gerçek yol; tanımsızsa boş metin.
     [string] GetKnownFolder([string] $Name) { throw [System.NotImplementedException]::new('IFileProvider.GetKnownFolder') }
@@ -181,4 +183,42 @@ class IEdgeProvider {
     [void] UninstallEdge() { throw [System.NotImplementedException]::new('IEdgeProvider.UninstallEdge') }
     # Edge'i yeniden kurar (geri alma). YAZMA.
     [void] InstallEdge() { throw [System.NotImplementedException]::new('IEdgeProvider.InstallEdge') }
+}
+
+# Kabuk görünümü: Gezgin (görev çubuğu / masaüstü) ve ayar yayınları. Kayıt defterine yazılan görünüm ayarlarının etkisi
+# için motor tweak'in Refresh listesini çalıştırmanın sonunda bir kez buradan ister.
+#   Shell     → explorer.exe yeniden başlar (görev çubuğu, sabitlemeler, masaüstü simgeleri)
+#   Desktop   → duvar kağıdı ve masaüstü rengi kayıt defterinden yeniden okunur
+#   Settings  → WM_SETTINGCHANGE (tema / renk: ImmersiveColorSet) yayınlanır
+#   StartMenu → Başlat (StartMenuExperienceHost) yeniden başlar
+class IDesktopProvider {
+    # Etkileşimli kabuk (explorer.exe) çalışıyor mu; CI / hizmet oturumunda çalışmaz.
+    [bool] IsShellRunning() { throw [System.NotImplementedException]::new('IDesktopProvider.IsShellRunning') }
+    # Kabuk çalışmıyorsa Shell / StartMenu sessizce geçer. YAZMA.
+    [void] Refresh([string] $Kind) { throw [System.NotImplementedException]::new('IDesktopProvider.Refresh') }
+    # Bekleme (Gezgin'in yeniden başlayıp ayarı yazmasını beklemek için; sahte sağlayıcıda anında döner).
+    [void] Wait([int] $Milliseconds) { throw [System.NotImplementedException]::new('IDesktopProvider.Wait') }
+}
+
+# Görüntü dosyaları (tek renkli kilit ekranı / hesap resmi). Renk 'RRGGBB' (onaltılık). Yollar açılmış gelir.
+class IImageProvider {
+    # @(genişlik, yükseklik); dosya yoksa ya da görüntü değilse $null.
+    [int[]] GetSize([string] $Path) { throw [System.NotImplementedException]::new('IImageProvider.GetSize') }
+    # Görüntü baştan sona verilen renkte mi (örnekleme); dosya yoksa ya da okunamıyorsa $false.
+    [bool] IsSolid([string] $Path, [string] $Color) { throw [System.NotImplementedException]::new('IImageProvider.IsSolid') }
+    # Tek renkli görüntünün dosya baytları. Format: png | jpg | bmp. Salt üretim (diske yazmaz).
+    [byte[]] NewSolid([int] $Width, [int] $Height, [string] $Color, [string] $Format) { throw [System.NotImplementedException]::new('IImageProvider.NewSolid') }
+}
+
+# Paketli (Store) uygulamanın ayar deposu: %LOCALAPPDATA%\Packages\<paket>\Settings\settings.dat, LocalState anahtarı.
+# Değerler özel türlüdür (ör. 0x5F5E10B = bool, 0x5F5E104 = int32); veri = yük + 8 bayt FILETIME zaman damgası.
+class IAppSettingsProvider {
+    # Paketin ayar dosyası var mı (uygulama kurulu ve en az bir kez açılmış).
+    [bool] HasSettings([string] $Package) { throw [System.NotImplementedException]::new('IAppSettingsProvider.HasSettings') }
+    # @{ Type = <int>; Data = <byte[]> }; değer yoksa $null.
+    [hashtable] GetValue([string] $Package, [string] $Name) { throw [System.NotImplementedException]::new('IAppSettingsProvider.GetValue') }
+    # Uygulama açıksa kapatılır (dosya kilitli olur). YAZMA.
+    [void] SetValue([string] $Package, [string] $Name, [int] $Type, [byte[]] $Data) { throw [System.NotImplementedException]::new('IAppSettingsProvider.SetValue') }
+    # Değer yoksa sessizce geçer. YAZMA.
+    [void] DeleteValue([string] $Package, [string] $Name) { throw [System.NotImplementedException]::new('IAppSettingsProvider.DeleteValue') }
 }
