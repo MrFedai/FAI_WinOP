@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Depoyu Windows test kopyasına aynalar: powershell.exe (5.1) ve Windows Sandbox WSL / UNC yolunu kullanamaz.
+#
+#   tools/Sync-ToWindows.sh          bundle üret → kopyala → Sandbox dosyasını yaz (parametresiz tam iş)
+#
+# Hedef: %USERPROFILE%\FAI_WinOP_test (FAI_WINOP_TEST_DIR=<Windows yolu> ile değişir)
+#   repo\                 depo aynası: izli + izlenmeyen (gitignore dışı) dosyalar + dist\install.ps1.
+#                         Ayna: depoda olmayan dosyalar buradan silinir (silinenler listelenir); yalnız bu klasör.
+#   out\                  Sandbox sonuçları (run-*.log, SONUC.txt); dokunulmaz
+#   FAI_WinOP.wsb         tests/Sandbox/FAI_WinOP.wsb, yollar doldurulmuş; çift tıkla ya da aşağıdaki komut
+set -euo pipefail
+
+repo="$(cd "$(dirname "$0")/.." && pwd)"
+
+if [[ -n "${FAI_WINOP_TEST_DIR:-}" ]]; then
+  win_dir="$FAI_WINOP_TEST_DIR"
+else
+  userprofile="$(cd /mnt/c && cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r')"
+  [[ -n "$userprofile" && "$userprofile" != *'%'* ]] || { echo "HATA: %USERPROFILE% okunamadı; FAI_WINOP_TEST_DIR ver." >&2; exit 1; }
+  win_dir="${userprofile}\\FAI_WinOP_test"
+fi
+dest="$(wslpath -u "$win_dir")"
+
+echo "[1/4] Bundle üretiliyor (build/Bundle.ps1)"
+if command -v pwsh >/dev/null; then
+  pwsh -NoProfile -NonInteractive -File "$repo/build/Bundle.ps1" | sed 's/^/      /'
+else
+  echo "      UYARI: pwsh yok, bundle üretilmedi (dist/ olduğu gibi kopyalanır)"
+fi
+
+echo "[2/4] Depo aynalanıyor → $win_dir\\repo"
+mkdir -p "$dest/repo" "$dest/out"
+changes="$(rsync -a --delete --itemize-changes \
+  --include='/dist/' --include='/dist/**' \
+  --exclude='/.git/' --exclude='/.devops.toml' \
+  --filter=':- .gitignore' \
+  "$repo/" "$dest/repo/")"
+copied="$(grep -c '^>f' <<<"$changes" || true)"
+deleted="$(grep '^\*deleting' <<<"$changes" || true)"
+echo "      kopyalanan / güncellenen dosya: $copied"
+if [[ -n "$deleted" ]]; then
+  echo "      aynadan silinen (depoda artık yok):"
+  sed 's/^\*deleting */        /' <<<"$deleted"
+fi
+
+echo "[3/4] Sandbox yapılandırması yazılıyor → $win_dir\\FAI_WinOP.wsb"
+esc="${win_dir//\\/\\\\}"
+sed -e "s|__TEST_DIR__|${esc}|g" -e 's/\r$//' -e 's/$/\r/' "$repo/tests/Sandbox/FAI_WinOP.wsb" > "$dest/FAI_WinOP.wsb"
+
+echo "[4/4] Hazır. Örnek komutlar:"
+echo "      powershell.exe -NoProfile -ExecutionPolicy Bypass -File '$win_dir\\repo\\tests\\Integration\\Load-Bundle.ps1'"
+echo "      cmd.exe /c start \"\" \"$win_dir\\FAI_WinOP.wsb\"     (sonuç: $win_dir\\out\\SONUC.txt)"

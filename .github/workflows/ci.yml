@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ubuntu:
+    name: Ubuntu · lint + birim + bundle (pwsh 7)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Modülleri kur (Pester 5, PSScriptAnalyzer)
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
+          Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
+
+      - name: Lint (PS 5.1 uyumluluğu, BOM)
+        shell: pwsh
+        run: ./build/Lint.ps1
+
+      - name: Birim testleri (Pester)
+        shell: pwsh
+        run: |
+          Import-Module Pester -RequiredVersion 5.7.1
+          $c = New-PesterConfiguration
+          $c.Run.Path = 'tests/Unit'
+          $c.Run.Exit = $true
+          $c.Output.Verbosity = 'Detailed'
+          $c.TestResult.Enabled = $true
+          Invoke-Pester -Configuration $c
+
+      - name: Bundle
+        shell: pwsh
+        run: ./build/Bundle.ps1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: install-ps1
+          path: dist/install.ps1
+
+  windows:
+    name: Windows · bundle yükleme (powershell.exe 5.1)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sürüm
+        run: $PSVersionTable
+
+      - name: Bundle (5.1 ile üret)
+        run: .\build\Bundle.ps1
+
+      - name: Bundle yükleme testi
+        run: |
+          .\tests\Integration\Load-Bundle.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

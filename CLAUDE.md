@@ -22,8 +22,8 @@ Durum notu: `~/fai_notes/fai-winop/DURUM.md`.
 - Geliştirme dalı `dev`; `main`'e commit ve `v*` etiketi yok (yayın kullanıcıda).
 - Lint: `pwsh -NoProfile -File build/Lint.ps1` · birim: `pwsh -NoProfile -c 'Invoke-Pester tests/Unit -Output Detailed'`
   (Pester 5.7.1 + PSScriptAnalyzer 1.25.0, `CurrentUser`) · bundle: `pwsh -NoProfile -File build/Bundle.ps1` → `dist/install.ps1`.
-- Windows testleri WSL yolundan değil, **`tools/Sync-ToWindows.sh` kopyasından** çalışır (`%USERPROFILE%\FAI_WinOP_test`;
-  `powershell.exe` 5.1 ve Windows Sandbox UNC yolu desteklemez). Önce sync, sonra
-  `powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\Users\<kullanıcı>\FAI_WinOP_test\...'`.
-- Sandbox: sync sonrası kopyadaki `tests\Sandbox\FAI_WinOP.wsb` açılır; sonuç `FAI_WinOP_test\out\`.
+- Windows testleri WSL yolundan değil, **`tools/Sync-ToWindows.sh` kopyasından** çalışır (`%USERPROFILE%\FAI_WinOP_test\repo`;
+  `powershell.exe` 5.1 ve Windows Sandbox UNC yolu desteklemez). Önce sync (bundle da üretir), sonra
+  `cd /mnt/c && powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\Users\<kullanıcı>\FAI_WinOP_test\repo\...'`.
+- Sandbox: sync sonrası `FAI_WinOP_test\FAI_WinOP.wsb` açılır (yollar sync'te doldurulur); sonuç `FAI_WinOP_test\out\SONUC.txt`.
 - Gerçek makinede kayıt defteri / servis değiştiren deneme yok; o iş Sandbox, Hyper-V VM ya da Windows CI'da.

@@ -1,0 +1,6 @@
+# Bundle çıktısı (CI / Bundle.ps1 üretir)
+/dist/
+# Pester / lint çıktıları
+testResults.xml
+coverage.xml
+/out/

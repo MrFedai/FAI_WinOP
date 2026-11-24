@@ -1,0 +1,27 @@
+<!--
+  FAI_WinOP Windows Sandbox yapılandırması.
+  Bu dosya doğrudan açılmaz: tools/Sync-ToWindows.sh test kopyasına yazarken __TEST_DIR__ yer tutucusunu
+  Windows yoluyla değiştirir (Sandbox UNC / WSL yolu bağlayamaz). Açılacak dosya:
+    %USERPROFILE%\FAI_WinOP_test\FAI_WinOP.wsb
+  Bağlar:
+    __TEST_DIR__\repo  → C:\FAI_WinOP  (salt okunur: depo kopyası + dist\install.ps1)
+    __TEST_DIR__\out   → C:\FAI_out    (yazılabilir: run-*.log, SONUC.txt)
+  Açılışta tests\Sandbox\Run.ps1 görünür bir powershell.exe (5.1) penceresinde çalışır.
+-->
+<Configuration>
+  <MappedFolders>
+    <MappedFolder>
+      <HostFolder>__TEST_DIR__\repo</HostFolder>
+      <SandboxFolder>C:\FAI_WinOP</SandboxFolder>
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
+    <MappedFolder>
+      <HostFolder>__TEST_DIR__\out</HostFolder>
+      <SandboxFolder>C:\FAI_out</SandboxFolder>
+      <ReadOnly>false</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <LogonCommand>
+    <Command>cmd.exe /c start "FAI_WinOP" powershell.exe -NoExit -NoProfile -ExecutionPolicy Bypass -File C:\FAI_WinOP\tests\Sandbox\Run.ps1 -OutDir C:\FAI_out</Command>
+  </LogonCommand>
+</Configuration>
