@@ -68,7 +68,7 @@ $failed = 0
 $skipped = 0
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 $stepNo = 0
-$stepTotal = 16
+$stepTotal = 17
 function Step([string] $Name, [scriptblock] $Body) {
     $script:stepNo++
     $t = [System.Diagnostics.Stopwatch]::StartNew()
