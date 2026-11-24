@@ -66,7 +66,8 @@ function ConvertFrom-JsonText {
     $parsed = ('{"v":' + $Json + "`n}") | ConvertFrom-Json
     $names = @($parsed.PSObject.Properties | ForEach-Object { $_.Name })
     if ($names.Count -ne 1 -or $names[0] -ne 'v') { throw 'JSON metni tek bir değer olmalı.' }
-    return (ConvertTo-Hashtable -InputObject $parsed.v)
+    $result = ConvertTo-Hashtable -InputObject $parsed.v
+    return , $result
 }
 
 function Read-JsonFile {
@@ -76,7 +77,8 @@ function Read-JsonFile {
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "Dosya yok: $Path" }
     $text = [System.IO.File]::ReadAllText((Convert-Path -LiteralPath $Path), [System.Text.Encoding]::UTF8)
-    return (ConvertFrom-JsonText -Json $text.TrimStart([char]0xFEFF))
+    $result = ConvertFrom-JsonText -Json $text.TrimStart([char]0xFEFF)
+    return , $result
 }
 
 function ConvertTo-FaiRegistryValue {

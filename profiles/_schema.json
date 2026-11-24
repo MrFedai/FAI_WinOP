@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/MrFedai/FAI_WinOP/profiles/_schema.json",
+  "title": "FAI_WinOP profili",
+  "description": "BELGE / editör desteği. Asıl doğrulama src/Core/Schema.ps1 (Get-FaiProfileError) içindedir; Windows PowerShell 5.1'de Test-Json yoktur. İzin verilen alan adları ikisinde birebir aynı tutulur (tests/Unit/Schema.Tests.ps1 denetler).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [ "name", "tweaks" ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Profil adı: küçük harf, rakam, tire."
+    },
+    "description": { "type": "string" },
+    "tweaks": {
+      "type": "array",
+      "description": "Uygulanacak tweak'ler, bu sırayla. Tekrar eden kimlik hatadır.",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/definitions/tweakId" },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [ "id" ],
+            "properties": {
+              "id": { "$ref": "#/definitions/tweakId" },
+              "params": {
+                "type": "object",
+                "description": "Tweak'in Params varsayılanlarını geçersiz kılar (tweak'te tanımlı olmayan ad hatadır)."
+              }
+            }
+          }
+        ]
+      }
+    },
+    "autoConfirm": {
+      "type": "array",
+      "description": "-Unattended modda onaysız uygulanacak Caution tweak'ler (tweaks listesinde olmalı). Risk düzeyi hiçbir zaman otomatik onaylanmaz.",
+      "items": { "$ref": "#/definitions/tweakId" }
+    },
+    "apps": { "type": "array", "description": "Faz 4: kurulacak uygulamalar." },
+    "games": { "type": "array", "description": "Faz 7: oyun başına ayarlar." },
+    "layout": { "type": "object", "description": "Faz 6: görev çubuğu / masaüstü düzeni." },
+    "exceptions": { "type": "object", "description": "Faz 5+: korunan / istisna listeleri." }
+  },
+  "definitions": {
+    "tweakId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*\\.[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "kategori.ad biçiminde tweak kimliği, ör. sound.startup-sound-off"
+    }
+  }
+}

@@ -1,0 +1,563 @@
+﻿#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '5.5.0' }
+# Faz 1 kabul kriterleri (docs/ROADMAP.md): koşul atlama · Caution onay red / kabul · Risk'in -Unattended'da asla uygulanmaması ·
+# snapshot → undo başlangıç durumunu birebir geri getirmesi · dry-run'da sıfır yazma. Hepsi Fake sağlayıcılara karşı.
+
+BeforeAll {
+    . (Join-Path $PSScriptRoot 'Load-Fakes.ps1')
+
+    $script:Key = 'HKCU:\Software\FAI_WinOP_Test\Unit'
+    $script:Seq = 0
+
+    # Yeni bağlam: Fake sağlayıcılar + TestDrive altında ayrı yedek kökü.
+    function New-Env {
+        param([string[]] $Answers = @(), [switch] $DryRun, [switch] $Unattended)
+        $script:Seq++
+        $root = Join-Path $TestDrive ("backup{0}" -f $script:Seq)
+        return (New-FakeContext -BackupRoot $root -Answers $Answers -DryRun:$DryRun -Unattended:$Unattended)
+    }
+
+    # Aynı sağlayıcıları ve yedek kökünü paylaşan ikinci bağlam (örn. dry-run ya da undo için; yeni BackupStore = diskten okur).
+    function Copy-Env([ExecutionContext] $From, [switch] $DryRun, [switch] $Unattended, [string[]] $Answers = @()) {
+        $c = [ExecutionContext]::new()
+        $c.Registry = $From.Registry
+        $c.Services = $From.Services
+        $c.Tasks = $From.Tasks
+        $c.Appx = $From.Appx
+        $c.Packages = $From.Packages
+        $c.SystemInfo = $From.SystemInfo
+        $p = [FakePromptProvider]::new()
+        if ($Answers.Count -gt 0) { $p.Enqueue($Answers) }
+        $c.Prompt = $p
+        $c.Backup = [BackupStore]::new($From.Backup.Root)
+        $c.DryRun = $DryRun.IsPresent
+        $c.Unattended = $Unattended.IsPresent
+        return $c
+    }
+
+    function New-Tweak {
+        param([string] $Id, [string] $Risk = 'Safe', [object[]] $Conditions = @(), [object[]] $Actions, [string] $Confirm = '', [hashtable] $Params = @{})
+        $d = @{ Id = $Id; Title = "Tweak $Id"; Description = 'test'; Category = 'test'; Risk = $Risk; Actions = $Actions }
+        if ($Conditions.Count -gt 0) { $d['Conditions'] = $Conditions }
+        if ($Confirm) { $d['Confirm'] = $Confirm }
+        if ($Params.Count -gt 0) { $d['Params'] = $Params }
+        return [Tweak]::FromHashtable($d, 'test')
+    }
+
+    function New-Profile([string[]] $Ids, [string[]] $AutoConfirm = @()) {
+        $d = @{ name = 'unit'; tweaks = @($Ids) }
+        if ($AutoConfirm.Count -gt 0) { $d['autoConfirm'] = @($AutoConfirm) }
+        return [Profile]::FromHashtable($d, 'test')
+    }
+
+    function New-Catalog([Tweak[]] $Tweaks) {
+        $c = @{}
+        foreach ($t in $Tweaks) { $c[$t.Id] = $t }
+        return $c
+    }
+
+    function RegSet([string] $Name, $Value, [string] $Kind = 'DWord') {
+        return @{ Type = 'Registry'; Path = $script:Key; Name = $Name; Value = $Value; Kind = $Kind }
+    }
+
+    # Bütün Fake durumunun (kayıt defteri + servisler) tek metinlik dökümü.
+    function Get-State([ExecutionContext] $Ctx) {
+        return ((@($Ctx.Registry.Dump()) + @($Ctx.Services.Dump())) -join "`n")
+    }
+}
+
+Describe 'Koşul atlama' {
+    It 'koşul sağlanmıyorsa tweak atlanır ve hiçbir şey yazılmaz' {
+        $ctx = New-Env   # Fake sistemde NVIDIA yok
+        $t = New-Tweak -Id 'test.nv' -Conditions @('HasNvidia') -Actions @(RegSet 'Nv' 1)
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.nv')) -Context $ctx -Catalog (New-Catalog $t)
+
+        $r.Find('test.nv').Status | Should -Be 'Skipped'
+        $r.Find('test.nv').Reason | Should -Match 'Koşul sağlanmadı: HasNvidia'
+        Get-FakeWriteCount $ctx | Should -Be 0
+        $ctx.Registry.ValueExists($script:Key, 'Nv') | Should -BeFalse
+        $ctx.Backup.SessionsOpened | Should -Be 0
+    }
+
+    It 'koşul sağlanıyorsa tweak uygulanır' {
+        $ctx = New-Env
+        $ctx.SystemInfo.Nvidia = $true
+        $t = New-Tweak -Id 'test.nv' -Conditions @('HasNvidia') -Actions @(RegSet 'Nv' 1)
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.nv')) -Context $ctx -Catalog (New-Catalog $t)
+
+        $r.Find('test.nv').Status | Should -Be 'Applied'
+        $ctx.Registry.GetValue($script:Key, 'Nv') | Should -Be 1
+    }
+
+    It 'birden çok koşuldan biri sağlanmıyorsa atlanır, sebep o koşulu söyler' {
+        $ctx = New-Env
+        $ctx.SystemInfo.Laptop = $true
+        $ctx.SystemInfo.Build = 19045
+        $t = New-Tweak -Id 'test.multi' -Conditions @('IsLaptop', @{ MinBuild = 22000 }) -Actions @(RegSet 'M' 1)
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.multi')) -Context $ctx -Catalog (New-Catalog $t)
+
+        $r.Find('test.multi').Status | Should -Be 'Skipped'
+        $r.Find('test.multi').Reason | Should -Match 'MinBuild 22000'
+        Get-FakeWriteCount $ctx | Should -Be 0
+    }
+
+    It 'Not / Edition / MinRamGB koşulları değerlendirilir' {
+        $sys = [FakeSystemInfoProvider]::new()
+        $sys.Edition = 'Pro'
+        $sys.RamGB = 32
+        $sys.Laptop = $false
+        [Condition]::Parse(@{ Not = 'IsLaptop' }).Test($sys) | Should -BeTrue
+        [Condition]::Parse(@{ Edition = @('Core', 'pro') }).Test($sys) | Should -BeTrue -Because 'sürüm adı büyük/küçük harf duyarsız'
+        [Condition]::Parse(@{ Edition = 'Core' }).Test($sys) | Should -BeFalse
+        [Condition]::Parse(@{ MinRamGB = 16 }).Test($sys) | Should -BeTrue
+        [Condition]::Parse(@{ MinRamGB = 64 }).Test($sys) | Should -BeFalse
+    }
+}
+
+Describe 'Caution onayı' {
+    It 'kullanıcı reddederse (H) tweak uygulanmaz, hiçbir şey yazılmaz, oturum açılmaz' {
+        $ctx = New-Env -Answers 'H'
+        $t = New-Tweak -Id 'test.caut' -Risk 'Caution' -Confirm 'Pil ve ısı artar.' -Actions @(RegSet 'C' 1)
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.caut')) -Context $ctx -Catalog (New-Catalog $t)
+
+        $r.Find('test.caut').Status | Should -Be 'Skipped'
+        $r.Find('test.caut').Reason | Should -Match 'reddetti'
+        $ctx.Prompt.Asked.Count | Should -Be 1
+        Get-FakeWriteCount $ctx | Should -Be 0
+        $ctx.Backup.SessionsOpened | Should -Be 0
+    }
+
+    It 'kullanıcı kabul ederse (E) tweak uygulanır' {
+        $ctx = New-Env -Answers 'E'
+        $t = New-Tweak -Id 'test.caut' -Risk 'Caution' -Actions @(RegSet 'C' 1)
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.caut')) -Context $ctx -Catalog (New-Catalog $t)
+
+        $r.Find('test.caut').Status | Should -Be 'Applied'
+        $ctx.Prompt.Asked.Count | Should -Be 1
+        $ctx.Prompt.Asked[0]['Kind'] | Should -Be 'Confirm'
+        $ctx.Registry.GetValue($script:Key, 'C') | Should -Be 1
+    }
+
+    It 'soru metni tweak başlığını ve Confirm uyarısını içerir' {
+        $ctx = New-Env -Answers 'H'
+        $t = New-Tweak -Id 'test.caut' -Risk 'Caution' -Confirm 'dizüstünde pil ve ısı artar' -Actions @(RegSet 'C' 1)
+        [void](Invoke-FaiEngine -Profile (New-Profile @('test.caut')) -Context $ctx -Catalog (New-Catalog $t))
+        $ctx.Prompt.Asked[0]['Message'] | Should -Match 'Tweak test\.caut'
+        $ctx.Prompt.Asked[0]['Message'] | Should -Match 'dizüstünde pil ve ısı artar'
+    }
+
+    It 'her tweak için ayrı sorulur: biri reddedilir, öteki kabul edilir' {
+        $ctx = New-Env -Answers 'H', 'E'
+        $a = New-Tweak -Id 'test.a' -Risk 'Caution' -Actions @(RegSet 'A' 1)
+        $b = New-Tweak -Id 'test.b' -Risk 'Caution' -Actions @(RegSet 'B' 1)
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.a', 'test.b')) -Context $ctx -Catalog (New-Catalog $a, $b)
+        $r.Find('test.a').Status | Should -Be 'Skipped'
+        $r.Find('test.b').Status | Should -Be 'Applied'
+    }
+}
+
+Describe 'Risk ve -Unattended' {
+    It 'Risk -Unattended modda ASLA uygulanmaz ve soru da sorulmaz' {
+        $ctx = New-Env -Unattended -Answers 'EVET'
+        $t = New-Tweak -Id 'test.risk' -Risk 'Risk' -Actions @(RegSet 'R' 1)
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.risk')) -Context $ctx -Catalog (New-Catalog $t)
+
+        $r.Find('test.risk').Status | Should -Be 'Skipped'
+        $r.Find('test.risk').Reason | Should -Match 'Unattended modda Risk asla'
+        $ctx.Prompt.Asked.Count | Should -Be 0
+        Get-FakeWriteCount $ctx | Should -Be 0
+        $ctx.Backup.SessionsOpened | Should -Be 0
+    }
+
+    It 'Risk -Unattended modda profilde autoConfirm olsa bile uygulanmaz' {
+        $ctx = New-Env -Unattended
+        $t = New-Tweak -Id 'test.risk' -Risk 'Risk' -Actions @(RegSet 'R' 1)
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.risk') @('test.risk')) -Context $ctx -Catalog (New-Catalog $t)
+
+        $r.Find('test.risk').Status | Should -Be 'Skipped'
+        Get-FakeWriteCount $ctx | Should -Be 0
+    }
+
+    It 'Caution -Unattended modda profilde autoConfirm yoksa atlanır (soru sorulmaz)' {
+        $ctx = New-Env -Unattended -Answers 'E'
+        $t = New-Tweak -Id 'test.caut' -Risk 'Caution' -Actions @(RegSet 'C' 1)
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.caut')) -Context $ctx -Catalog (New-Catalog $t)
+
+        $r.Find('test.caut').Status | Should -Be 'Skipped'
+        $r.Find('test.caut').Reason | Should -Match 'autoConfirm yok'
+        $ctx.Prompt.Asked.Count | Should -Be 0
+        Get-FakeWriteCount $ctx | Should -Be 0
+    }
+
+    It 'Caution -Unattended modda profilde autoConfirm varsa uygulanır (soru sorulmaz)' {
+        $ctx = New-Env -Unattended
+        $t = New-Tweak -Id 'test.caut' -Risk 'Caution' -Actions @(RegSet 'C' 1)
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.caut') @('test.caut')) -Context $ctx -Catalog (New-Catalog $t)
+
+        $r.Find('test.caut').Status | Should -Be 'Applied'
+        $ctx.Prompt.Asked.Count | Should -Be 0
+        $ctx.Registry.GetValue($script:Key, 'C') | Should -Be 1
+    }
+
+    It 'Safe -Unattended modda doğrudan uygulanır' {
+        $ctx = New-Env -Unattended
+        $t = New-Tweak -Id 'test.safe' -Actions @(RegSet 'S' 1)
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.safe')) -Context $ctx -Catalog (New-Catalog $t)
+        $r.Find('test.safe').Status | Should -Be 'Applied'
+        $ctx.Prompt.Asked.Count | Should -Be 0
+    }
+
+    It 'Risk etkileşimli modda yalnız tam "EVET" yazılırsa uygulanır' {
+        $ctx = New-Env -Answers 'EVET'
+        $t = New-Tweak -Id 'test.risk' -Risk 'Risk' -Actions @(RegSet 'R' 1)
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.risk')) -Context $ctx -Catalog (New-Catalog $t)
+        $r.Find('test.risk').Status | Should -Be 'Applied'
+        $ctx.Prompt.Asked[0]['Kind'] | Should -Be 'ConfirmExact'
+    }
+
+    It 'Risk: "E", "evet" ya da boş yanıt yetmez' {
+        foreach ($answer in 'E', 'evet', 'Evet', '') {
+            $ctx = New-Env -Answers $answer
+            $t = New-Tweak -Id 'test.risk' -Risk 'Risk' -Actions @(RegSet 'R' 1)
+            $r = Invoke-FaiEngine -Profile (New-Profile @('test.risk')) -Context $ctx -Catalog (New-Catalog $t)
+            $r.Find('test.risk').Status | Should -Be 'Skipped' -Because "'$answer' yanıtı onay sayılmamalı"
+            Get-FakeWriteCount $ctx | Should -Be 0
+        }
+    }
+}
+
+Describe 'Snapshot → Undo' {
+    BeforeAll {
+        # Başlangıç: bir değer var (Existing=1), bir değer silinecek (Obsolete), servis çalışıyor; New* değerleri yok.
+        function New-SeededEnv {
+            $ctx = New-Env
+            $ctx.Registry.Seed($script:Key, 'Existing', 1, 'DWord')
+            $ctx.Registry.Seed($script:Key, 'Obsolete', 'eski', 'String')
+            $ctx.Registry.Seed($script:Key, 'Untouched', 7, 'DWord')
+            $ctx.Registry.Seed('HKCU:\Software\FAI_WinOP_Test\Other', 'Blob', @(9, 8), 'Binary')
+            $ctx.Services.Seed('FaiSvc', 'Automatic', 'Running')
+            return $ctx
+        }
+        function New-BigTweak {
+            return (New-Tweak -Id 'test.big' -Actions @(
+                    (RegSet 'Existing' 2)
+                    (RegSet 'NewString' 'Açılış' 'String')
+                    (RegSet 'NewQWord' 4294967296 'QWord')
+                    (RegSet 'NewMulti' @('a', 'b') 'MultiString')
+                    (RegSet 'NewBinary' @(1, 2, 255) 'Binary')
+                    (RegSet 'NewExpand' '%USERPROFILE%\x' 'ExpandString')
+                    @{ Type = 'Registry'; Path = $script:Key; Name = 'Obsolete'; Ensure = 'Absent' }
+                    @{ Type = 'Service'; Name = 'FaiSvc'; StartType = 'Disabled'; State = 'Stopped' }
+                ))
+        }
+    }
+
+    It 'uygulama durumu değiştirir; Undo başlangıç durumunu birebir geri getirir' {
+        $ctx = New-SeededEnv
+        $before = Get-State $ctx
+        $cat = New-Catalog (New-BigTweak)
+
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.big')) -Context $ctx -Catalog $cat
+        $r.Find('test.big').Status | Should -Be 'Applied'
+        Get-State $ctx | Should -Not -Be $before
+        $ctx.Registry.GetValue($script:Key, 'Existing') | Should -Be 2
+        $ctx.Registry.ValueExists($script:Key, 'Obsolete') | Should -BeFalse
+        $ctx.Services.GetStatus('FaiSvc') | Should -Be 'Stopped'
+
+        # Undo: yeni BackupStore (diskten okur), aynı sağlayıcılar
+        $undoCtx = Copy-Env $ctx
+        $u = Invoke-FaiEngine -Context $undoCtx -Catalog $cat -Undo
+        $u.Count('Reverted') | Should -Be 8
+        $u.HasFailures() | Should -BeFalse
+        Get-State $undoCtx | Should -Be $before
+    }
+
+    It 'önceden olmayan değer Undo''da silinir (her tür için)' {
+        $ctx = New-SeededEnv
+        $cat = New-Catalog (New-BigTweak)
+        [void](Invoke-FaiEngine -Profile (New-Profile @('test.big')) -Context $ctx -Catalog $cat)
+        foreach ($n in 'NewString', 'NewQWord', 'NewMulti', 'NewBinary', 'NewExpand') {
+            $ctx.Registry.ValueExists($script:Key, $n) | Should -BeTrue -Because "$n uygulamadan sonra var olmalı"
+        }
+        [void](Invoke-FaiEngine -Context (Copy-Env $ctx) -Catalog $cat -Undo)
+        foreach ($n in 'NewString', 'NewQWord', 'NewMulti', 'NewBinary', 'NewExpand') {
+            $ctx.Registry.ValueExists($script:Key, $n) | Should -BeFalse -Because "$n önceden yoktu, Undo silmeli"
+        }
+    }
+
+    It 'silinen değer Undo''da türü ve içeriğiyle geri gelir' {
+        $ctx = New-SeededEnv
+        $cat = New-Catalog (New-BigTweak)
+        [void](Invoke-FaiEngine -Profile (New-Profile @('test.big')) -Context $ctx -Catalog $cat)
+        $ctx.Registry.ValueExists($script:Key, 'Obsolete') | Should -BeFalse
+        [void](Invoke-FaiEngine -Context (Copy-Env $ctx) -Catalog $cat -Undo)
+        $ctx.Registry.GetValue($script:Key, 'Obsolete') | Should -Be 'eski'
+        $ctx.Registry.GetValueKind($script:Key, 'Obsolete') | Should -Be 'String'
+    }
+
+    It 'dokunulmayan değerler uygulamadan ve Undo''dan etkilenmez' {
+        $ctx = New-SeededEnv
+        $cat = New-Catalog (New-BigTweak)
+        [void](Invoke-FaiEngine -Profile (New-Profile @('test.big')) -Context $ctx -Catalog $cat)
+        $ctx.Registry.GetValue($script:Key, 'Untouched') | Should -Be 7
+        [void](Invoke-FaiEngine -Context (Copy-Env $ctx) -Catalog $cat -Undo)
+        $ctx.Registry.GetValue($script:Key, 'Untouched') | Should -Be 7
+        $ctx.Registry.GetValue('HKCU:\Software\FAI_WinOP_Test\Other', 'Blob').Count | Should -Be 2
+    }
+
+    It 'aynı değeri değiştiren ardışık eylemler TERS sırada geri alınır' {
+        $ctx = New-SeededEnv
+        $t = New-Tweak -Id 'test.chain' -Actions @((RegSet 'Existing' 10), (RegSet 'Existing' 20), (RegSet 'Existing' 30))
+        $cat = New-Catalog $t
+        [void](Invoke-FaiEngine -Profile (New-Profile @('test.chain')) -Context $ctx -Catalog $cat)
+        $ctx.Registry.GetValue($script:Key, 'Existing') | Should -Be 30
+
+        $ctx.Registry.WriteLog.Clear()
+        [void](Invoke-FaiEngine -Context (Copy-Env $ctx) -Catalog $cat -Undo)
+        $ctx.Registry.GetValue($script:Key, 'Existing') | Should -Be 1 -Because '10 ve 20 ara durumlardan geçip ilk değere dönmeli'
+    }
+
+    It 'Undo rapordaki sıra uygulamanın tersidir' {
+        $ctx = New-SeededEnv
+        $a = New-Tweak -Id 'test.first' -Actions @((RegSet 'Existing' 5))
+        $b = New-Tweak -Id 'test.second' -Actions @((RegSet 'NewA' 1), (RegSet 'NewB' 1))
+        $cat = New-Catalog $a, $b
+        [void](Invoke-FaiEngine -Profile (New-Profile @('test.first', 'test.second')) -Context $ctx -Catalog $cat)
+        $u = Invoke-FaiEngine -Context (Copy-Env $ctx) -Catalog $cat -Undo
+        ($u.Items | ForEach-Object { '{0}#{1}' -f $_.TweakId, $_.Title }) -join ' | ' |
+            Should -Be 'test.second#2. eylem | test.second#1. eylem | test.first#1. eylem'
+    }
+
+    It 'Undo en son geri alınmamış oturumu alır; ikinci Undo bir önceki oturumu' {
+        $ctx = New-SeededEnv
+        $initial = Get-State $ctx
+        $t1 = New-Tweak -Id 'test.one' -Actions @((RegSet 'Existing' 2))
+        $t2 = New-Tweak -Id 'test.two' -Actions @((RegSet 'Existing' 3))
+        $cat = New-Catalog $t1, $t2
+
+        [void](Invoke-FaiEngine -Profile (New-Profile @('test.one')) -Context $ctx -Catalog $cat)
+        $afterOne = Get-State $ctx
+        [void](Invoke-FaiEngine -Profile (New-Profile @('test.two')) -Context $ctx -Catalog $cat)
+        $ctx.Backup.ListSessionIds().Count | Should -Be 2
+
+        [void](Invoke-FaiEngine -Context (Copy-Env $ctx) -Catalog $cat -Undo)
+        Get-State $ctx | Should -Be $afterOne
+        [void](Invoke-FaiEngine -Context (Copy-Env $ctx) -Catalog $cat -Undo)
+        Get-State $ctx | Should -Be $initial
+    }
+
+    It 'geri alınan oturum işaretlenir; geri alınacak oturum kalmayınca Undo bunu söyler' {
+        $ctx = New-SeededEnv
+        $cat = New-Catalog (New-BigTweak)
+        [void](Invoke-FaiEngine -Profile (New-Profile @('test.big')) -Context $ctx -Catalog $cat)
+        $undoCtx = Copy-Env $ctx
+        [void](Invoke-FaiEngine -Context $undoCtx -Catalog $cat -Undo)
+        $undoCtx.Backup.GetLatest() | Should -BeNullOrEmpty
+
+        $again = Copy-Env $ctx
+        $writesBefore = Get-FakeWriteCount $again
+        $r = Invoke-FaiEngine -Context $again -Catalog $cat -Undo
+        $r.Find('(oturum)').Title | Should -Match 'Geri alınacak oturum yok'
+        Get-FakeWriteCount $again | Should -Be $writesBefore
+    }
+
+    It 'Undo belirli bir oturum kimliğiyle de çalışır' {
+        $ctx = New-SeededEnv
+        $t1 = New-Tweak -Id 'test.one' -Actions @((RegSet 'Existing' 2))
+        $cat = New-Catalog $t1
+        [void](Invoke-FaiEngine -Profile (New-Profile @('test.one')) -Context $ctx -Catalog $cat)
+        $id = $ctx.Backup.ListSessionIds()[0]
+        [void](Invoke-FaiEngine -Context (Copy-Env $ctx) -Catalog $cat -Undo -Session $id)
+        $ctx.Registry.GetValue($script:Key, 'Existing') | Should -Be 1
+    }
+
+    It 'yarım kalan (hata veren) tweak da Undo ile geri alınır' {
+        $ctx = New-SeededEnv
+        $before = Get-State $ctx
+        $ctx.Registry.FailOnName = 'Boom'
+        $t = New-Tweak -Id 'test.half' -Actions @((RegSet 'Existing' 99), (RegSet 'Boom' 1), (RegSet 'After' 1))
+        $cat = New-Catalog $t
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.half')) -Context $ctx -Catalog $cat
+
+        $r.Find('test.half').Status | Should -Be 'Failed'
+        $r.Find('test.half').Reason | Should -Match 'Sahte yazma hatası'
+        $ctx.Registry.GetValue($script:Key, 'Existing') | Should -Be 99
+        $ctx.Registry.ValueExists($script:Key, 'After') | Should -BeFalse -Because 'hatadan sonraki eylem çalışmamalı'
+
+        $ctx.Registry.FailOnName = ''
+        [void](Invoke-FaiEngine -Context (Copy-Env $ctx) -Catalog $cat -Undo)
+        Get-State $ctx | Should -Be $before
+    }
+
+    It 'snapshot uygulamadan ÖNCE diske yazılır' {
+        $ctx = New-SeededEnv
+        $ctx.Registry.FailOnName = 'Existing'
+        $t = New-Tweak -Id 'test.early' -Actions @((RegSet 'Existing' 2))
+        [void](Invoke-FaiEngine -Profile (New-Profile @('test.early')) -Context $ctx -Catalog (New-Catalog $t))
+        $s = $ctx.Backup.Load($ctx.Backup.ListSessionIds()[0])
+        $s.Entries.Count | Should -Be 1
+        $s.Entries[0]['Snapshot']['Value'] | Should -Be 1
+    }
+
+    It 'zaten hedef durumda olan tweak için snapshot / oturum üretilmez (ZATEN UYGUN)' {
+        $ctx = New-SeededEnv
+        $t = New-Tweak -Id 'test.same' -Risk 'Caution' -Actions @((RegSet 'Existing' 1))
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.same')) -Context $ctx -Catalog (New-Catalog $t)
+        $r.Find('test.same').Status | Should -Be 'UpToDate'
+        $ctx.Prompt.Asked.Count | Should -Be 0 -Because 'yapılacak iş yoksa soru sorulmaz'
+        $ctx.Backup.SessionsOpened | Should -Be 0
+        Get-FakeWriteCount $ctx | Should -Be 0
+    }
+}
+
+Describe 'Dry-run' {
+    It 'hiçbir sağlayıcıya yazma çağrısı yapılmaz, durum değişmez' {
+        $ctx = New-Env -DryRun
+        $ctx.Registry.Seed($script:Key, 'Existing', 1, 'DWord')
+        $ctx.Services.Seed('FaiSvc', 'Automatic', 'Running')
+        $ctx.Tasks.Seed('\FAI\Task', 'Enabled')
+        $ctx.Appx.Seed(@('Some.App'), @('Some.App'))
+        $before = Get-State $ctx
+        $cat = New-Catalog (New-Tweak -Id 'test.big' -Actions @(
+                (RegSet 'Existing' 2), (RegSet 'New' 'x' 'String'),
+                @{ Type = 'Service'; Name = 'FaiSvc'; StartType = 'Disabled'; State = 'Stopped' }))
+
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.big')) -Context $ctx -Catalog $cat
+
+        $r.Find('test.big').Status | Should -Be 'Planned'
+        $ctx.Registry.WriteCount | Should -Be 0
+        $ctx.Services.WriteCount | Should -Be 0
+        $ctx.Tasks.WriteCount | Should -Be 0
+        $ctx.Appx.WriteCount | Should -Be 0
+        $ctx.Packages.WriteCount | Should -Be 0
+        Get-FakeWriteCount $ctx | Should -Be 0
+        Get-State $ctx | Should -Be $before
+    }
+
+    It 'BackupStore oturumu da açılmaz (oturum sayısı 0, yedek klasörü oluşmaz)' {
+        $ctx = New-Env -DryRun
+        $cat = New-Catalog (New-Tweak -Id 'test.one' -Actions @((RegSet 'A' 1)))
+        [void](Invoke-FaiEngine -Profile (New-Profile @('test.one')) -Context $ctx -Catalog $cat)
+        $ctx.Backup.SessionsOpened | Should -Be 0
+        Test-Path -LiteralPath $ctx.Backup.Root | Should -BeFalse
+        $ctx.Backup.ListSessionIds().Count | Should -Be 0
+    }
+
+    It 'rapor her tweak için "şu an → olacak" değişiklik listesi verir' {
+        $ctx = New-Env -DryRun
+        $ctx.Registry.Seed($script:Key, 'Existing', 1, 'DWord')
+        $cat = New-Catalog (New-Tweak -Id 'test.one' -Actions @((RegSet 'Existing' 2), (RegSet 'New' 'x' 'String')))
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.one')) -Context $ctx -Catalog $cat
+        $lines = $r.Find('test.one').Lines
+        $lines.Count | Should -Be 2
+        $lines[0] | Should -Match 'Existing = 2 \(DWord\) \[şu an: 1\]'
+        $lines[1] | Should -Match 'New = x \(String\) \[şu an: yok\]'
+        $r.Render() | Should -Match 'ÖNİZLEME'
+    }
+
+    It 'Caution / Risk için soru sormaz; sorulacağını rapora yazar' {
+        $ctx = New-Env -DryRun -Answers 'E', 'EVET'
+        $c = New-Tweak -Id 'test.caut' -Risk 'Caution' -Actions @((RegSet 'C' 1))
+        $k = New-Tweak -Id 'test.risk' -Risk 'Risk' -Actions @((RegSet 'R' 1))
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.caut', 'test.risk')) -Context $ctx -Catalog (New-Catalog $c, $k)
+        $ctx.Prompt.Asked.Count | Should -Be 0
+        $r.Find('test.caut').Status | Should -Be 'Planned'
+        $r.Find('test.caut').Reason | Should -Match 'onay'
+        $r.Find('test.risk').Status | Should -Be 'Planned'
+        $r.Find('test.risk').Reason | Should -Match 'EVET'
+        Get-FakeWriteCount $ctx | Should -Be 0
+    }
+
+    It 'dry-run + Unattended: Risk ve autoConfirm''siz Caution atlanır olarak önizlenir' {
+        $ctx = New-Env -DryRun -Unattended
+        $c = New-Tweak -Id 'test.caut' -Risk 'Caution' -Actions @((RegSet 'C' 1))
+        $k = New-Tweak -Id 'test.risk' -Risk 'Risk' -Actions @((RegSet 'R' 1))
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.caut', 'test.risk')) -Context $ctx -Catalog (New-Catalog $c, $k)
+        $r.Find('test.caut').Status | Should -Be 'Skipped'
+        $r.Find('test.risk').Status | Should -Be 'Skipped'
+    }
+
+    It 'koşulu sağlanmayan tweak dry-run''da da atlanır olarak görünür' {
+        $ctx = New-Env -DryRun
+        $t = New-Tweak -Id 'test.nv' -Conditions @('HasNvidia') -Actions @((RegSet 'Nv' 1))
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.nv')) -Context $ctx -Catalog (New-Catalog $t)
+        $r.Find('test.nv').Status | Should -Be 'Skipped'
+    }
+
+    It 'Undo -DryRun: sıfır yazma, durum aynı, oturum geri alınmış sayılmaz' {
+        $ctx = New-Env
+        $ctx.Registry.Seed($script:Key, 'Existing', 1, 'DWord')
+        $cat = New-Catalog (New-Tweak -Id 'test.one' -Actions @((RegSet 'Existing' 2), (RegSet 'New' 1)))
+        [void](Invoke-FaiEngine -Profile (New-Profile @('test.one')) -Context $ctx -Catalog $cat)
+        $applied = Get-State $ctx
+        $writes = Get-FakeWriteCount $ctx
+
+        $dry = Copy-Env $ctx -DryRun
+        $r = Invoke-FaiEngine -Context $dry -Catalog $cat -Undo
+        $r.Count('Planned') | Should -Be 2
+        Get-FakeWriteCount $dry | Should -Be $writes
+        Get-State $dry | Should -Be $applied
+        $dry.Backup.SessionsOpened | Should -Be 0
+        (Copy-Env $ctx).Backup.GetLatest() | Should -Not -BeNullOrEmpty
+    }
+}
+
+Describe 'Motor — diğer davranışlar' {
+    It 'profildeki katalogda olmayan tweak Failed olur, öteki tweak''ler uygulanmaya devam eder' {
+        $ctx = New-Env
+        $cat = New-Catalog (New-Tweak -Id 'test.ok' -Actions @((RegSet 'Ok' 1)))
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.missing', 'test.ok')) -Context $ctx -Catalog $cat
+        $r.Find('test.missing').Status | Should -Be 'Failed'
+        $r.Find('test.ok').Status | Should -Be 'Applied'
+        $r.HasFailures() | Should -BeTrue
+    }
+
+    It 'hata veren tweak sonrakileri durdurmaz' {
+        $ctx = New-Env
+        $ctx.Registry.FailOnName = 'Boom'
+        $a = New-Tweak -Id 'test.boom' -Actions @((RegSet 'Boom' 1))
+        $b = New-Tweak -Id 'test.fine' -Actions @((RegSet 'Fine' 1))
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.boom', 'test.fine')) -Context $ctx -Catalog (New-Catalog $a, $b)
+        $r.Find('test.boom').Status | Should -Be 'Failed'
+        $r.Find('test.fine').Status | Should -Be 'Applied'
+    }
+
+    It 'profil parametresi tweak varsayılanını geçersiz kılar; tanımsız parametre Failed olur' {
+        $ctx = New-Env
+        $t = New-Tweak -Id 'test.param' -Params @{ level = 15 } -Actions @((RegSet 'Level' '{{level}}'))
+        $cat = New-Catalog $t
+        $p = [Profile]::FromHashtable(@{ name = 'p'; tweaks = @(@{ id = 'test.param'; params = @{ level = 40 } }) }, 'test')
+        [void](Invoke-FaiEngine -Profile $p -Context $ctx -Catalog $cat)
+        $ctx.Registry.GetValue($script:Key, 'Level') | Should -Be 40
+
+        $ctx2 = New-Env
+        $bad = [Profile]::FromHashtable(@{ name = 'p'; tweaks = @(@{ id = 'test.param'; params = @{ nope = 1 } }) }, 'test')
+        $r = Invoke-FaiEngine -Profile $bad -Context $ctx2 -Catalog $cat
+        $r.Find('test.param').Status | Should -Be 'Failed'
+        $r.Find('test.param').Reason | Should -Match 'tanımsız parametre'
+        Get-FakeWriteCount $ctx2 | Should -Be 0
+    }
+
+    It 'olmayan servis için ServiceAction no-op: uygulanmaz, Undo hata vermez' {
+        $ctx = New-Env
+        $t = New-Tweak -Id 'test.nosvc' -Actions @(@{ Type = 'Service'; Name = 'Yok'; StartType = 'Disabled' })
+        $cat = New-Catalog $t
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.nosvc')) -Context $ctx -Catalog $cat
+        $r.Find('test.nosvc').Status | Should -Be 'UpToDate'
+        Get-FakeWriteCount $ctx | Should -Be 0
+    }
+
+    It 'rapor özeti durum sayılarını verir' {
+        $ctx = New-Env
+        $a = New-Tweak -Id 'test.a' -Actions @((RegSet 'A' 1))
+        $b = New-Tweak -Id 'test.b' -Conditions @('HasNvidia') -Actions @((RegSet 'B' 1))
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.a', 'test.b')) -Context $ctx -Catalog (New-Catalog $a, $b)
+        $r.Summary() | Should -Be 'Özet: UYGULANDI: 1 · ATLANDI: 1'
+    }
+
+    It 'günlükçü uygulama ve atlama kayıtlarını tutar' {
+        $ctx = New-Env
+        $a = New-Tweak -Id 'test.a' -Actions @((RegSet 'A' 1))
+        [void](Invoke-FaiEngine -Profile (New-Profile @('test.a')) -Context $ctx -Catalog (New-Catalog $a))
+        ($ctx.Logger.Entries | Where-Object { $_.Message -match 'test\.a: uygulandı' }).Count | Should -Be 1
+    }
+}

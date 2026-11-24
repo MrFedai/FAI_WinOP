@@ -1,11 +1,11 @@
 ﻿# Bellek içi sahte servis yöneticisi. Yazma çağrılarını sayar ve kaydeder.
-class FakeServiceProvider : IServiceProvider {
+class FakeServiceManager : IServiceManager {
     # küçük harf ad → @{ Name; StartType; Status }
     [hashtable] $Services = @{}
     [int] $WriteCount = 0
     [System.Collections.ArrayList] $WriteLog = (New-Object System.Collections.ArrayList)
 
-    FakeServiceProvider() { }
+    FakeServiceManager() { }
 
     [void] Seed([string] $Name, [string] $StartType, [string] $Status) {
         $this.Services[$Name.ToLowerInvariant()] = @{ Name = $Name; StartType = $StartType; Status = $Status }

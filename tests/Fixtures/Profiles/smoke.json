@@ -1,0 +1,14 @@
+{
+  "name": "fixture-smoke",
+  "description": "Engine-Smoke ve birim testleri için örnek profil (kişisel veri yok).",
+  "tweaks": [
+    "fixture.registry-demo",
+    "fixture.service-demo",
+    { "id": "fixture.params-demo", "params": { "level": 30 } }
+  ],
+  "autoConfirm": [ "fixture.params-demo" ],
+  "apps": [],
+  "games": [],
+  "layout": {},
+  "exceptions": {}
+}

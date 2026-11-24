@@ -1,0 +1,14 @@
+{
+  "nam": "yazim-hatasi",
+  "tweaks": [
+    "fixture.registry-demo",
+    "fixture.registry-demo",
+    "Büyük Harf",
+    { "id": 5 },
+    { "id": "fixture.params-demo", "params": [1], "extra": true },
+    42
+  ],
+  "autoConfirm": [ "fixture.service-demo", 7 ],
+  "apps": {},
+  "layout": []
+}

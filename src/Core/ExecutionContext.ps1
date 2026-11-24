@@ -1,7 +1,7 @@
 ﻿# Yürütme bağlamı: sağlayıcılar + çalışma kipi. Eylemler yalnız bunun üzerinden Windows'a dokunur.
 class ExecutionContext {
     [IRegistryProvider] $Registry
-    [IServiceProvider] $Services
+    [IServiceManager] $Services
     [ITaskProvider] $Tasks
     [IAppxProvider] $Appx
     [IPackageProvider] $Packages

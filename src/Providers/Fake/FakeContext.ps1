@@ -19,7 +19,7 @@ function New-FakeContext {
 
     $ctx = [ExecutionContext]::new()
     $ctx.Registry = [FakeRegistryProvider]::new()
-    $ctx.Services = [FakeServiceProvider]::new()
+    $ctx.Services = [FakeServiceManager]::new()
     $ctx.Tasks = [FakeTaskProvider]::new()
     $ctx.Appx = [FakeAppxProvider]::new()
     $ctx.Packages = [FakePackageProvider]::new()

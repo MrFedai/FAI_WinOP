@@ -16,17 +16,18 @@ class IRegistryProvider {
     [void] DeleteValue([string] $Path, [string] $Name) { throw [System.NotImplementedException]::new('IRegistryProvider.DeleteValue') }
 }
 
-# Servisler. StartType: Automatic | Manual | Disabled. Status: Running | Stopped.
-class IServiceProvider {
-    [bool] ServiceExists([string] $Name) { throw [System.NotImplementedException]::new('IServiceProvider.ServiceExists') }
-    [string] GetStartType([string] $Name) { throw [System.NotImplementedException]::new('IServiceProvider.GetStartType') }
-    [string] GetStatus([string] $Name) { throw [System.NotImplementedException]::new('IServiceProvider.GetStatus') }
+# Servisler. Ad 'IServiceProvider' DEĞİL: System.IServiceProvider ile çakışır; bundle dışındaki kod (testler) [IServiceProvider]
+# yazınca parse anında .NET arayüzüne çözülür. StartType: Automatic | Manual | Disabled. Status: Running | Stopped.
+class IServiceManager {
+    [bool] ServiceExists([string] $Name) { throw [System.NotImplementedException]::new('IServiceManager.ServiceExists') }
+    [string] GetStartType([string] $Name) { throw [System.NotImplementedException]::new('IServiceManager.GetStartType') }
+    [string] GetStatus([string] $Name) { throw [System.NotImplementedException]::new('IServiceManager.GetStatus') }
     # YAZMA.
-    [void] SetStartType([string] $Name, [string] $StartType) { throw [System.NotImplementedException]::new('IServiceProvider.SetStartType') }
+    [void] SetStartType([string] $Name, [string] $StartType) { throw [System.NotImplementedException]::new('IServiceManager.SetStartType') }
     # YAZMA.
-    [void] StartService([string] $Name) { throw [System.NotImplementedException]::new('IServiceProvider.StartService') }
+    [void] StartService([string] $Name) { throw [System.NotImplementedException]::new('IServiceManager.StartService') }
     # YAZMA.
-    [void] StopService([string] $Name) { throw [System.NotImplementedException]::new('IServiceProvider.StopService') }
+    [void] StopService([string] $Name) { throw [System.NotImplementedException]::new('IServiceManager.StopService') }
 }
 
 # Zamanlanmış görevler. Durum: Enabled | Disabled; görev yoksa boş metin.

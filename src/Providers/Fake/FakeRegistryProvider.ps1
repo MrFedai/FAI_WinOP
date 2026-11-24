@@ -5,6 +5,8 @@ class FakeRegistryProvider : IRegistryProvider {
     # normalleştirilmiş yol → (küçük harf ad → @{ Name; Value; Kind })
     [hashtable] $Keys = @{}
     [int] $WriteCount = 0
+    # Doluysa bu adlı değere SetValue hata fırlatır (hata yolu testleri için).
+    [string] $FailOnName = ''
     [System.Collections.ArrayList] $WriteLog = (New-Object System.Collections.ArrayList)
 
     FakeRegistryProvider() { }
@@ -44,6 +46,7 @@ class FakeRegistryProvider : IRegistryProvider {
     [void] SetValue([string] $Path, [string] $Name, [object] $Value, [string] $Kind) {
         $this.WriteCount++
         [void]$this.WriteLog.Add("SetValue $Path $Name")
+        if ($this.FailOnName -and $Name -eq $this.FailOnName) { throw "Sahte yazma hatası: $Name" }
         $this.Store($Path, $Name, $Value, $Kind)
     }
 
