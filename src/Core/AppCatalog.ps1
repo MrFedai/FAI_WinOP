@@ -173,10 +173,5 @@ function Import-FaiAppCatalog {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true, Position = 0)] [string] $Path)
 
-    $data = Read-JsonFile -Path $Path
-    $errors = @(Get-FaiAppCatalogError -Data $data)
-    if ($errors.Count -gt 0) { throw ("Uygulama kataloğu geçersiz ({0}):`n  {1}" -f $Path, ($errors -join "`n  ")) }
-    $catalog = @{}
-    foreach ($app in $data['apps']) { $catalog[[string]$app['id']] = $app }
-    return $catalog
+    return ConvertTo-FaiAppCatalog -Data (Read-JsonFile -Path $Path) -Source $Path
 }

@@ -5,7 +5,8 @@
 .DESCRIPTION
     Parametresiz çağrı bütün depoyu tarar (tests/Fixtures, dist ve .git hariç).
     Her dosya için:
-      1. UTF-8 BOM var mı (.ps1 / .psd1 / .psm1)
+      1. UTF-8 BOM var mı (.ps1 / .psd1 / .psm1); yalnız ASCII baytlı dosyada BOM gerekmez (src/Bootstrap/get.ps1
+         BOM'suz ASCII olmak zorunda: 5.1 irm charset'siz yanıtı ISO-8859-1 çözer, BOM bozulur)
       2. 5.1'de olmayan ?. ve ?[ işleçleri (belirteç taraması)
       3. Invoke-ScriptAnalyzer, ayar: build/PSScriptAnalyzerSettings.psd1
     Bulgu varsa listeler ve 1 ile çıkar; yoksa 0.
@@ -87,7 +88,9 @@ foreach ($file in $files) {
     # 1. UTF-8 BOM
     $bytes = [System.IO.File]::ReadAllBytes($file)
     $hasBom = $bytes.Length -ge 3 -and $bytes[0] -eq $utf8Bom[0] -and $bytes[1] -eq $utf8Bom[1] -and $bytes[2] -eq $utf8Bom[2]
-    if (-not $hasBom) {
+    $nonAscii = $false
+    foreach ($b in $bytes) { if ($b -ge 0x80) { $nonAscii = $true; break } }
+    if (-not $hasBom -and $nonAscii) {
         $findings.Add([pscustomobject]@{ File = $rel; Line = 1; Rule = 'FAI.Utf8Bom'; Message = 'UTF-8 BOM yok (5.1 Türkçe karakterleri bozar).' })
     }
 

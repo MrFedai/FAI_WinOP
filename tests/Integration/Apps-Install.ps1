@@ -55,7 +55,12 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     exit 1
 }
 if (-not (Test-Path -LiteralPath $BundlePath -PathType Leaf)) { Write-Host '  Bundle yok; önce build\Bundle.ps1' -ForegroundColor Red; exit 1 }
+# Bundle'ın param bloğu (install.ps1 -Only / -Undo ...) nokta-kaynakta aynı adlı değişkenleri varsayılana çeker.
+$appsOnly = $Only
+$appsUndo = $Undo.IsPresent
 . $BundlePath
+$Only = $appsOnly
+$Undo = [System.Management.Automation.SwitchParameter]::new($appsUndo)
 
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 $failed = 0

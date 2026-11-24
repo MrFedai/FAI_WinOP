@@ -129,6 +129,8 @@ class IPromptProvider {
     [bool] Confirm([string] $Message) { throw [System.NotImplementedException]::new('IPromptProvider.Confirm') }
     # Tam metin ister (Risk: 'EVET' yazılmalı). Yazılan Expected ile birebir eşitse $true.
     [bool] ConfirmExact([string] $Message, [string] $Expected) { throw [System.NotImplementedException]::new('IPromptProvider.ConfirmExact') }
+    # Serbest metin satırı (menü seçimi). Yanıt yoksa boş metin.
+    [string] ReadLine([string] $Message) { throw [System.NotImplementedException]::new('IPromptProvider.ReadLine') }
 }
 
 # Dosyalar. Yollar ortam değişkenleri AÇILMIŞ olarak gelir (eylem açar). Yalnız dosya; klasör silinmez.

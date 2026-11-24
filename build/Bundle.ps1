@@ -5,8 +5,9 @@
 .DESCRIPTION
     PowerShell 5.1'de sınıflar 'using module' ister; 'irm | iex' akışında bu çalışmaz. Bu yüzden bütün sınıflar
     tek script'te, parse anında tipleri bilinecek sırayla birleştirilir:
-        Core (Interfaces ilk, sonra aşağıdaki açık sıra) → Actions/* → Native/*.cs (gömülü) → Providers/Windows/* →
-        [Providers/Fake/*] → Engine.ps1 → Menu.ps1 → Cli.ps1
+        Entry.ps1 param bloğu (betiğin ilk deyimi olmalı) → Core (Interfaces ilk, sonra aşağıdaki açık sıra) →
+        Actions/* → Native/*.cs (gömülü) → Providers/Windows/* → [Providers/Fake/*] → Engine.ps1 → Menu.ps1 → Cli.ps1 →
+        gömülü veri (Get-FaiEmbeddedData) → Entry.ps1'in param bloğundan sonraki kısmı (CLI çağrısı)
     Core içinde sıra alfabetik DEĞİL, bağımlılık sırasıdır ($coreOrder): bir sınıf yalnız kendinden önce
     tanımlı sınıfları alan / parametre türü olarak kullanabilir. Listede olmayan Core dosyası sona eklenir.
 
@@ -16,7 +17,11 @@
     Providers/Fake/* yalnız testler içindir: üretim bundle'ına GİRMEZ; -IncludeFakes ile ayrı bir çıktıya
     (varsayılan dist/install.fakes.ps1) Windows sağlayıcılarından sonra, Engine'den önce eklenir.
 
-    Çıktı UTF-8 BOM'lu ve CRLF. Veri gömme / indirme kararı Faz 8'de.
+    Veri (tweaks/**/*.psd1, apps/catalog.json, profiles/*.json; _schema.json hariç) gömülür: Get-FaiEmbeddedData
+    yol → metin döndürür (gerekçe: src/Core/Data.ps1). Satır başında '@ içeren dosya here-string'e sığmaz: base64.
+
+    Çıktı UTF-8 BOM'lu ve CRLF. Üretim bundle'ının yanına <çıktı>.sha256 yazılır (sha256sum biçimi: '<hex>  <ad>');
+    release.yml bunu yayınlar, önyükleyici (src/Bootstrap/get.ps1) ve -Version doğrular.
 
 .PARAMETER OutFile
     Çıktı yolu. Varsayılan dist/install.ps1 (-IncludeFakes ile dist/install.fakes.ps1).
@@ -68,6 +73,20 @@ function Get-SourceDir([string] $Relative, [string[]] $Skip) {
             Sort-Object Name)
 }
 
+# Giriş: param bloğu (yardım yorumu dahil) betiğin başına, geri kalanı (CLI çağrısı) sonuna.
+function Split-EntryFile {
+    $path = Join-Path $src 'Entry.ps1'
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return @{ Head = ''; Tail = '' } }
+    $text = [System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8).TrimStart([char]0xFEFF) -replace "`r?`n", "`n"
+    $tokens = $null
+    $errors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseInput($text, [ref]$tokens, [ref]$errors)
+    if ($errors -and $errors.Count -gt 0) { throw "src/Entry.ps1 ayrıştırılamadı: $($errors[0].Message)" }
+    if ($null -eq $ast.ParamBlock) { throw 'src/Entry.ps1: param bloğu yok' }
+    $end = $ast.ParamBlock.Extent.EndOffset
+    return @{ Head = $text.Substring(0, $end).TrimEnd(); Tail = $text.Substring($end).Trim() }
+}
+
 # Bağımlılık sırası (bkz. docs/ROADMAP.md 1.3).
 $ordered = @()
 foreach ($coreFile in $coreOrder) { $ordered += Get-SourceFile ('Core/' + $coreFile) }
@@ -106,6 +125,45 @@ function Get-NativeRegion([string] $Nl) {
     return $b.ToString()
 }
 
+# Veri dosyalarını tek fonksiyonda gömer (yol → metin).
+function Get-DataRegion([string] $Nl) {
+    $files = @()
+    $tw = Join-Path $repoRoot 'tweaks'
+    if (Test-Path -LiteralPath $tw -PathType Container) { $files += @(Get-ChildItem -LiteralPath $tw -Recurse -File -Filter '*.psd1') }
+    $cat = Join-Path $repoRoot 'apps/catalog.json'
+    if (Test-Path -LiteralPath $cat -PathType Leaf) { $files += @(Get-Item -LiteralPath $cat) }
+    $pr = Join-Path $repoRoot 'profiles'
+    if (Test-Path -LiteralPath $pr -PathType Container) {
+        $files += @(Get-ChildItem -LiteralPath $pr -File -Filter '*.json' | Where-Object { -not $_.Name.StartsWith('_') })
+    }
+    $b = New-Object System.Text.StringBuilder
+    [void]$b.Append($Nl + '#region veri (gömülü: tweaks, apps/catalog.json, profiles)' + $Nl)
+    [void]$b.Append('function Get-FaiEmbeddedData {' + $Nl)
+    [void]$b.Append('    <# .SYNOPSIS  Gömülü veri dosyaları: depo içi yol → UTF-8 metin (build/Bundle.ps1 üretir). #>' + $Nl)
+    [void]$b.Append('    [CmdletBinding()]' + $Nl + '    param()' + $Nl + '    $d = @{}' + $Nl)
+    $rels = @()
+    foreach ($f in $files) { $rels += $f.FullName.Substring($repoRoot.Length).TrimStart('/', '\').Replace('\', '/') }
+    $n = 0
+    foreach ($rel in @($rels | Sort-Object)) {
+        $full = Join-Path $repoRoot $rel
+        $text = [System.IO.File]::ReadAllText($full, [System.Text.Encoding]::UTF8).TrimStart([char]0xFEFF)
+        $text = ($text -replace "`r?`n", $Nl).TrimEnd()
+        if ($rel.Contains("'")) { throw "Veri yolu tırnak içeremez: $rel" }
+        if ($text -match "(^|`n)'@") {
+            $b64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($text))
+            [void]$b.Append("    `$d['$rel'] = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('$b64'))" + $Nl)
+        }
+        else {
+            [void]$b.Append("    `$d['$rel'] = @'" + $Nl + $text + $Nl + "'@" + $Nl)
+        }
+        $n++
+    }
+    [void]$b.Append('    return $d' + $Nl + '}' + $Nl + '#endregion veri' + $Nl)
+    Write-Host ("  gömülü veri: {0} dosya" -f $n)
+    return $b.ToString()
+}
+
+$entry = Split-EntryFile
 $nl = "`r`n"
 $sb = New-Object System.Text.StringBuilder
 [void]$sb.Append('# FAI_WinOP install.ps1 — ÜRETİLMİŞ DOSYA, elle düzenlenmez (build/Bundle.ps1).' + $nl)
@@ -113,6 +171,7 @@ $sb = New-Object System.Text.StringBuilder
 [void]$sb.Append("# Sürüm: $Version" + $nl)
 if ($IncludeFakes) { [void]$sb.Append('# DİKKAT: Fake* sağlayıcıları içerir (yalnız test); yayınlanmaz.' + $nl) }
 [void]$sb.Append($nl)
+if ($entry.Head) { [void]$sb.Append(($entry.Head -replace "`n", $nl) + $nl + $nl) }
 [void]$sb.Append("`$script:FaiWinOPVersion = '$Version'" + $nl)
 
 Write-Host ("Bundle: {0} kaynak dosya" -f $ordered.Count)
@@ -131,6 +190,9 @@ foreach ($f in $ordered) {
     [void]$sb.Append($nl + "#region src/$rel" + $nl + $text.TrimEnd() + $nl + "#endregion src/$rel" + $nl)
 }
 
+[void]$sb.Append((Get-DataRegion $nl))
+if ($entry.Tail) { [void]$sb.Append($nl + '#region src/Entry.ps1 (giriş)' + $nl + ($entry.Tail -replace "`n", $nl) + $nl + '#endregion src/Entry.ps1' + $nl) }
+
 $outDir = Split-Path -Parent $OutFile
 if ($outDir -and -not (Test-Path -LiteralPath $outDir)) { New-Item -ItemType Directory -Path $outDir | Out-Null }
 $utf8Bom = New-Object System.Text.UTF8Encoding($true)
@@ -146,3 +208,11 @@ if ($errors -and $errors.Count -gt 0) {
 }
 
 Write-Host ("Bundle yazıldı: {0} ({1} bayt, sürüm {2})" -f $OutFile, (Get-Item -LiteralPath $OutFile).Length, $Version) -ForegroundColor Green
+
+# Yayın / önyükleyici doğrulaması için SHA-256 (yalnız üretim bundle'ı).
+if (-not $IncludeFakes) {
+    $hash = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
+    $hashFile = $OutFile + '.sha256'
+    [System.IO.File]::WriteAllText($hashFile, ('{0}  {1}' -f $hash, (Split-Path -Leaf $OutFile)) + "`n", (New-Object System.Text.UTF8Encoding($false)))
+    Write-Host ("SHA-256: {0} → {1}" -f $hash, $hashFile)
+}

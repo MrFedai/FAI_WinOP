@@ -155,4 +155,8 @@ class WindowsPromptProvider : IPromptProvider {
         $answer = [string](Read-Host ("Onaylamak için '{0}' yazın (başka her yanıt = hayır)" -f $Expected))
         return ($answer.Trim() -ceq $Expected)
     }
+
+    [string] ReadLine([string] $Message) {
+        return [string](Read-Host $Message)
+    }
 }

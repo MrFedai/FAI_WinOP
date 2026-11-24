@@ -1,0 +1,62 @@
+name: Release
+
+# v* etiketi itilince: lint + birim testleri → bundle (sürüm = etiket) → install.ps1, install.ps1.sha256, get.ps1
+# GitHub sürümüne yüklenir. Etiketlemek kullanıcının işidir (CLAUDE.md: yayın kullanıcıda).
+# Tek satır (yönetici PowerShell):
+#   & ([scriptblock]::Create((irm https://github.com/MrFedai/FAI_WinOP/releases/latest/download/get.ps1))) -Profile fedai -DryRun
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Sürüm yayınla
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Etiket biçimi (vX.Y.Z)
+        run: |
+          echo "${GITHUB_REF_NAME}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "Geçersiz etiket: ${GITHUB_REF_NAME}"; exit 1; }
+
+      - name: Modülleri kur (Pester 5, PSScriptAnalyzer)
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
+          Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
+
+      - name: Lint
+        shell: pwsh
+        run: ./build/Lint.ps1
+
+      - name: Birim testleri
+        shell: pwsh
+        run: |
+          Import-Module Pester -RequiredVersion 5.7.1
+          $c = New-PesterConfiguration
+          $c.Run.Path = 'tests/Unit'
+          $c.Run.Exit = $true
+          Invoke-Pester -Configuration $c
+
+      - name: Bundle (sürüm = etiket) + SHA-256
+        shell: pwsh
+        run: |
+          ./build/Bundle.ps1 -Version $env:GITHUB_REF_NAME
+          Copy-Item src/Bootstrap/get.ps1 dist/get.ps1
+          Get-Content dist/install.ps1.sha256
+
+      - name: Özet doğrula (sha256sum)
+        working-directory: dist
+        run: sha256sum -c install.ps1.sha256
+
+      - name: GitHub sürümü
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/install.ps1 dist/install.ps1.sha256 dist/get.ps1 \
+            --title "FAI_WinOP ${GITHUB_REF_NAME}" --generate-notes --verify-tag

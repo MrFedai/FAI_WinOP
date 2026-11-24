@@ -27,12 +27,19 @@ Describe 'build/Lint.ps1' {
         $r.ExitCode | Should -Be 0 -Because $r.Output
     }
 
-    It 'BOM olmayan dosyayı yakalar' {
+    It 'Türkçe karakterli BOM olmayan dosyayı yakalar' {
         $noBom = Join-Path $TestDrive 'NoBom.ps1'
-        [System.IO.File]::WriteAllText($noBom, "Write-Output 'ok'`r`n", (New-Object System.Text.UTF8Encoding($false)))
+        [System.IO.File]::WriteAllText($noBom, "Write-Output 'açılış'`r`n", (New-Object System.Text.UTF8Encoding($false)))
         $r = Invoke-Child $Lint @('-Path', $noBom)
         $r.ExitCode | Should -Be 1
         $r.Output | Should -Match 'FAI\.Utf8Bom'
+    }
+
+    It 'yalnız ASCII baytlı BOM olmayan dosyayı geçirir (get.ps1)' {
+        $ascii = Join-Path $TestDrive 'Ascii.ps1'
+        [System.IO.File]::WriteAllText($ascii, "Write-Output 'ok'`r`n", (New-Object System.Text.UTF8Encoding($false)))
+        $r = Invoke-Child $Lint @('-Path', $ascii)
+        $r.ExitCode | Should -Be 0 -Because $r.Output
     }
 
     It 'ConvertFrom-Json -AsHashtable kullanımını yakalar (PSUseCompatibleCommands)' {
@@ -45,15 +52,21 @@ Describe 'build/Lint.ps1' {
 }
 
 Describe 'Depo kodlaması' {
-    It 'bütün .ps1 / .psd1 / .psm1 dosyaları UTF-8 BOM ile başlar' {
+    It 'bütün .ps1 / .psd1 / .psm1 dosyaları UTF-8 BOM ile başlar (önyükleyici hariç)' {
         $files = Get-ChildItem -LiteralPath $RepoRoot -Recurse -File -Include '*.ps1', '*.psd1', '*.psm1' |
-            Where-Object { $_.FullName -notmatch '[\\/](\.git|dist)[\\/]' }
+            Where-Object { $_.FullName -notmatch '[\\/](\.git|dist)[\\/]' -and $_.FullName -notmatch '[\\/]Bootstrap[\\/]get\.ps1$' }
         $files.Count | Should -BeGreaterThan 0
         $missing = foreach ($f in $files) {
             $b = [System.IO.File]::ReadAllBytes($f.FullName)
             if (-not ($b.Length -ge 3 -and $b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF)) { $f.FullName }
         }
         $missing | Should -BeNullOrEmpty
+    }
+
+    It 'önyükleyici (src/Bootstrap/get.ps1) BOM''suz ve yalnız ASCII: irm ile indirilip çözülür' {
+        $b = [System.IO.File]::ReadAllBytes((Join-Path $RepoRoot 'src/Bootstrap/get.ps1'))
+        ($b.Length -ge 3 -and $b[0] -eq 0xEF) | Should -BeFalse
+        @($b | Where-Object { $_ -ge 0x80 }).Count | Should -Be 0
     }
 }
 

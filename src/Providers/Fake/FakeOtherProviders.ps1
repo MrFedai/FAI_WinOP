@@ -280,6 +280,12 @@ class FakePromptProvider : IPromptProvider {
         [void]$this.Asked.Add(@{ Kind = 'ConfirmExact'; Message = $Message; Answer = $answer })
         return ($answer.Trim() -ceq $Expected)
     }
+
+    [string] ReadLine([string] $Message) {
+        $answer = $this.Next()
+        [void]$this.Asked.Add(@{ Kind = 'ReadLine'; Message = $Message; Answer = $answer })
+        return $answer
+    }
 }
 
 # Açılan URI'leri kaydeder.

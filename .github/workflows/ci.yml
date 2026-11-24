@@ -57,6 +57,12 @@ jobs:
           ./tests/Integration/Load-Bundle.ps1 -AnyVersion
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: CLI -List (gömülü veri, pwsh 7)
+        shell: pwsh
+        run: |
+          ./dist/install.ps1 -List
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Fake sağlayıcılı bundle (yalnız test; yayınlanmaz)
         shell: pwsh
         run: ./build/Bundle.ps1 -IncludeFakes
@@ -70,7 +76,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: install-ps1
-          path: dist/install.ps1
+          path: |
+            dist/install.ps1
+            dist/install.ps1.sha256
 
   windows:
     name: Windows · bundle yükleme + motor smoke + eylem entegrasyonu (powershell.exe 5.1)
@@ -90,6 +98,12 @@ jobs:
       - name: Bundle yükleme testi
         run: |
           .\tests\Integration\Load-Bundle.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # Faz 8 kabulü: temiz runner'da tek satır (get.ps1 → SHA-256 → install.ps1) -DryRun uçtan uca; özet tutmazsa durur.
+      - name: Tek satır komut (-Profile fedai -DryRun) + kurcalanmış özet
+        run: |
+          .\tests\Integration\OneLiner.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Fake sağlayıcılı bundle (5.1 ile üret; yalnız test)

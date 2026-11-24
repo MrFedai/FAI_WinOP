@@ -225,16 +225,12 @@ function Import-FaiTweakCatalog {
     param([Parameter(Mandatory = $true, Position = 0)] [string] $Path)
 
     if (-not (Test-Path -LiteralPath $Path -PathType Container)) { throw "Tweak klasörü yok: $Path" }
-    $catalog = @{}
+    $sources = @{}
     $problems = New-Object 'System.Collections.Generic.List[string]'
     foreach ($f in @(Get-ChildItem -LiteralPath $Path -Recurse -File -Filter '*.psd1' | Sort-Object FullName)) {
-        try {
-            $t = Import-FaiTweakFile -Path $f.FullName
-            if ($catalog.ContainsKey($t.Id)) { $problems.Add("$($f.FullName): Id '$($t.Id)' birden çok dosyada") }
-            else { $catalog[$t.Id] = $t }
-        }
-        catch { $problems.Add($_.Exception.Message) }
+        try { $sources[$f.FullName] = Import-PowerShellDataFile -LiteralPath $f.FullName }
+        catch { $problems.Add("$($f.FullName): $($_.Exception.Message)") }
     }
     if ($problems.Count -gt 0) { throw ("Tweak kataloğu geçersiz:`n" + ($problems -join "`n")) }
-    return $catalog
+    return ConvertTo-FaiTweakCatalog -Sources $sources
 }
