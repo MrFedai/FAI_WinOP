@@ -2,7 +2,8 @@
 #
 #   -DryRun  hiçbir sağlayıcı yazma modunda çağrılmaz, BackupStore oturumu açılmaz, soru sorulmaz; rapor "ÖNİZLEME" olur.
 #   -Undo    geri alınmamış son oturumun (ya da verilen oturumun) kayıtlarını TERS sırada Revert eder.
-# Profilin 'apps' listesi tweak'lerden SONRA, uygulama kataloğundan (apps/catalog.json) üretilen 'app.<id>' tweak'leri
+# Profilin 'apps' listesi tweak'lerden ÖNCE (bildirim istisnaları, görev çubuğu sabitlemesi kurulu uygulama ister),
+# uygulama kataloğundan (apps/catalog.json) üretilen 'app.<id>' tweak'leri
 # olarak aynı yoldan işlenir. Eylem Apply sırasında snapshot'ına günlük ekleyebilir (App): oturum Apply'dan sonra
 # yeniden kaydedilir.
 # Tek tweak'in hatası diğerlerini durdurmaz; hata raporda 'Failed' olur. Yarım kalan tweak'in snapshot'ları oturumda
@@ -28,14 +29,6 @@ class Engine {
         $this.Ctx.Logger.Info($report.Heading)
         $this.Session = $null
 
-        foreach ($entry in $FaiProfile.Tweaks) {
-            $id = [string]$entry['Id']
-            try { $this.ProcessTweak($FaiProfile, $id, $entry['Params'], $report) }
-            catch {
-                [void]$report.Add($id, $id, 'Failed', $_.Exception.Message, [string[]]@())
-                $this.Ctx.Logger.Error("${id}: $($_.Exception.Message)")
-            }
-        }
         foreach ($app in $FaiProfile.Apps) {
             $id = 'app.' + [string]$app['Id']
             try {
@@ -46,6 +39,14 @@ class Engine {
                 $appTweak = ConvertTo-FaiAppTweak -App $this.AppCatalog[[string]$app['Id']] -KeepAutostart ([bool]$app['KeepAutostart'])
                 $this.ProcessResolved($FaiProfile, $appTweak, $report)
             }
+            catch {
+                [void]$report.Add($id, $id, 'Failed', $_.Exception.Message, [string[]]@())
+                $this.Ctx.Logger.Error("${id}: $($_.Exception.Message)")
+            }
+        }
+        foreach ($entry in $FaiProfile.Tweaks) {
+            $id = [string]$entry['Id']
+            try { $this.ProcessTweak($FaiProfile, $id, $entry['Params'], $report) }
             catch {
                 [void]$report.Add($id, $id, 'Failed', $_.Exception.Message, [string[]]@())
                 $this.Ctx.Logger.Error("${id}: $($_.Exception.Message)")

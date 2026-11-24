@@ -271,8 +271,9 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
 **Kabul:** Tüm paket kimlikleri doğrulanmış; kurulum sonrası masaüstünde yeni kısayol kalmıyor.
 
 **Faz 4 notları (uygulama kararları):** ayrıntı `docs/APPS.md`.
-- Profil `apps`: `"chrome"` ya da `{ "id": "telegram", "keepAutostart": true }`. Motor uygulamaları tweak'lerden SONRA
-  `app.<id>` tweak'i olarak işler (`ConvertTo-FaiAppTweak`; `Invoke-FaiEngine -AppCatalog`). Katalog alanları roadmap'teki
+- Profil `apps`: `"chrome"` ya da `{ "id": "telegram", "keepAutostart": true }`. Motor uygulamaları tweak'lerden ÖNCE
+  `app.<id>` tweak'i olarak işler (Faz 6 Chrome sabitlemesi ve `ui.notifications` istisnaları kurulu uygulama ister;
+  Faz 7 `system.restore-point` "ilk adım" kalacaksa motorun ön adımı olmalı) (`ConvertTo-FaiAppTweak`; `Invoke-FaiEngine -AppCatalog`). Katalog alanları roadmap'teki
   listeye ek: `startupFolderNames` (Başlangıç klasörü .lnk), `desktopShortcutNames`, `startMenuFolders`, `notes`.
 - Yeni eylem `App` (kurulum + düzen tek eylemde): otomatik başlatma Run değeri silinerek değil `StartupApproved` kapalı
   işaretiyle (Görev Yöneticisi gibi; uygulama Run'ı yeniden yazsa da kapalı); jokersiz ad önceden kapatılır. Masaüstü:

@@ -42,7 +42,7 @@
     },
     "apps": {
       "type": "array",
-      "description": "Kurulacak uygulamalar (apps/catalog.json kimlikleri), tweak'lerden sonra bu sırayla. Tekrar eden kimlik hatadır.",
+      "description": "Kurulacak uygulamalar (apps/catalog.json kimlikleri), tweak'lerden önce, bu sırayla. Tekrar eden kimlik hatadır.",
       "items": {
         "oneOf": [
           { "$ref": "#/definitions/appId" },

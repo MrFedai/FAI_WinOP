@@ -1,8 +1,8 @@
 # Uygulama kataloğu ve kurulum (Faz 4)
 
 Kaynak: [`apps/catalog.json`](../apps/catalog.json) (biçim: [`apps/_schema.json`](../apps/_schema.json), doğrulama
-`src/Core/AppCatalog.ps1`). Profil `apps` listesinde kimlik verir; motor her uygulamayı tweak'lerden **sonra**
-`app.<id>` tweak'i olarak işler (dry-run, rapor, snapshot, `-Undo` aynı yol).
+`src/Core/AppCatalog.ps1`). Profil `apps` listesinde kimlik verir; motor her uygulamayı tweak'lerden **önce**
+`app.<id>` tweak'i olarak işler (bildirim istisnası, görev çubuğu sabitlemesi kurulu uygulama ister) (dry-run, rapor, snapshot, `-Undo` aynı yol).
 
 ```json
 "apps": [ "chrome", "spotify", { "id": "telegram", "keepAutostart": true } ]

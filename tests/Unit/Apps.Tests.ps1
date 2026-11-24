@@ -304,17 +304,17 @@ Describe 'App eylemi: dry-run, msstore, rapor' {
         Get-FakeWriteCount $ctx | Should -Be 0
     }
 
-    It 'uygulamalar tweak''lerden sonra işlenir; katalogda olmayan uygulama Failed' {
+    It 'uygulamalar tweak''lerden önce işlenir; katalogda olmayan uygulama Failed' {
         $ctx = New-AppContext
         $tweakCatalog = Import-FaiTweakCatalog -Path (Join-Path $script:FaiFixtures 'Tweaks/valid')
         $first = @($tweakCatalog.Keys)[0]
         $r = Invoke-FaiEngine -Profile (New-AppProfile @('whatsapp', 'yok') @($first)) -Context $ctx -Catalog $tweakCatalog -AppCatalog $script:AppCatalog
-        $r.Items[0].TweakId | Should -Be $first
-        $r.Items[1].TweakId | Should -Be 'app.whatsapp'
-        $r.Items[1].Status | Should -Be 'Applied'
-        $r.Items[2].TweakId | Should -Be 'app.yok'
-        $r.Items[2].Status | Should -Be 'Failed'
-        $r.Items[2].Reason | Should -Match 'kataloğunda yok'
+        $r.Items[0].TweakId | Should -Be 'app.whatsapp'
+        $r.Items[0].Status | Should -Be 'Applied'
+        $r.Items[1].TweakId | Should -Be 'app.yok'
+        $r.Items[1].Status | Should -Be 'Failed'
+        $r.Items[1].Reason | Should -Match 'kataloğunda yok'
+        $r.Items[2].TweakId | Should -Be $first
         $ctx.Packages.IsInstalled('9NKSQGP7F2NH', 'msstore') | Should -BeTrue
     }
 }

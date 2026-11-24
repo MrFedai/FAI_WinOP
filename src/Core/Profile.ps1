@@ -15,7 +15,7 @@ class Profile {
     # Sıralı liste; her eleman @{ Id = '...'; Params = @{...} }
     [hashtable[]] $Tweaks = @()
     [string[]] $AutoConfirm = @()
-    # Sıralı liste; her eleman @{ Id = 'chrome'; KeepAutostart = $false } (tweak'lerden SONRA kurulur).
+    # Sıralı liste; her eleman @{ Id = 'chrome'; KeepAutostart = $false } (tweak'lerden ÖNCE kurulur).
     [hashtable[]] $Apps = @()
     [object[]] $Games = @()
     [hashtable] $Layout = @{}
