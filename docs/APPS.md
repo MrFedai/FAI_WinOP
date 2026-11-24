@@ -57,15 +57,20 @@ hepsi ZATEN UYGUN, **masaüstünde yeni kısayol: 0** (Faz 4 kabulü). Spotify w
 Store sürümüne geçildi. Keşif dökümünde Ollama (`Ollama`) ve Proton (`Proton`) Başlat klasörleri düzleştirilmemiş kaldı →
 katalog düzeltildi. Chrome runner imajında zaten kurulu.
 
+**Son koşu (2026-11-24, 3b74cdd):** 12/12 kurulum, masaüstünde 0 yeni kısayol, ikinci çalıştırma 12/12 ZATEN UYGUN,
+`-Undo` 11/12. **Steam** sessiz kaldırması bitmiyor: winget başarı döner, paket 120 sn sonra hâlâ kurulu (sağlayıcı artık
+bunu HATA olarak raporlar, oturum geri alınmamış kalır). Olası neden: kurulumdan sonra çalışan `steam.exe` kaldırıcıyı
+bekletiyor; doğrulanmadı.
+
 | id | Run / Başlangıç | Masaüstü | Başlat klasörü | Durum |
 | --- | --- | --- | --- | --- |
 | claude | `*Claude*` (kurulumda yazmadı) | `Claude.lnk` | kısayol kökte ✓ | Run adı açılışta görülecek |
 | telegram | `Telegram Desktop` (önceden kapatıldı) | `Telegram.lnk` | `Telegram Desktop` ✓ | Run ilk açılışta yazılır |
 | discord | HKCU `Discord` ✓ | `Discord.lnk` | `Discord Inc` → kökte ✓ | ✓ |
-| steam | HKCU `Steam` ✓ | `Steam.lnk` | `Steam` ✓ | ✓ |
-| ollama | Başlangıç klasörü `Ollama.lnk` ✓ | `Ollama.lnk` | `Ollama` (CI'da görüldü) | klasör düzeltildi, yeniden koşu |
+| steam | HKCU `Steam` ✓ | `Steam.lnk` | `Steam` ✓ | ✓ (geri alma: sessiz kaldırma bitmiyor) |
+| ollama | Başlangıç klasörü `Ollama.lnk` ✓ | `Ollama.lnk` | `Ollama` → kökte ✓ | ✓ |
 | vscode | — | `Visual Studio Code.lnk` | `Visual Studio Code` ✓ | ✓ |
-| protonvpn | `ProtonVPN`, `Proton VPN` (kurulumda yazmadı) | `Proton VPN.lnk` | `Proton` (CI'da görüldü) | klasör düzeltildi, yeniden koşu |
+| protonvpn | `ProtonVPN`, `Proton VPN` (kurulumda yazmadı) | `Proton VPN.lnk` | `Proton` → kökte ✓ | Run adı açılışta görülecek |
 | chrome | `GoogleChromeAutoLaunch_*` | `Google Chrome.lnk` | kökte ✓ | runner'da önceden kurulu |
 | obs | — | `OBS Studio.lnk` | `OBS Studio` → kökte ✓ | ✓ |
 | spotify, tradingview, whatsapp | MSIX `StartupTask` (yönetilmiyor) | yeni kısayol temizliği | — (MSIX) | — |
