@@ -7,6 +7,12 @@ class ExecutionContext {
     [IPackageProvider] $Packages
     [ISystemInfoProvider] $SystemInfo
     [IPromptProvider] $Prompt
+    [IFileProvider] $Files
+    [IShortcutProvider] $Shortcuts
+    [IPowerProvider] $Power
+    [IScriptHost] $Scripts
+    [IAudioProvider] $Audio
+    [ITimerResolutionProvider] $TimerResolution
 
     [BackupStore] $Backup
     [Logger] $Logger

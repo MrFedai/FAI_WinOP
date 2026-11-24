@@ -6,7 +6,8 @@
     Test kopyası sandbox'a salt okunur bağlıdır (C:\FAI_WinOP); sonuçlar yazılabilir bağlı klasöre (C:\FAI_out) gider:
       out\run-<zaman>.log   ayrıntılı kayıt (transcript)
       out\SONUC.txt         tek satır: GECTI / KALDI + zaman
-    Faz 0: sistem bilgisi + bundle yükleme testi. Sonraki fazlar tweak grubu uygula → doğrula → -Undo adımlarını ekler.
+    Faz 0: sistem bilgisi + bundle yükleme testi. Faz 2: gerçek sağlayıcılarla eylem döngüleri (Windows-Actions.ps1).
+    Sonraki fazlar tweak grubu uygula → doğrula → -Undo adımlarını ekler.
 
 .PARAMETER OutDir
     Sonuç klasörü. Varsayılan C:\FAI_out (sandbox içi).
@@ -38,6 +39,11 @@ try {
     $bundle = Join-Path (Join-Path $repoRoot 'dist') 'install.ps1'
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoRoot 'tests\Integration\Load-Bundle.ps1') -BundlePath $bundle
     $exitCode = $LASTEXITCODE
+
+    # Gerçek sağlayıcılarla her eylem türü uygula → doğrula → geri al (Sandbox kapanınca her şey silinir).
+    Write-Host '== Windows eylem entegrasyonu'
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoRoot 'tests\Integration\Windows-Actions.ps1') -BundlePath $bundle
+    if ($LASTEXITCODE -ne 0) { $exitCode = 1 }
 }
 catch {
     Write-Host ("HATA: {0}" -f $_.Exception.Message) -ForegroundColor Red

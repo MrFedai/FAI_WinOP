@@ -1,0 +1,61 @@
+﻿# Gerçek güç sağlayıcısı: powercfg.exe. Çıktı yerelleştirilmiştir: yalnız GUID'ler ve satır sonundaki onaltılık
+# değerler okunur. /qh gizli ayarları da gösterir; ayar sorgusunun son iki onaltılık değeri AC ve DC indeksidir.
+
+class WindowsPowerProvider : IPowerProvider {
+    WindowsPowerProvider() { }
+
+    static [string] GuidPattern() { return '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}' }
+
+    # powercfg'nin plan takma adları (GUID'leri sabit).
+    static [hashtable] SchemeAliases() {
+        return @{
+            SCHEME_BALANCED = '381b4222-f694-41f0-9685-ff5bb260df2e'
+            SCHEME_MIN      = '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c'
+            SCHEME_MAX      = 'a1841308-3541-4fab-bc81-f71556f20b4a'
+        }
+    }
+
+    hidden [string] Invoke([string[]] $Arguments) {
+        $out = & powercfg.exe @Arguments 2>&1
+        $text = (@($out) | ForEach-Object { [string]$_ }) -join "`n"
+        if ($global:LASTEXITCODE -ne 0) { throw ('powercfg {0} başarısız ({1}): {2}' -f ($Arguments -join ' '), $global:LASTEXITCODE, $text.Trim()) }
+        return $text
+    }
+
+    [string] GetActiveScheme() {
+        $m = [regex]::Match($this.Invoke([string[]]@('/getactivescheme')), [WindowsPowerProvider]::GuidPattern())
+        if (-not $m.Success) { throw 'Etkin güç planı okunamadı' }
+        return $m.Value.ToLowerInvariant()
+    }
+
+    [string] ResolveScheme([string] $Scheme) {
+        $s = $Scheme.ToUpperInvariant()
+        if ($s -eq 'SCHEME_CURRENT') { return $this.GetActiveScheme() }
+        $guid = $Scheme.ToLowerInvariant()
+        $aliases = [WindowsPowerProvider]::SchemeAliases()
+        if ($aliases.ContainsKey($s)) { $guid = $aliases[$s] }
+        elseif ($Scheme -notmatch ('^' + [WindowsPowerProvider]::GuidPattern() + '$')) { return '' }
+        $known = @([regex]::Matches($this.Invoke([string[]]@('/list')), [WindowsPowerProvider]::GuidPattern()) | ForEach-Object { $_.Value.ToLowerInvariant() })
+        if ($known -contains $guid) { return $guid }
+        return ''
+    }
+
+    [void] SetActiveScheme([string] $Scheme) { [void]$this.Invoke([string[]]@('/setactive', $Scheme)) }
+
+    [long] GetValue([string] $Scheme, [string] $Subgroup, [string] $Setting, [bool] $OnAC) {
+        $text = $this.Invoke([string[]]@('/qh', $Scheme, $Subgroup, $Setting))
+        $values = @([regex]::Matches($text, ':\s*0x([0-9a-fA-F]+)\s*(\r?\n|$)') | ForEach-Object { [Convert]::ToInt64($_.Groups[1].Value, 16) })
+        if ($values.Count -lt 2) { throw ('Güç ayarı okunamadı: {0} {1} {2}' -f $Scheme, $Subgroup, $Setting) }
+        if ($OnAC) { return [long]$values[$values.Count - 2] }
+        return [long]$values[$values.Count - 1]
+    }
+
+    [void] SetValue([string] $Scheme, [string] $Subgroup, [string] $Setting, [bool] $OnAC, [long] $Value) {
+        $verb = '/setdcvalueindex'
+        if ($OnAC) { $verb = '/setacvalueindex' }
+        [void]$this.Invoke([string[]]@($verb, $Scheme, $Subgroup, $Setting, [string]$Value))
+        # Etkin planın değişikliği ancak yeniden etkinleştirince uygulanır.
+        $target = $this.ResolveScheme($Scheme)
+        if ($target -and $target -eq $this.GetActiveScheme()) { [void]$this.Invoke([string[]]@('/setactive', $target)) }
+    }
+}

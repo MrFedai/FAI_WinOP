@@ -64,7 +64,7 @@ jobs:
           path: dist/install.ps1
 
   windows:
-    name: Windows · bundle yükleme + motor smoke (powershell.exe 5.1)
+    name: Windows · bundle yükleme + motor smoke + eylem entegrasyonu (powershell.exe 5.1)
     runs-on: windows-latest
     defaults:
       run:
@@ -89,4 +89,10 @@ jobs:
       - name: Motor smoke testi (powershell.exe 5.1)
         run: |
           .\tests\Integration\Engine-Smoke.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # Gerçek sağlayıcılar: her eylem türü uygula → doğrula → geri al (yalnız test hedefleri; runner geçici).
+      - name: Windows eylem entegrasyonu (gerçek sağlayıcılar, powershell.exe 5.1)
+        run: |
+          .\tests\Integration\Windows-Actions.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

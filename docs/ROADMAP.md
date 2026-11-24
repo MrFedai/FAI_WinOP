@@ -67,6 +67,8 @@ Ubuntu'da **PowerShell 7 (pwsh)** çalışır, ama hedef **Windows PowerShell 5.
 - Sınıf yerel değişkeni, aynı sınıfın özellik adıyla (büyük/küçük harf fark etmez) atanamaz (`$ctx = ...` + `[ExecutionContext] $Ctx` özelliği = parse hatası). Yöntem argümanında `-f` ve virgül: `.Add('{0}' -f $a, $b)` iki argüman sayılır → `.Add(('{0}' -f $a, $b))`.
 - Bundle dışı kod (testler) `[IServiceProvider]` gibi .NET ile çakışan adları parse anında .NET tipine çözer; bu yüzden arayüz adı `IServiceManager`. `Should -BeOfType [SınıfAdı]` betik içi sınıfları çözemez → `.GetType().Name` ile karşılaştır.
 - Fonksiyondan dizi döndürmek: `return ,$dizi` (tek eleman / boş dizi açılmasın); `return (f)` yine açar, önce değişkene ata.
+- Sınıf yönteminde `return (& $betik)` betik hiç çıktı vermezse 5.1'de `Index was out of range` fırlatır → `$out = @(& $betik)` ile topla, sonra döndür (`WindowsScriptHost::Invoke`). Sınıf yönteminde yalnız `try` içinde atanan değişken sonra okunursa ayrıştırma hatası ("Variable is not assigned") → önce varsayılan ata.
+- Add-Type ile gelen native tip bundle ayrıştırılırken yoktur: sınıf gövdesinde `[FaiWinOP.Native.X]` yazılamaz → `('FaiWinOP.Native.X' -as [type])`. C# kaynakları 5.1 derleyicisi (C# 5) ile uyumlu yazılır.
 - 5.1'de `?.`, `??`, ternary, `&&` yok. `ConvertFrom-Json -AsHashtable` yok → kendi `ConvertTo-Hashtable` yardımcı fonksiyonu.
 - 5.1 varsayılan kodlaması → tüm dosyalar **UTF-8 BOM'lu** (Türkçe karakterler için şart).
 - Native kısımlar (Core Audio ses seviyesi, Timer Resolution servisi) `Add-Type` ile C# olarak gömülü; Linux'ta derlenmez → sağlayıcının arkasında, birimde sahte.
@@ -238,6 +240,16 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
 
 **Kabul:** Windows CI'da her eylem türü için uygula → doğrula → geri al döngüsü geçiyor.
 
+**Faz 2 notları (uygulama kararları):**
+- Eylem türleri: `Registry` · `Service` (StartType'a `AutomaticDelayedStart` eklendi) · `ScheduledTask` · `Appx` (yalnız kaldırma; kurulum `Winget` + `Source='msstore'`) · `Winget` · `Power` (ayar kipi AC/DC ayrı; `ActiveScheme` kipi) · `File` · `Shortcut` · `Script` · `Volume` · `TimerResolution`. Alanlar her dosyanın başındaki örnekte; şema `Get-FaiActionError`.
+- Yeni arayüzler: `IFileProvider`, `IShortcutProvider`, `IPowerProvider`, `IScriptHost`, `IAudioProvider`, `ITimerResolutionProvider`; `IAppxProvider.RestoreInstalled`, `IRegistryProvider.DeleteEmptyKey`. Gerçek bağlam: `New-FaiWindowsContext`.
+- Registry geri alma: değer için oluşturulan anahtar zinciri (snapshot `MissingFrom`) boş kaldıysa silinir → birebir dönüş.
+- Appx geri alma: kullanıcı paketi provisioned kopyadan yeniden kaydedilir; provisioned kopya kaldırıldıysa dönüş yok → hata değil uyarı (Faz 5'te tweak'in Risk/açıklamasına yazılır).
+- File / Shortcut snapshot'ı dosyanın baytlarını (base64) tutar; 5 MB üstü dosyaya dokunulmaz.
+- Native: `src/Native/*.cs` bundle'a `Get-FaiNativeSource` ile gömülür. Ses bellekte `Add-Type`; TimerResolution ayrı `powershell.exe` sürecinde `.exe`'ye derlenir, `FAI_TimerResolution` servisi olarak kurulur (`%ProgramFiles%\FAI_WinOP`). Win11'de sistem geneli etki için `GlobalTimerResolutionRequests=1` gerekir (Faz 7 tweak'i).
+- Power okuma `powercfg /qh` (gizli ayarlar dahil) çıktısının son iki onaltılık değeri (AC, DC); yerelleştirmeden bağımsız.
+- Entegrasyon: `tests/Integration/Windows-Actions.ps1` — gerçek sağlayıcılarla her tür uygula → doğrula → geri al + motor `-Undo`. Yalnız `GITHUB_ACTIONS=true` ya da Sandbox (`WDAGUtilityAccount`) içinde çalışır; gerçek makinede `-Force` olmadan 2 ile çıkar. CI windows job'unda ve `tests/Sandbox/Run.ps1`'de koşar. Appx gerçek kaldırma yalnız makinede provisioned kopyası olan aday paket varsa, Winget yalnız winget varsa koşar (yoksa ATLA; Sandbox'ta ikisi de yok) — tam doğrulama Faz 4/5'te Hyper-V VM.
+
 ### Faz 3 — Tweak kataloğu: kullanıcının öncelikli istekleri
 **Prompt:**
 > Şu tweak'leri `.psd1` olarak yaz ve her birine açıklama, risk, koşul ekle: `sound.startup-sound-off`, `sound.volume` (parametre `level`, varsayılan 15), `privacy.telemetry` (Home/Pro'da mümkün olan en düşük seviye — `AllowTelemetry=0` yalnızca Enterprise/Education'da tam etkili; sürüme göre nelerin etkisiz olduğunu açıklamada belirt), `privacy.app-permissions` (kamera/mikrofon hariç), `privacy.search-ads`, `ui.explorer`, `ui.visual-effects`, `ui.notifications` (istisna listesi parametresiyle). Ultimate'teki `6 Windows/22 Control Panel Settings.ps1` dosyasını sadece **referans** olarak kullan; değerleri tek tek doğrula, kopyalama. `docs/TWEAKS.md` katalog dosyasını tweak dosyalarından otomatik üreten script yaz.
@@ -267,6 +279,8 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
 > `system.restore-point`, `power.plan` (IsLaptop → AC/DC iki varyant), `system.timer-resolution`, `setup.mmagent-off`, `setup.background-apps-off` (istisnalı), `setup.store-optimize`, `setup.updates-staged` + `-UpdatesOn/-UpdatesOff`, `setup.edition-pro` (Caution), `graphics.nvidia-settings`, `graphics.amd-settings`, `graphics.p0-state` (Caution, dizüstü uyarısı), `gaming.per-game` (IFEO: CpuPriorityClass + affinity maskesi; SMT kapalı ve çekirdek 0 hariç maskelerini mantıksal işlemci sayısından hesapla), `refresh.reboot-to-bios`. Ultimate'teki ilgili dosyalar sadece referans.
 
 **Kabul:** Dizüstü koşulunda güç planının pil varyantı uyku/hazırda beklemeyi açık bırakıyor; P0 her çalıştırmada soruluyor.
+
+> Faz 2'de görüldü: hedef dizüstünde yalnız Ultimate'in içe aktardığı plan var (`99999999-9999-9999-9999-999999999999`, "Ultimate Performance"); Balanced / High performance silinmiş. `power.plan` var olmayan planı varsaymamalı (`powercfg /duplicatescheme` ile kendi planını kurup etkinleştirmeli; geri alma eski planı etkin yapar).
 
 ### Faz 8 — CLI, menü, paketleme, yayın
 **Prompt:**

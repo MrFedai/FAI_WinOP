@@ -25,7 +25,22 @@ class FakeRegistryProvider : IRegistryProvider {
         $this.Keys[$p][$Name.ToLowerInvariant()] = @{ Name = $Name; Value = $coerced; Kind = $Kind }
     }
 
-    [bool] KeyExists([string] $Path) { return $this.Keys.ContainsKey([FakeRegistryProvider]::NormPath($Path)) }
+    # Anahtar kendisi ya da bir alt anahtarı kayıtlıysa vardır (gerçekteki gibi üst anahtarlar örtük oluşur).
+    [bool] KeyExists([string] $Path) {
+        $p = [FakeRegistryProvider]::NormPath($Path)
+        if ($this.Keys.ContainsKey($p)) { return $true }
+        foreach ($k in $this.Keys.Keys) { if ($k.StartsWith($p + '\')) { return $true } }
+        return $false
+    }
+
+    [void] DeleteEmptyKey([string] $Path) {
+        $this.WriteCount++
+        [void]$this.WriteLog.Add("DeleteEmptyKey $Path")
+        $p = [FakeRegistryProvider]::NormPath($Path)
+        if (-not $this.Keys.ContainsKey($p) -or $this.Keys[$p].Count -gt 0) { return }
+        foreach ($k in $this.Keys.Keys) { if ($k.StartsWith($p + '\')) { return } }
+        $this.Keys.Remove($p)
+    }
 
     [bool] ValueExists([string] $Path, [string] $Name) {
         $p = [FakeRegistryProvider]::NormPath($Path)

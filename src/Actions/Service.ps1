@@ -1,12 +1,12 @@
 ﻿# ServiceAction: servisin başlangıç türünü ve/veya çalışma durumunu ayarlar. Yalnız $Ctx.Services üzerinden.
 #
 #   @{ Type='Service'; Name='DiagTrack'; StartType='Disabled'; State='Stopped' }
-# StartType: Automatic | Manual | Disabled · State: Running | Stopped (en az biri gerekir). Servis yoksa eylem atlanır.
+# StartType: Automatic | AutomaticDelayedStart | Manual | Disabled · State: Running | Stopped (en az biri gerekir). Servis yoksa eylem atlanır.
 
 class ServiceAction : ActionBase {
     ServiceAction([hashtable] $Definition) : base($Definition) { }
 
-    static [string[]] StartTypes() { return [string[]]@('Automatic', 'Manual', 'Disabled') }
+    static [string[]] StartTypes() { return [string[]]@('Automatic', 'AutomaticDelayedStart', 'Manual', 'Disabled') }
     static [string[]] States() { return [string[]]@('Running', 'Stopped') }
 
     static [string[]] Validate([object] $Def) {

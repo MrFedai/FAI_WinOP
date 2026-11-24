@@ -54,6 +54,14 @@ class FakeAppxProvider : IAppxProvider {
         [void]$this.WriteLog.Add("RemoveProvisioned $Name")
         $this.Provisioned.Remove($Name)
     }
+
+    # Gerçek sağlayıcı gibi: yalnız provisioned kopyası duran paket geri kaydedilebilir.
+    [void] RestoreInstalled([string] $Name) {
+        $this.WriteCount++
+        [void]$this.WriteLog.Add("RestoreInstalled $Name")
+        if (-not $this.Provisioned.Contains($Name)) { throw "Paketin makinede kopyası yok: $Name" }
+        if (-not $this.Installed.Contains($Name)) { [void]$this.Installed.Add($Name) }
+    }
 }
 
 class FakePackageProvider : IPackageProvider {

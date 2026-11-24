@@ -3,7 +3,8 @@
 #   @{ Type='Registry'; Path='HKCU:\Software\...'; Name='Ad'; Value=1; Kind='DWord' }
 #   @{ Type='Registry'; Path='HKCU:\Software\...'; Name='Ad'; Ensure='Absent' }          # değeri sil
 # Kind: String | ExpandString | Binary | DWord | MultiString | QWord. Value '{{parametre}}' olabilir (Tweak.Params).
-# Not: Undo, uygulamadan önce var olmayan değeri siler; değer için oluşan boş anahtarı silmez.
+# Undo, uygulamadan önce var olmayan değeri siler; değer için oluşturulan anahtarlar (Snapshot.MissingFrom: ilk eksik
+# üst anahtar) boş kaldıysa onları da aşağıdan yukarı siler. İçine başka değer yazılmış anahtara dokunulmaz.
 
 class RegistryAction : ActionBase {
     RegistryAction([hashtable] $Definition) : base($Definition) { }
@@ -84,7 +85,14 @@ class RegistryAction : ActionBase {
     [hashtable] Snapshot([ExecutionContext] $Ctx) {
         $path = [string]$this.Definition['Path']
         $name = [string]$this.Definition['Name']
-        if (-not $Ctx.Registry.ValueExists($path, $name)) { return @{ Exists = $false } }
+        if (-not $Ctx.Registry.ValueExists($path, $name)) {
+            $snap = @{ Exists = $false }
+            if (-not $this.IsAbsent()) {
+                $missing = [RegistryAction]::TopMissingKey($Ctx, $path)
+                if ($missing) { $snap['MissingFrom'] = $missing }
+            }
+            return $snap
+        }
         return @{
             Exists = $true
             Value  = $Ctx.Registry.GetValue($path, $name)
@@ -112,8 +120,36 @@ class RegistryAction : ActionBase {
             $value = ConvertTo-FaiRegistryValue -Value $Snapshot['Value'] -Kind $kind
             $Ctx.Registry.SetValue($path, $name, $value, $kind)
         }
-        elseif ($Ctx.Registry.ValueExists($path, $name)) {
-            $Ctx.Registry.DeleteValue($path, $name)
+        else {
+            if ($Ctx.Registry.ValueExists($path, $name)) { $Ctx.Registry.DeleteValue($path, $name) }
+            if ($Snapshot['MissingFrom']) { [RegistryAction]::RemoveCreatedKeys($Ctx, $path, [string]$Snapshot['MissingFrom']) }
+        }
+    }
+
+    # Yoldaki ilk eksik anahtar ('HKLM:\A\B' eksikse 'HKLM:\A\B'); hepsi varsa boş metin. Salt okunur.
+    static [string] TopMissingKey([ExecutionContext] $Ctx, [string] $Path) {
+        $m = [regex]::Match($Path.TrimEnd('\'), '^([A-Za-z]+:)\\(.+)$')
+        if (-not $m.Success) { return '' }
+        $cur = $m.Groups[1].Value
+        foreach ($part in ($m.Groups[2].Value -split '\\')) {
+            $cur = $cur + '\' + $part
+            if (-not $Ctx.Registry.KeyExists($cur)) { return $cur }
+        }
+        return ''
+    }
+
+    # Path'ten Top'a (dahil) yukarı doğru boş kalan anahtarları siler; dolu anahtarda durur.
+    static [void] RemoveCreatedKeys([ExecutionContext] $Ctx, [string] $Path, [string] $Top) {
+        $cur = $Path.TrimEnd('\')
+        $topLen = $Top.TrimEnd('\').Length
+        while ($cur.Length -ge $topLen) {
+            if ($Ctx.Registry.KeyExists($cur)) {
+                $Ctx.Registry.DeleteEmptyKey($cur)
+                if ($Ctx.Registry.KeyExists($cur)) { return }
+            }
+            $i = $cur.LastIndexOf('\')
+            if ($i -lt 0) { return }
+            $cur = $cur.Substring(0, $i)
         }
     }
 
