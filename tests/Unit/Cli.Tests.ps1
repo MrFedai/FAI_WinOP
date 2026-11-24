@@ -175,6 +175,17 @@ Describe 'Invoke-FaiCli' {
         $ctx.Registry.WriteCount | Should -Be 0
     }
 
+    It 'rapor günlük dosyasına madde madde yazılır (Faz 9: dry-run raporu incelenir)' {
+        $ctx = New-Env
+        $ctx.Logger.Path = Join-Path $TestDrive 'logs/rapor.log'
+        $path = Write-Profile 'rapor' @('ui.alpha')
+        Invoke-Quiet { Invoke-FaiCli -Bound @{ Profile = $path; DryRun = $true } -Context $ctx -Catalog (New-TestCatalog) } | Should -Be 0
+        $text = Get-Content -LiteralPath $ctx.Logger.Path -Raw -Encoding UTF8
+        $text | Should -Match '\[ÖNİZLEME\] ui\.alpha — Başlık ui\.alpha'
+        $text | Should -Match '      · '
+        $ctx.Logger.Entries | Where-Object { $_.Message -match 'ui\.alpha — ' } | Should -BeNullOrEmpty
+    }
+
     It '-Profile uygular, -Skip çıkarır; -Undo geri alır' {
         $ctx = New-Env
         $cat = New-TestCatalog

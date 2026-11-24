@@ -158,13 +158,13 @@ function Invoke-FaiMenuRun {
         if ($answer -eq 'ö' -or $answer -eq 'o') {
             $was = $Context.DryRun
             $Context.DryRun = $true
-            try { Write-FaiReport -Report (& $Action $Context) }
+            try { Write-FaiReport -Report (& $Action $Context) -Logger $Context.Logger }
             catch { Write-Host ('HATA: {0}' -f $_.Exception.Message) -ForegroundColor Red }
             finally { $Context.DryRun = $was }
             continue
         }
         if ($answer -eq 'u') {
-            try { Write-FaiReport -Report (& $Action $Context) }
+            try { Write-FaiReport -Report (& $Action $Context) -Logger $Context.Logger }
             catch { Write-Host ('HATA: {0}' -f $_.Exception.Message) -ForegroundColor Red }
             return
         }
@@ -255,7 +255,7 @@ function Invoke-FaiMenu {
             }
             '3' {
                 if ($Context.Prompt.Confirm('Geri alınmamış son oturum geri alınacak.')) {
-                    try { Write-FaiReport -Report (Invoke-FaiEngine -Undo -Context $Context -Catalog $Catalog -AppCatalog $AppCatalog) }
+                    try { Write-FaiReport -Report (Invoke-FaiEngine -Undo -Context $Context -Catalog $Catalog -AppCatalog $AppCatalog) -Logger $Context.Logger }
                     catch { Write-Host ('HATA: {0}' -f $_.Exception.Message) -ForegroundColor Red }
                 }
             }

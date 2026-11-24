@@ -15,17 +15,25 @@ class Logger {
         $stamp = (Get-Date).ToString('s')
         $line = '{0} [{1}] {2}' -f $stamp, $Level, $Message
         [void]$this.Entries.Add([pscustomobject]@{ Time = $stamp; Level = $Level; Message = $Message })
-        if ($this.Path) {
-            $dir = Split-Path -Parent $this.Path
-            if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-            [System.IO.File]::AppendAllText($this.Path, $line + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($true)))
-        }
+        $this.AppendFile($line + [Environment]::NewLine)
         if (-not $this.Quiet) {
             $color = 'Gray'
             if ($Level -eq 'WARN') { $color = 'Yellow' }
             if ($Level -eq 'ERROR') { $color = 'Red' }
             Write-Host $line -ForegroundColor $color
         }
+    }
+
+    # Çok satırlı blok (ör. rapor): zaman damgasız, yalnız dosyaya; bellekte ve konsolda yok.
+    [void] Block([string] $Text) {
+        $this.AppendFile([Environment]::NewLine + $Text)
+    }
+
+    hidden [void] AppendFile([string] $Text) {
+        if (-not $this.Path) { return }
+        $dir = Split-Path -Parent $this.Path
+        if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        [System.IO.File]::AppendAllText($this.Path, $Text, (New-Object System.Text.UTF8Encoding($true)))
     }
 
     [void] Info([string] $Message) { $this.Write('INFO', $Message) }

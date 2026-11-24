@@ -232,9 +232,14 @@ function Get-FaiStatusColor {
 }
 
 function Write-FaiReport {
-    <# .SYNOPSIS  Raporu durum renkleriyle basar (Reporter.Render ile aynı içerik). #>
+    <# .SYNOPSIS  Raporu durum renkleriyle basar (Reporter.Render ile aynı içerik); Logger verilirse günlüğe de yazar. #>
     [CmdletBinding()]
-    param([Parameter(Mandatory = $true)] [Reporter] $Report)
+    param(
+        [Parameter(Mandatory = $true)] [Reporter] $Report,
+        [Logger] $Logger
+    )
+
+    if ($null -ne $Logger) { $Logger.Block($Report.Render()) }
 
     Write-Host ''
     Write-Host $Report.Heading -ForegroundColor White
@@ -574,7 +579,7 @@ function Invoke-FaiCli {
             return (Invoke-FaiMenu -Context $Context -Catalog $Catalog -AppCatalog $AppCatalog)
         }
 
-        Write-FaiReport -Report $report
+        Write-FaiReport -Report $report -Logger $Context.Logger
         if ($report.HasFailures()) { return 1 }
         return 0
     }

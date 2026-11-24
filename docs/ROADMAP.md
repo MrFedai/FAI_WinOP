@@ -483,6 +483,15 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
 5. `-Undo` → önceki duruma dönüş
 6. Hyper-V VM'de temiz Win11 kurulumu → tek satır komut → uçtan uca
 
+**Faz 9 notları:**
+- Hedef dizüstü: Acer Nitro AN16-41 (pil var → `power.plan` dizüstü varyantı), Windows 11 Pro, Hyper-V çalışıyor.
+- Rapor artık günlükte madde madde (`Logger.Block` ← `Write-FaiReport -Logger`; CLI ve menü):
+  `%ProgramData%\FAI_WinOP\logs\<zaman>.log` = özet + her tweak'in eylem satırları. Adım 1 ve 5 bu dosyadan incelenir.
+- Adım 1–5 yerel kopyadan (`tools/Sync-ToWindows.sh`; yönetici PowerShell):
+  `& "$env:USERPROFILE\FAI_WinOP_test\repo\dist\install.ps1" -Profile fedai -DryRun`.
+  Uygulama sonrası aynı dry-run'da her şey ZATEN UYGUN olmalı (araç / her seferinde onaylı olanlar hariç).
+- Adım 6 ön koşulu: ilk sürüm etiketi (`releases/latest/download/get.ps1`; kullanıcı) + Win11 ISO.
+
 ---
 
 ## 5. Açık sorular
