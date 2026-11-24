@@ -35,10 +35,10 @@ BeforeAll {
     }
 
     function New-Tweak {
-        param([string] $Id, [string] $Risk = 'Safe', [object[]] $Conditions = @(), [object[]] $Actions, [string] $Confirm = '', [hashtable] $Params = @{})
+        param([string] $Id, [string] $Risk = 'Safe', [object[]] $Conditions = @(), [object[]] $Actions, [string] $Warning = '', [hashtable] $Params = @{})
         $d = @{ Id = $Id; Title = "Tweak $Id"; Description = 'test'; Category = 'test'; Risk = $Risk; Actions = $Actions }
         if ($Conditions.Count -gt 0) { $d['Conditions'] = $Conditions }
-        if ($Confirm) { $d['Confirm'] = $Confirm }
+        if ($Warning) { $d['Confirm'] = $Warning }
         if ($Params.Count -gt 0) { $d['Params'] = $Params }
         return [Tweak]::FromHashtable($d, 'test')
     }
@@ -116,7 +116,7 @@ Describe 'Koşul atlama' {
 Describe 'Caution onayı' {
     It 'kullanıcı reddederse (H) tweak uygulanmaz, hiçbir şey yazılmaz, oturum açılmaz' {
         $ctx = New-Env -Answers 'H'
-        $t = New-Tweak -Id 'test.caut' -Risk 'Caution' -Confirm 'Pil ve ısı artar.' -Actions @(RegSet 'C' 1)
+        $t = New-Tweak -Id 'test.caut' -Risk 'Caution' -Warning 'Pil ve ısı artar.' -Actions @(RegSet 'C' 1)
         $r = Invoke-FaiEngine -Profile (New-Profile @('test.caut')) -Context $ctx -Catalog (New-Catalog $t)
 
         $r.Find('test.caut').Status | Should -Be 'Skipped'
@@ -139,7 +139,7 @@ Describe 'Caution onayı' {
 
     It 'soru metni tweak başlığını ve Confirm uyarısını içerir' {
         $ctx = New-Env -Answers 'H'
-        $t = New-Tweak -Id 'test.caut' -Risk 'Caution' -Confirm 'dizüstünde pil ve ısı artar' -Actions @(RegSet 'C' 1)
+        $t = New-Tweak -Id 'test.caut' -Risk 'Caution' -Warning 'dizüstünde pil ve ısı artar' -Actions @(RegSet 'C' 1)
         [void](Invoke-FaiEngine -Profile (New-Profile @('test.caut')) -Context $ctx -Catalog (New-Catalog $t))
         $ctx.Prompt.Asked[0]['Message'] | Should -Match 'Tweak test\.caut'
         $ctx.Prompt.Asked[0]['Message'] | Should -Match 'dizüstünde pil ve ısı artar'

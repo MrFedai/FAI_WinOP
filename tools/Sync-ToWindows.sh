@@ -4,7 +4,7 @@
 #   tools/Sync-ToWindows.sh          bundle üret → kopyala → Sandbox dosyasını yaz (parametresiz tam iş)
 #
 # Hedef: %USERPROFILE%\FAI_WinOP_test (FAI_WINOP_TEST_DIR=<Windows yolu> ile değişir)
-#   repo\                 depo aynası: izli + izlenmeyen (gitignore dışı) dosyalar + dist\install.ps1.
+#   repo\                 depo aynası: izli + izlenmeyen (gitignore dışı) dosyalar + dist\install.ps1 + dist\install.fakes.ps1.
 #                         Ayna: depoda olmayan dosyalar buradan silinir (silinenler listelenir); yalnız bu klasör.
 #   out\                  Sandbox sonuçları (run-*.log, SONUC.txt); dokunulmaz
 #   FAI_WinOP.wsb         tests/Sandbox/FAI_WinOP.wsb, yollar doldurulmuş; çift tıkla ya da aşağıdaki komut
@@ -21,9 +21,10 @@ else
 fi
 dest="$(wslpath -u "$win_dir")"
 
-echo "[1/4] Bundle üretiliyor (build/Bundle.ps1)"
+echo "[1/4] Bundle üretiliyor (build/Bundle.ps1: dist/install.ps1 + testler için dist/install.fakes.ps1)"
 if command -v pwsh >/dev/null; then
   pwsh -NoProfile -NonInteractive -File "$repo/build/Bundle.ps1" | sed 's/^/      /'
+  pwsh -NoProfile -NonInteractive -File "$repo/build/Bundle.ps1" -IncludeFakes | sed 's/^/      /'
 else
   echo "      UYARI: pwsh yok, bundle üretilmedi (dist/ olduğu gibi kopyalanır)"
 fi
@@ -49,4 +50,5 @@ sed -e "s|__TEST_DIR__|${esc}|g" -e 's/\r$//' -e 's/$/\r/' "$repo/tests/Sandbox/
 
 echo "[4/4] Hazır. Örnek komutlar:"
 echo "      powershell.exe -NoProfile -ExecutionPolicy Bypass -File '$win_dir\\repo\\tests\\Integration\\Load-Bundle.ps1'"
+echo "      powershell.exe -NoProfile -ExecutionPolicy Bypass -File '$win_dir\\repo\\tests\\Integration\\Engine-Smoke.ps1'"
 echo "      cmd.exe /c start \"\" \"$win_dir\\FAI_WinOP.wsb\"     (sonuç: $win_dir\\out\\SONUC.txt)"

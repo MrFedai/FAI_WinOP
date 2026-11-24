@@ -63,6 +63,10 @@ Ubuntu'da **PowerShell 7 (pwsh)** çalışır, ama hedef **Windows PowerShell 5.
 ### 1.3 PowerShell 5.1 + sınıflar — bilinen tuzaklar
 - 5.1'de sınıflar `using module` ile yüklenmeli; `irm | iex` akışında bu çalışmaz → **bundle** tüm sınıfları tek script'te, bağımlılık sırasına göre birleştirir.
 - Sınıf içinde başka dosyadaki tip, parse anında bilinmeli → bundle sırası: `Core/Interfaces` → `Core/*` → `Actions/*` → `Providers/*` → `Engine` → `Cli`.
+  `Core/*` alfabetik değil, `build/Bundle.ps1` içindeki `$coreOrder` bağımlılık sırasıdır (yeni Core dosyası eklenince oraya da yazılır). `Providers/Fake/*` yalnız `Bundle.ps1 -IncludeFakes` çıktısına (`dist/install.fakes.ps1`) girer.
+- Sınıf yerel değişkeni, aynı sınıfın özellik adıyla (büyük/küçük harf fark etmez) atanamaz (`$ctx = ...` + `[ExecutionContext] $Ctx` özelliği = parse hatası). Yöntem argümanında `-f` ve virgül: `.Add('{0}' -f $a, $b)` iki argüman sayılır → `.Add(('{0}' -f $a, $b))`.
+- Bundle dışı kod (testler) `[IServiceProvider]` gibi .NET ile çakışan adları parse anında .NET tipine çözer; bu yüzden arayüz adı `IServiceManager`. `Should -BeOfType [SınıfAdı]` betik içi sınıfları çözemez → `.GetType().Name` ile karşılaştır.
+- Fonksiyondan dizi döndürmek: `return ,$dizi` (tek eleman / boş dizi açılmasın); `return (f)` yine açar, önce değişkene ata.
 - 5.1'de `?.`, `??`, ternary, `&&` yok. `ConvertFrom-Json -AsHashtable` yok → kendi `ConvertTo-Hashtable` yardımcı fonksiyonu.
 - 5.1 varsayılan kodlaması → tüm dosyalar **UTF-8 BOM'lu** (Türkçe karakterler için şart).
 - Native kısımlar (Core Audio ses seviyesi, Timer Resolution servisi) `Add-Type` ile C# olarak gömülü; Linux'ta derlenmez → sağlayıcının arkasında, birimde sahte.

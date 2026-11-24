@@ -70,4 +70,47 @@ Describe 'build/Bundle.ps1' {
         [void][System.Management.Automation.Language.Parser]::ParseFile($out, [ref]$null, [ref]$errors)
         $errors | Should -BeNullOrEmpty
     }
+
+    It 'üretim bundle''ına Fake sağlayıcılar GİRMEZ' {
+        $out = Join-Path $TestDrive 'prod.ps1'
+        $r = Invoke-Child $Bundle @('-OutFile', $out)
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $text = [System.IO.File]::ReadAllText($out)
+        $text | Should -Not -Match 'class Fake\w+'
+        $text | Should -Not -Match '#region src/Providers/Fake/'
+        $text | Should -Not -Match 'New-FakeContext'
+        $text | Should -Match '#region src/Engine\.ps1'
+    }
+
+    It '-IncludeFakes: Fake''ler Interfaces''ten sonra, Engine''den önce gelir; varsayılan çıktı ayrı dosyadır' {
+        $out = Join-Path $TestDrive 'fakes.ps1'
+        $r = Invoke-Child $Bundle @('-OutFile', $out, '-IncludeFakes')
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $text = [System.IO.File]::ReadAllText($out)
+        $iface = $text.IndexOf('#region src/Core/Interfaces.ps1')
+        $fake = $text.IndexOf('#region src/Providers/Fake/FakeRegistryProvider.ps1')
+        $engine = $text.IndexOf('#region src/Engine.ps1')
+        $iface | Should -BeGreaterOrEqual 0
+        $fake | Should -BeGreaterThan $iface
+        $engine | Should -BeGreaterThan $fake
+        $text | Should -Match 'Fake\* sağlayıcıları içerir'
+        $text.IndexOf('#region src/Core/Interfaces.ps1') | Should -Be $text.IndexOf('#region src/') -Because 'Interfaces ilk kaynak olmalı'
+    }
+
+    It 'Core dosyaları bağımlılık sırasında birleşir (ActionBase, ExecutionContext''ten sonra; Tweak, ActionBase''ten sonra)' {
+        $out = Join-Path $TestDrive 'order.ps1'
+        $r = Invoke-Child $Bundle @('-OutFile', $out)
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $text = [System.IO.File]::ReadAllText($out)
+        $pos = @{}
+        foreach ($n in 'Interfaces', 'Logger', 'BackupStore', 'ExecutionContext', 'ActionBase', 'Tweak', 'Profile') {
+            $pos[$n] = $text.IndexOf("#region src/Core/$n.ps1")
+            $pos[$n] | Should -BeGreaterOrEqual 0 -Because "$n bundle'da olmalı"
+        }
+        $pos['ExecutionContext'] | Should -BeGreaterThan $pos['BackupStore']
+        $pos['ExecutionContext'] | Should -BeGreaterThan $pos['Logger']
+        $pos['ActionBase'] | Should -BeGreaterThan $pos['ExecutionContext']
+        $pos['Tweak'] | Should -BeGreaterThan $pos['ActionBase']
+        $text.IndexOf('#region src/Actions/Registry.ps1') | Should -BeGreaterThan $pos['ActionBase']
+    }
 }

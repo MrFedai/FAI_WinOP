@@ -42,13 +42,29 @@ jobs:
         shell: pwsh
         run: ./build/Bundle.ps1
 
+      - name: Bundle yükleme testi (pwsh 7, -AnyVersion)
+        shell: pwsh
+        run: |
+          ./tests/Integration/Load-Bundle.ps1 -AnyVersion
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Fake sağlayıcılı bundle (yalnız test; yayınlanmaz)
+        shell: pwsh
+        run: ./build/Bundle.ps1 -IncludeFakes
+
+      - name: Motor smoke testi (pwsh 7, -AnyVersion)
+        shell: pwsh
+        run: |
+          ./tests/Integration/Engine-Smoke.ps1 -AnyVersion
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - uses: actions/upload-artifact@v4
         with:
           name: install-ps1
           path: dist/install.ps1
 
   windows:
-    name: Windows · bundle yükleme (powershell.exe 5.1)
+    name: Windows · bundle yükleme + motor smoke (powershell.exe 5.1)
     runs-on: windows-latest
     defaults:
       run:
@@ -65,4 +81,12 @@ jobs:
       - name: Bundle yükleme testi
         run: |
           .\tests\Integration\Load-Bundle.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Fake sağlayıcılı bundle (5.1 ile üret; yalnız test)
+        run: .\build\Bundle.ps1 -IncludeFakes
+
+      - name: Motor smoke testi (powershell.exe 5.1)
+        run: |
+          .\tests\Integration\Engine-Smoke.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
