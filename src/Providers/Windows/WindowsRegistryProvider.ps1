@@ -39,6 +39,13 @@ class WindowsRegistryProvider : IRegistryProvider {
         finally { $k.Dispose() }
     }
 
+    [string[]] GetSubKeyNames([string] $Path) {
+        $k = $this.OpenKey($Path, 'Read')
+        if ($null -eq $k) { return [string[]]@() }
+        try { return [string[]]@($k.GetSubKeyNames()) }
+        finally { $k.Dispose() }
+    }
+
     [object] GetValue([string] $Path, [string] $Name) {
         $k = $this.OpenKey($Path, 'Read')
         if ($null -eq $k) { return $null }

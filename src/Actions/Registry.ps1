@@ -170,3 +170,125 @@ class RegistryAction : ActionBase {
         return ('{0} [şu an: {1}]' -f $this.Describe(), $now)
     }
 }
+
+# RegistryEachAction: Path'in her doğrudan alt anahtarına aynı değeri yazar; Exclude kalıplarına (-like, büyük/küçük harf
+# duyarsız) uyan alt anahtarlar atlanır. Örnek: bildirim gönderenlerinin hepsini kapat, istisna listesi hariç.
+#
+#   @{ Type='RegistryEach'; Path='HKCU:\Software\...\Notifications\Settings'; Name='Enabled'; Value=0; Kind='DWord'
+#      Exclude=@('Windows.Defender*', '{{exceptions}}') }
+# Exclude öğesi metin ya da (parametreden gelen) metin dizisi olabilir; düzleştirilir. Hedef, uygulama anında var olan alt
+# anahtarlardır: yeni anahtar oluşturmaz, sonradan eklenen anahtar bir sonraki çalıştırmada yakalanır.
+# Undo: snapshot'taki her alt anahtarın değeri eski haline döner (önceden yoksa silinir); arada silinmiş anahtar yeniden açılmaz.
+
+class RegistryEachAction : ActionBase {
+    RegistryEachAction([hashtable] $Definition) : base($Definition) { }
+
+    static [string[]] Validate([object] $Def) {
+        $e = New-Object 'System.Collections.Generic.List[string]'
+        foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Path', 'Name', 'Value', 'Kind', 'Exclude'))) { $e.Add($m) }
+        # Path / Name / Value / Kind kuralları RegistryAction ile aynı (Ensure yok: her zaman yazar).
+        $core = @{ Type = 'Registry' }
+        foreach ($k in @('Path', 'Name', 'Value', 'Kind')) { if ($Def.Contains($k)) { $core[$k] = $Def[$k] } }
+        foreach ($m in [RegistryAction]::Validate($core)) { $e.Add($m) }
+        if ($Def.Contains('Exclude') -and -not (Test-FaiHasPlaceholder $Def['Exclude'])) {
+            # Parametre açılınca öğe metin dizisi olabilir: bir düzey düzleştirilir (Patterns ile aynı).
+            $flat = @(foreach ($item in @($Def['Exclude'])) { foreach ($p in @($item)) { $p } })
+            $bad = @($flat | Where-Object { $_ -isnot [string] -or [string]::IsNullOrWhiteSpace($_) })
+            if (-not (Test-FaiIsList $Def['Exclude']) -or $bad.Count -gt 0) { $e.Add('Exclude: boş olmayan metin dizisi olmalı (-like kalıpları)') }
+        }
+        return $e.ToArray()
+    }
+
+    # Düzleştirilmiş Exclude kalıpları.
+    [string[]] Patterns() {
+        $out = New-Object 'System.Collections.Generic.List[string]'
+        if (-not $this.Definition.ContainsKey('Exclude')) { return $out.ToArray() }
+        foreach ($item in @($this.Definition['Exclude'])) {
+            foreach ($p in @($item)) { if ($p -is [string] -and $p.Trim()) { $out.Add($p.Trim()) } }
+        }
+        return $out.ToArray()
+    }
+
+    [bool] IsExcluded([string] $KeyName) {
+        foreach ($p in $this.Patterns()) { if ($KeyName -like $p) { return $true } }
+        return $false
+    }
+
+    [string] KeyPath([string] $KeyName) { return ('{0}\{1}' -f ([string]$this.Definition['Path']).TrimEnd('\'), $KeyName) }
+
+    # İstisna dışındaki alt anahtar adları (salt okunur).
+    [string[]] Targets([ExecutionContext] $Ctx) {
+        $out = New-Object 'System.Collections.Generic.List[string]'
+        foreach ($n in @($Ctx.Registry.GetSubKeyNames([string]$this.Definition['Path']))) {
+            if ($n -and -not $this.IsExcluded($n)) { $out.Add($n) }
+        }
+        return $out.ToArray()
+    }
+
+    # Değeri hedeften farklı olan alt anahtarlar (salt okunur).
+    [string[]] Pending([ExecutionContext] $Ctx) {
+        $name = [string]$this.Definition['Name']
+        $kind = [string]$this.Definition['Kind']
+        $want = ConvertTo-FaiRegistryValue -Value $this.Definition['Value'] -Kind $kind
+        $out = New-Object 'System.Collections.Generic.List[string]'
+        foreach ($k in $this.Targets($Ctx)) {
+            $p = $this.KeyPath($k)
+            $ok = $Ctx.Registry.ValueExists($p, $name) -and $Ctx.Registry.GetValueKind($p, $name) -eq $kind -and
+            (Test-FaiValueEqual -Left $Ctx.Registry.GetValue($p, $name) -Right $want)
+            if (-not $ok) { $out.Add($k) }
+        }
+        return $out.ToArray()
+    }
+
+    [bool] Test([ExecutionContext] $Ctx) { return (@($this.Pending($Ctx)).Count -eq 0) }
+
+    [hashtable] Snapshot([ExecutionContext] $Ctx) {
+        $name = [string]$this.Definition['Name']
+        $entries = New-Object System.Collections.ArrayList
+        foreach ($k in $this.Targets($Ctx)) {
+            $p = $this.KeyPath($k)
+            if ($Ctx.Registry.ValueExists($p, $name)) {
+                [void]$entries.Add(@{ Key = $k; Exists = $true; Value = $Ctx.Registry.GetValue($p, $name); Kind = $Ctx.Registry.GetValueKind($p, $name) })
+            }
+            else { [void]$entries.Add(@{ Key = $k; Exists = $false }) }
+        }
+        return @{ Keys = $entries.ToArray() }
+    }
+
+    [void] Apply([ExecutionContext] $Ctx) {
+        $name = [string]$this.Definition['Name']
+        $kind = [string]$this.Definition['Kind']
+        $value = ConvertTo-FaiRegistryValue -Value $this.Definition['Value'] -Kind $kind
+        foreach ($k in $this.Pending($Ctx)) { $Ctx.Registry.SetValue($this.KeyPath($k), $name, $value, $kind) }
+    }
+
+    [void] Revert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
+        $name = [string]$this.Definition['Name']
+        foreach ($entry in @($Snapshot['Keys'])) {
+            if ($null -eq $entry) { continue }
+            $p = $this.KeyPath([string]$entry['Key'])
+            if (-not $Ctx.Registry.KeyExists($p)) { continue }
+            if ($entry['Exists']) {
+                $kind = [string]$entry['Kind']
+                $Ctx.Registry.SetValue($p, $name, (ConvertTo-FaiRegistryValue -Value $entry['Value'] -Kind $kind), $kind)
+            }
+            elseif ($Ctx.Registry.ValueExists($p, $name)) { $Ctx.Registry.DeleteValue($p, $name) }
+        }
+    }
+
+    [string] Describe() {
+        $v = (@($this.Definition['Value']) | ForEach-Object { [string]$_ }) -join ','
+        $text = 'Kayıt defteri: {0}\*\{1} = {2} ({3})' -f ([string]$this.Definition['Path']).TrimEnd('\'), $this.Definition['Name'], $v, $this.Definition['Kind']
+        $pats = $this.Patterns()
+        if ($pats.Count -gt 0) { $text += ' — hariç: ' + ($pats -join ', ') }
+        return $text
+    }
+
+    [string] Preview([ExecutionContext] $Ctx) {
+        $pending = @($this.Pending($Ctx))
+        $shown = @($pending | Select-Object -First 8)
+        $list = $shown -join ', '
+        if ($pending.Count -gt $shown.Count) { $list += (', … +{0}' -f ($pending.Count - $shown.Count)) }
+        return ('{0} [değişecek {1} alt anahtar: {2}]' -f $this.Describe(), $pending.Count, $list)
+    }
+}

@@ -529,3 +529,93 @@ Describe 'Fabrika, arayüzler ve Windows sağlayıcıları' {
         ('FaiWinOP.Native.AudioEndpoint' -as [type]).GetMethod('SetVolume') | Should -Not -BeNullOrEmpty
     }
 }
+
+Describe 'RegistryEachAction' {
+    BeforeAll {
+        $script:Root = 'HKCU:\Software\FAI_WinOP_Test\Each'
+        function EachDef([object] $Exclude) {
+            $d = @{ Type = 'RegistryEach'; Path = $script:Root; Name = 'Enabled'; Value = 0; Kind = 'DWord' }
+            if ($null -ne $Exclude) { $d['Exclude'] = $Exclude }
+            return $d
+        }
+        function Seeded {
+            $ctx = New-Ctx
+            $ctx.Registry.Seed("$script:Root\App.One", 'Rank', 1, 'DWord')
+            $ctx.Registry.Seed("$script:Root\App.Two", 'Enabled', 1, 'DWord')
+            $ctx.Registry.Seed("$script:Root\Keep.Me", 'Enabled', 1, 'DWord')
+            $ctx.Registry.Seed("$script:Root\App.Zero\Alt", 'X', 1, 'DWord')
+            return $ctx
+        }
+    }
+
+    It 'şema: geçerli tanım hatasız; Registry kuralları ve Exclude denetlenir' {
+        Errs (EachDef @('Keep*')) | Should -BeNullOrEmpty
+        Errs (EachDef $null) | Should -BeNullOrEmpty
+        (Errs (EachDef 'Keep*')) -join "`n" | Should -Match 'Exclude: '
+        (Errs (EachDef @('Keep*', ''))) -join "`n" | Should -Match 'Exclude: '
+        $bad = EachDef $null
+        $bad['Kind'] = 'Dword2'
+        $bad['Ensure'] = 'Absent'
+        $msgs = (Errs $bad) -join "`n"
+        $msgs | Should -Match 'Kind: '
+        $msgs | Should -Match 'Ensure: bilinmeyen alan'
+    }
+
+    It 'alt anahtar adları büyük/küçük harfi korunarak listelenir; olmayan anahtar boş' {
+        $ctx = Seeded
+        @($ctx.Registry.GetSubKeyNames($script:Root)) | Should -Be @('App.One', 'App.Two', 'App.Zero', 'Keep.Me')
+        @($ctx.Registry.GetSubKeyNames('HKCU:\Software\Yok')).Count | Should -Be 0
+    }
+
+    It 'istisna dışındaki her alt anahtara yazar; geri alma birebir döner (JSON üzerinden)' {
+        $ctx = Seeded
+        $a = Act (EachDef @('keep*'))
+        $a.Test($ctx) | Should -BeFalse
+        @($a.Pending($ctx)) | Should -Be @('App.One', 'App.Two', 'App.Zero')
+        $null = Invoke-Cycle $ctx $a { $ctx.Registry.Dump() -join "`n" }
+        # Revert sonrası Keep.Me hiç değişmedi, App.One'da değer yok (önceden yoktu)
+        $ctx.Registry.ValueExists("$script:Root\App.One", 'Enabled') | Should -BeFalse
+        $ctx.Registry.GetValue("$script:Root\App.Two", 'Enabled') | Should -Be 1
+    }
+
+    It 'Apply istisnaya dokunmaz' {
+        $ctx = Seeded
+        (Act (EachDef @('Keep.Me'))).Apply($ctx)
+        $ctx.Registry.GetValue("$script:Root\Keep.Me", 'Enabled') | Should -Be 1
+        $ctx.Registry.GetValue("$script:Root\App.Zero", 'Enabled') | Should -Be 0
+    }
+
+    It 'parametreden gelen dizi Exclude içinde düzleştirilir' {
+        $t = [Tweak]::FromHashtable(@{
+                Id = 'test.each'; Title = 'T'; Description = 'D'; Category = 'test'; Risk = 'Safe'
+                Params = @{ ex = @('App.One', 'App.Two') }
+                Actions = @(EachDef @('Keep*', '{{ex}}'))
+            }, 'test')
+        @($t.Actions[0].Patterns()) | Should -Be @('Keep*', 'App.One', 'App.Two')
+        $ctx = Seeded
+        @($t.Actions[0].Pending($ctx)) | Should -Be @('App.Zero')
+        $t2 = $t.WithParams(@{ ex = @() })
+        @($t2.Actions[0].Pending($ctx)) | Should -Be @('App.One', 'App.Two', 'App.Zero')
+    }
+
+    It 'alt anahtar yoksa ya da hepsi uygunsa Test doğru; Preview değişecekleri sayar' {
+        $ctx = New-Ctx
+        (Act (EachDef $null)).Test($ctx) | Should -BeTrue
+        $ctx = Seeded
+        $a = Act (EachDef @('Keep*'))
+        $a.Preview($ctx) | Should -Match 'değişecek 3 alt anahtar: App.One, App.Two, App.Zero'
+        $a.Describe() | Should -Match 'hariç: Keep\*'
+    }
+
+    It 'geri alma: arada silinmiş alt anahtarı yeniden oluşturmaz' {
+        $ctx = Seeded
+        $a = Act (EachDef $null)
+        $snap = RoundTrip ($a.Snapshot($ctx))
+        $a.Apply($ctx)
+        $ctx.Registry.DeleteValue("$script:Root\App.One", 'Rank')
+        $ctx.Registry.DeleteValue("$script:Root\App.One", 'Enabled')
+        $ctx.Registry.DeleteEmptyKey("$script:Root\App.One")
+        $a.Revert($ctx, $snap)
+        $ctx.Registry.KeyExists("$script:Root\App.One") | Should -BeFalse
+    }
+}

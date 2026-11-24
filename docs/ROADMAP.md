@@ -256,6 +256,14 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
 
 **Kabul:** Şema doğrulamasından geçiyor; dry-run raporu her tweak için okunabilir bir değişiklik listesi veriyor.
 
+**Faz 3 notları (uygulama kararları):**
+- Yeni eylem türü `RegistryEach`: bir anahtarın her alt anahtarına aynı değeri yazar, `Exclude` (-like kalıpları, parametre dizisi düzleştirilir) hariç; yeni anahtar oluşturmaz. Yeni arayüz yöntemi `IRegistryProvider.GetSubKeyNames`. `ui.notifications` bununla "hepsi kapalı, istisnalar açık" yapar; `setup.background-apps-off` (istisna listesi) aynı eylemi kullanabilir.
+- `ui.notifications`: `ToastEnabled=1` (Ultimate genel anahtarı kapatıyor; o zaman istisna çalışmaz), gönderenler tek tek kapalı; Defender / Windows Güvenliği / Güvenlik ve Bakım her zaman korunur. Uygulamanın bildirim anahtarı ilk bildiriminde oluşur → profil uygulamalardan (Faz 4) sonra yeniden çalıştırılınca yakalanır.
+- Değerler Ultimate'le değil, bu makinede (`reg.exe query`, salt okunur; 11 Pro 26H2) doğrulandı. Ultimate farkları: `UserPreferencesMask` Ultimate'te `hex(2)` (REG_EXPAND_SZ) yazılmış, doğrusu REG_BINARY; "animate controls" biti kapalı (makinedeki değer). `musicLibrary` ve `systemAIModels` izinleri yalnız HKCU'da var; `downloadsFolder` / `passkeys` 26H2'de yok → yazılmadı. Uyumluluk görevi 26H2'de `Microsoft Compatibility Appraiser Exp` adını almış (ikisi de listede; olmayan görev atlanır).
+- `ui.explorer`: Ana Sayfa `HubMode=1` ile (Ultimate'in CLSID yöntemi yeni sürümde bozuk), Galeri CLSID `System.IsPinnedToNameSpaceTree=0`, 3D Nesneler `ThisPCPolicy=Hide` (Windows 11'de zaten yok, güvence). Ana Sayfa gizleme Faz 9'da gerçek donanımda doğrulanacak.
+- `ui.visual-effects`: pencere sürüklerken içerik ve Peek açık bırakıldı (istek: animasyon / gölge / solma kapalı).
+- Katalog belgesi: `build/TweaksDoc.ps1` → `docs/TWEAKS.md` (parametresiz yazar; `-Check` CI'da güncellik denetimi). Kabul testleri `tests/Unit/Catalog.Tests.ps1`: şema, dosya yolu = Id, kişisel veri yok, tam katalog dry-run (sıfır yazma, her tweak ÖNİZLEME + satırlar), uygula → ZATEN UYGUN → `-Undo` = başlangıç durumu, profil parametreleri.
+
 ### Faz 4 — Uygulama kataloğu ve kurulum
 **Prompt:**
 > `apps/catalog.json` yaz: her uygulama için `id`, `source` (winget/msstore), `packageId`, `postInstall` kuralları (`removeAutostart`, `flattenStartMenu`, `removeDesktopShortcut`, `startupRegistryNames`, `startupTaskNames`). 3.2'deki 12 uygulamanın kimliklerini `winget search` ile doğrulayan bir script ekle (Windows CI'da çalışır). Varsayılan tarayıcı ayarı için yöntemi araştır (Win11'de UserChoice hash koruması var; güvenilir yol yoksa kullanıcıya Ayarlar sayfasını açıp yönlendir). WhatsApp'ın WebView2 bağımlılığını araştırıp `docs/` altına not düş.

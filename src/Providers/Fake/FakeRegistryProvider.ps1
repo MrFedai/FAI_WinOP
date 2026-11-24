@@ -4,6 +4,8 @@
 class FakeRegistryProvider : IRegistryProvider {
     # normalleştirilmiş yol → (küçük harf ad → @{ Name; Value; Kind })
     [hashtable] $Keys = @{}
+    # normalleştirilmiş yol → ilk yazıldığı biçim (GetSubKeyNames adın büyük/küçük harfini korusun diye)
+    [hashtable] $Spelling = @{}
     [int] $WriteCount = 0
     # Doluysa bu adlı değere SetValue hata fırlatır (hata yolu testleri için).
     [string] $FailOnName = ''
@@ -21,6 +23,7 @@ class FakeRegistryProvider : IRegistryProvider {
     hidden [void] Store([string] $Path, [string] $Name, [object] $Value, [string] $Kind) {
         $p = [FakeRegistryProvider]::NormPath($Path)
         if (-not $this.Keys.ContainsKey($p)) { $this.Keys[$p] = @{} }
+        if (-not $this.Spelling.ContainsKey($p)) { $this.Spelling[$p] = $Path.TrimEnd('\') }
         $coerced = ConvertTo-FaiRegistryValue -Value $Value -Kind $Kind
         $this.Keys[$p][$Name.ToLowerInvariant()] = @{ Name = $Name; Value = $coerced; Kind = $Kind }
     }
@@ -31,6 +34,20 @@ class FakeRegistryProvider : IRegistryProvider {
         if ($this.Keys.ContainsKey($p)) { return $true }
         foreach ($k in $this.Keys.Keys) { if ($k.StartsWith($p + '\')) { return $true } }
         return $false
+    }
+
+    # Kayıtlı anahtarlardan türetilir (örtük üst anahtarlar dahil); sıralı.
+    [string[]] GetSubKeyNames([string] $Path) {
+        $p = [FakeRegistryProvider]::NormPath($Path)
+        $names = @{}
+        foreach ($k in $this.Keys.Keys) {
+            if (-not $k.StartsWith($p + '\')) { continue }
+            $original = $this.Spelling[$k]
+            $rest = $original.Substring($p.Length + 1)
+            $first = ($rest -split '\\')[0]
+            if (-not $names.ContainsKey($first.ToLowerInvariant())) { $names[$first.ToLowerInvariant()] = $first }
+        }
+        return [string[]]@($names.Values | Sort-Object)
     }
 
     [void] DeleteEmptyKey([string] $Path) {

@@ -6,6 +6,7 @@
     Üretim bundle'ını (dist/install.ps1) yükler, New-FaiWindowsContext ile GERÇEK sağlayıcılar kurar ve her eylem türünü
     yalnız zararsız test hedeflerinde dener:
       Registry        HKCU:\Software\FAI_WinOP_Test + HKLM:\SOFTWARE\FAI_WinOP_Test (her tür + değer silme)
+      RegistryEach    HKCU test anahtarının alt anahtarları (istisna kalıbı)
       Service         geçici FAI_WinOP_TestSvc servisi (başlangıç türü) + Spooler / W32Time (durum)
       ScheduledTask   geçici \FAI_WinOP_Test\Deneme görevi
       Appx            listeleme + makinede provisioned kopyası olan zararsız bir gelen kutusu uygulaması (yoksa ATLA)
@@ -154,6 +155,24 @@ try {
         $after = Invoke-Cycle @{ Type = 'Registry'; Path = "$hklm\Alt"; Name = 'D'; Value = 1; Kind = 'DWord' } $state
         Assert ($after -eq 'D=DWord:1|True') "beklenmeyen: $after"
         Assert (-not (Test-Path -LiteralPath $hklm)) 'test anahtarı geri almada silinmedi'
+        ''
+    }
+
+    Step 'RegistryEach (alt anahtarlar, istisna kalıbı, geri alma)' {
+        $root = "$hkcu\Each"
+        $ctx.Registry.SetValue("$root\App.One", 'Rank', 1, 'DWord')
+        $ctx.Registry.SetValue("$root\App.Two", 'Enabled', 1, 'DWord')
+        $ctx.Registry.SetValue("$root\Keep.Me", 'Enabled', 1, 'DWord')
+        $names = @($ctx.Registry.GetSubKeyNames($root) | Sort-Object)
+        Assert (($names -join ',') -eq 'App.One,App.Two,Keep.Me') ("GetSubKeyNames: " + ($names -join ','))
+        $state = {
+            (@('App.One', 'App.Two', 'Keep.Me') | ForEach-Object {
+                    $p = "$root\$_"
+                    if ($ctx.Registry.ValueExists($p, 'Enabled')) { '{0}={1}' -f $_, $ctx.Registry.GetValue($p, 'Enabled') } else { "$_=yok" }
+                }) -join ';'
+        }
+        $after = Invoke-Cycle @{ Type = 'RegistryEach'; Path = $root; Name = 'Enabled'; Value = 0; Kind = 'DWord'; Exclude = @('keep*') } $state
+        Assert ($after -eq 'App.One=0;App.Two=0;Keep.Me=1') "beklenmeyen: $after"
         ''
     }
 

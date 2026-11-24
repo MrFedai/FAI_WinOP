@@ -27,6 +27,10 @@ jobs:
         shell: pwsh
         run: ./build/Lint.ps1
 
+      - name: Tweak kataloğu belgesi güncel mi (docs/TWEAKS.md)
+        shell: pwsh
+        run: ./build/TweaksDoc.ps1 -Check
+
       - name: Birim testleri (Pester)
         shell: pwsh
         run: |

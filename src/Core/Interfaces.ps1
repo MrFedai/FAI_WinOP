@@ -6,6 +6,8 @@
 class IRegistryProvider {
     [bool] KeyExists([string] $Path) { throw [System.NotImplementedException]::new('IRegistryProvider.KeyExists') }
     [bool] ValueExists([string] $Path, [string] $Name) { throw [System.NotImplementedException]::new('IRegistryProvider.ValueExists') }
+    # Doğrudan alt anahtar adları (yalnız son parça); anahtar yoksa boş dizi.
+    [string[]] GetSubKeyNames([string] $Path) { throw [System.NotImplementedException]::new('IRegistryProvider.GetSubKeyNames') }
     # Değer yoksa $null.
     [object] GetValue([string] $Path, [string] $Name) { throw [System.NotImplementedException]::new('IRegistryProvider.GetValue') }
     # String | ExpandString | Binary | DWord | MultiString | QWord; değer yoksa boş metin.

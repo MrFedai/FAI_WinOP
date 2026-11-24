@@ -3,7 +3,7 @@
 
 function Get-FaiActionType {
     <# .SYNOPSIS  Bilinen eylem türü adları. #>
-    return [string[]]@('Registry', 'Service', 'ScheduledTask', 'Appx', 'Winget', 'Power', 'File', 'Shortcut', 'Script', 'Volume', 'TimerResolution')
+    return [string[]]@('Registry', 'RegistryEach', 'Service', 'ScheduledTask', 'Appx', 'Winget', 'Power', 'File', 'Shortcut', 'Script', 'Volume', 'TimerResolution')
 }
 
 function New-FaiAction {
@@ -13,6 +13,7 @@ function New-FaiAction {
 
     switch ([string]$Definition['Type']) {
         'Registry' { return [RegistryAction]::new($Definition) }
+        'RegistryEach' { return [RegistryEachAction]::new($Definition) }
         'Service' { return [ServiceAction]::new($Definition) }
         'ScheduledTask' { return [ScheduledTaskAction]::new($Definition) }
         'Appx' { return [AppxAction]::new($Definition) }
@@ -52,6 +53,7 @@ function Get-FaiActionError {
     $messages = @()
     switch ($actionType) {
         'Registry' { $messages = [RegistryAction]::Validate($Definition) }
+        'RegistryEach' { $messages = [RegistryEachAction]::Validate($Definition) }
         'Service' { $messages = [ServiceAction]::Validate($Definition) }
         'ScheduledTask' { $messages = [ScheduledTaskAction]::Validate($Definition) }
         'Appx' { $messages = [AppxAction]::Validate($Definition) }
