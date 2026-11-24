@@ -6,8 +6,11 @@
 #      DisableTasks      = @('\Vendor\Launcher')        # oturum açılışında uygulamayı başlatan zamanlanmış görevler
 #      RemoveShortcuts   = @('Spotify.lnk')             # masaüstü kısayol adları (kullanıcı + ortak masaüstü)
 #      CleanNewShortcuts = $true                        # kurulum sırasında masaüstüne eklenen her .lnk silinir
-#      FlattenFolders    = @('Spotify') }               # Başlat > Programlar altındaki klasör adları
+#      FlattenFolders    = @('Spotify')               # Başlat > Programlar altındaki klasör adları
+#      UninstallPath     = '%ProgramFiles(x86)%\Steam\uninstall.exe'; UninstallArgs = '/S' }   # geri almada winget yerine
 #
+# UninstallPath: kaldırma kaydında sessiz komut olmayan kurucular için (winget onları argümansız başlatır, kaldırıcı
+# görünmez onay penceresinde bekler: Steam). Geri alma bu komutu çalıştırır ve paket listeden düşene kadar bekler.
 # Otomatik başlatma: Run değeri SİLİNMEZ. Görev Yöneticisi'nin "Devre dışı bırak"ı gibi StartupApproved altına kapalı
 # işareti yazılır: uygulama Run değerini yeniden yazsa da kapalı kalır, kullanıcı Görev Yöneticisi'nden geri açabilir.
 # Jokersiz adlar Run değeri henüz yokken de HKCU'da önceden kapatılır (ilk açılışta yazan Spotify / Discord gibi).
@@ -33,13 +36,18 @@ class AppAction : ActionBase {
 
     static [string[]] Validate([object] $Def) {
         $e = New-Object 'System.Collections.Generic.List[string]'
-        foreach ($m in (Get-FaiUnknownKeyError $Def (@('Type', 'Id', 'Source', 'CleanNewShortcuts') + [AppAction]::ListFields()))) { $e.Add($m) }
+        foreach ($m in (Get-FaiUnknownKeyError $Def (@('Type', 'Id', 'Source', 'CleanNewShortcuts', 'UninstallPath', 'UninstallArgs') + [AppAction]::ListFields()))) { $e.Add($m) }
         if (-not $Def.Contains('Id')) { $e.Add('Id: zorunlu alan eksik') }
         elseif ($Def['Id'] -isnot [string] -or $Def['Id'] -notmatch '^[A-Za-z0-9][A-Za-z0-9.\-_+]*$') {
             $e.Add('Id: paket kimliği olmalı (harf, rakam, . - _ +; boşluk yok)')
         }
         if ($Def.Contains('Source') -and ($Def['Source'] -isnot [string] -or @('winget', 'msstore') -cnotcontains $Def['Source'])) {
             $e.Add('Source: winget ya da msstore olmalı')
+        }
+        if ($Def.Contains('UninstallPath') -and -not (Test-FaiWindowsPath $Def['UninstallPath'])) { $e.Add('UninstallPath: mutlak yol olmalı (C:\..., %DEĞİŞKEN%\...)') }
+        if ($Def.Contains('UninstallArgs')) {
+            if ($Def['UninstallArgs'] -isnot [string]) { $e.Add('UninstallArgs: metin olmalı') }
+            if (-not $Def.Contains('UninstallPath')) { $e.Add('UninstallArgs: UninstallPath olmadan verilmez') }
         }
         if ($Def.Contains('CleanNewShortcuts') -and $Def['CleanNewShortcuts'] -isnot [bool]) { $e.Add('CleanNewShortcuts: $true ya da $false olmalı') }
         foreach ($f in [AppAction]::ListFields()) {
@@ -332,7 +340,14 @@ class AppAction : ActionBase {
                 }
             }
         }
-        if (-not $was -and $this.IsInstalled($Ctx)) { $Ctx.Packages.Uninstall($this.PackageId(), $this.SourceName()) }
+        if (-not $was -and $this.IsInstalled($Ctx)) {
+            if ($this.Definition.ContainsKey('UninstallPath')) {
+                $args2 = ''
+                if ($this.Definition.ContainsKey('UninstallArgs')) { $args2 = [string]$this.Definition['UninstallArgs'] }
+                $Ctx.Packages.RunUninstaller($this.PackageId(), $this.SourceName(), (Expand-FaiPath ([string]$this.Definition['UninstallPath'])), $args2)
+            }
+            else { $Ctx.Packages.Uninstall($this.PackageId(), $this.SourceName()) }
+        }
     }
 
     [string] Describe() {

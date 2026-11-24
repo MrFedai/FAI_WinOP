@@ -32,6 +32,8 @@
     },
     {
       "id": "steam", "name": "Steam", "source": "winget", "packageId": "Valve.Steam",
+      "notes": "Kaldırma kaydında sessiz komut yok: winget kaldırıcıyı argümansız (etkileşimli) başlatır; geri alma quietUninstall kullanır.",
+      "quietUninstall": { "path": "%ProgramFiles(x86)%\\Steam\\uninstall.exe", "args": "/S" },
       "postInstall": {
         "removeAutostart": true, "startupRegistryNames": ["Steam"],
         "removeDesktopShortcut": true, "desktopShortcutNames": ["Steam.lnk"],

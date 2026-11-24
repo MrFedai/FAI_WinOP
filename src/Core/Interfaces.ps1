@@ -63,6 +63,9 @@ class IPackageProvider {
     [void] Install([string] $PackageId, [string] $Source) { throw [System.NotImplementedException]::new('IPackageProvider.Install') }
     # YAZMA.
     [void] Uninstall([string] $PackageId, [string] $Source) { throw [System.NotImplementedException]::new('IPackageProvider.Uninstall') }
+    # Uygulamanın kendi kaldırıcısını (FilePath açılmış yol + Arguments) çalıştırır, paket listeden düşene kadar bekler.
+    # Kaldırma kaydında sessiz komut olmayan kurucular için (winget onları argümansız, etkileşimli başlatır). YAZMA.
+    [void] RunUninstaller([string] $PackageId, [string] $Source, [string] $FilePath, [string] $Arguments) { throw [System.NotImplementedException]::new('IPackageProvider.RunUninstaller') }
 }
 
 # Sistem bilgisi (koşullar için, salt okunur).

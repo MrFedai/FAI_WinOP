@@ -292,6 +292,9 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
 - İlk CI `apps` koşusu: 11 kurulum, masaüstünde 0 yeni kısayol (kabul), ikinci çalıştırma ZATEN UYGUN. Spotify winget
   kurucusu yönetici oturumunu reddediyor → Store (`9NCBCSZSJRSB`). Araç yönetici çalıştığından yönetici olmadan kurulmak
   isteyen başka kurucu çıkarsa aynı yol (Store) ya da kullanıcı bağlamında kurulum (henüz yok).
+- Steam geri alma: kaldırma kaydında sessiz komut yok → winget kaldırıcıyı argümansız (etkileşimli) başlatır ve yine
+  başarı döner. Katalog alanı `quietUninstall { path, args }` → `IPackageProvider.RunUninstaller`. Her kaldırmadan sonra
+  paket listeden düşene kadar beklenir (120 sn), düşmezse HATA.
 
 ### Faz 5 — Bloatware ve Edge
 **Prompt:**

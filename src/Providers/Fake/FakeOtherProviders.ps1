@@ -98,6 +98,11 @@ class FakePackageProvider : IPackageProvider {
         $this.Packages.Remove($key)
         if ($this.OnUninstall.ContainsKey($key)) { [void](& $this.OnUninstall[$key]) }
     }
+
+    [void] RunUninstaller([string] $PackageId, [string] $Source, [string] $FilePath, [string] $Arguments) {
+        [void]$this.WriteLog.Add("RunUninstaller $Source $PackageId $FilePath $Arguments")
+        $this.Uninstall($PackageId, $Source)
+    }
 }
 
 # Salt okunur; alanlar testte doğrudan ayarlanır.

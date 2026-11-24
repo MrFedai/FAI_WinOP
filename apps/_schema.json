@@ -20,6 +20,13 @@
           "source": { "enum": [ "winget", "msstore" ] },
           "packageId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9.\\-_+]*$", "description": "winget / Store kimliği (tests/Integration/App-Ids.ps1 doğrular)." },
           "notes": { "type": "string" },
+          "quietUninstall": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [ "path" ],
+            "description": "Geri almada winget yerine çalışacak sessiz kaldırıcı (kaldırma kaydında sessiz komut olmayan kurucular: Steam).",
+            "properties": { "path": { "type": "string" }, "args": { "type": "string" } }
+          },
           "postInstall": {
             "type": "object",
             "additionalProperties": false,

@@ -10,7 +10,7 @@
 # rapor, snapshot ve -Undo tweak'lerle aynı yoldan geçer.
 
 function Get-FaiAppIdPattern { return '^[a-z0-9]+(-[a-z0-9]+)*$' }
-function Get-FaiAppKey { return [string[]]@('id', 'name', 'source', 'packageId', 'notes', 'postInstall') }
+function Get-FaiAppKey { return [string[]]@('id', 'name', 'source', 'packageId', 'notes', 'quietUninstall', 'postInstall') }
 function Get-FaiAppPostInstallKey {
     return [string[]]@('removeAutostart', 'startupRegistryNames', 'startupFolderNames', 'startupTaskNames',
         'removeDesktopShortcut', 'desktopShortcutNames', 'flattenStartMenu', 'startMenuFolders')
@@ -55,6 +55,16 @@ function Get-FaiAppCatalogError {
             else { $packages[$app['packageId'].ToLowerInvariant()] = $true }
         }
         if ($app.Contains('notes') -and $app['notes'] -isnot [string]) { $errs.Add("${at}.notes: metin olmalı") }
+        if ($app.Contains('quietUninstall')) {
+            $qu = $app['quietUninstall']
+            if ($qu -isnot [System.Collections.IDictionary]) { $errs.Add("${at}.quietUninstall: nesne olmalı ({ path, args })") }
+            else {
+                foreach ($k in @($qu.Keys)) { if (@('path', 'args') -cnotcontains [string]$k) { $errs.Add("${at}.quietUninstall.${k}: bilinmeyen alan (izin verilenler: path, args)") } }
+                if (-not $qu.Contains('path')) { $errs.Add("${at}.quietUninstall.path: zorunlu alan eksik") }
+                elseif (-not (Test-FaiWindowsPath $qu['path'])) { $errs.Add("${at}.quietUninstall.path: mutlak yol olmalı (%ProgramFiles%\... gibi)") }
+                if ($qu.Contains('args') -and $qu['args'] -isnot [string]) { $errs.Add("${at}.quietUninstall.args: metin olmalı") }
+            }
+        }
         if (-not $app.Contains('postInstall')) { continue }
         $pi = $app['postInstall']
         if ($pi -isnot [System.Collections.IDictionary]) { $errs.Add("${at}.postInstall: nesne olmalı"); continue }
@@ -98,6 +108,10 @@ function ConvertTo-FaiAppActionDefinition {
     )
 
     $def = @{ Type = 'App'; Id = [string]$App['packageId']; Source = [string]$App['source'] }
+    if ($App.Contains('quietUninstall')) {
+        $def['UninstallPath'] = [string]$App['quietUninstall']['path']
+        if ($App['quietUninstall'].Contains('args')) { $def['UninstallArgs'] = [string]$App['quietUninstall']['args'] }
+    }
     $pi = @{}
     if ($App.Contains('postInstall')) { $pi = $App['postInstall'] }
     if ([bool]$pi['removeAutostart'] -and -not $KeepAutostart) {

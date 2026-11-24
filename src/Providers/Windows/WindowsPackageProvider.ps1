@@ -57,13 +57,25 @@ class WindowsPackageProvider : IPackageProvider {
         if ($code -ne 0 -and $code -ne [WindowsPackageProvider]::NoPackageFound) {
             throw ('winget uninstall {0} başarısız ({1}): {2}' -f $PackageId, $code, $this.Tail())
         }
-        # Bazı kaldırıcılar (NSIS: Steam) kendini geçici klasöre kopyalayıp hemen çıkar; winget başarı döner ama
-        # kaldırma sürer. Paket listeden düşene kadar beklenir; düşmezse sessizce geçilmez.
-        $uninstallTail = $this.Tail()
+        $this.WaitUntilGone($PackageId, $Source, $this.Tail())
+    }
+
+    [void] RunUninstaller([string] $PackageId, [string] $Source, [string] $FilePath, [string] $Arguments) {
+        if (-not [System.IO.File]::Exists($FilePath)) { throw ('{0}: kaldırıcı yok: {1}' -f $PackageId, $FilePath) }
+        $p = $null
+        if ($Arguments) { $p = Start-Process -FilePath $FilePath -ArgumentList $Arguments -PassThru -Wait }
+        else { $p = Start-Process -FilePath $FilePath -PassThru -Wait }
+        if ($p.ExitCode -ne 0) { throw ('{0}: kaldırıcı {1} çıkış kodu {2}' -f $PackageId, $FilePath, $p.ExitCode) }
+        $this.WaitUntilGone($PackageId, $Source, ('{0} {1}' -f $FilePath, $Arguments))
+    }
+
+    # Bazı kaldırıcılar (NSIS) kendini geçici klasöre kopyalayıp hemen çıkar; kaldırma sürer. Paket listeden düşene kadar
+    # beklenir; düşmezse sessizce geçilmez. Kaldırıcı etkileşimli açıldıysa (winget sessiz komut bulamadı) da burada yakalanır.
+    hidden [void] WaitUntilGone([string] $PackageId, [string] $Source, [string] $Detail) {
         $deadline = [DateTime]::UtcNow.AddSeconds([WindowsPackageProvider]::UninstallWaitSeconds)
         while ($this.IsInstalled($PackageId, $Source)) {
             if ([DateTime]::UtcNow -gt $deadline) {
-                throw ('winget uninstall {0}: kaldırıcı {1} sn içinde bitmedi (paket hâlâ kurulu); winget: {2}' -f $PackageId, [WindowsPackageProvider]::UninstallWaitSeconds, $uninstallTail)
+                throw ('{0}: kaldırıcı {1} sn içinde bitmedi, paket hâlâ kurulu (etkileşimli açılmış olabilir: katalogda quietUninstall); {2}' -f $PackageId, [WindowsPackageProvider]::UninstallWaitSeconds, $Detail)
             }
             Start-Sleep -Seconds 3
         }

@@ -15,6 +15,7 @@ Kaynak: [`apps/catalog.json`](../apps/catalog.json) (biçim: [`apps/_schema.json
 | `removeAutostart` + `startupRegistryNames` / `startupFolderNames` | Run değeri ya da Başlangıç klasörü kısayolu **silinmez**; Görev Yöneticisi'nin "Devre dışı bırak"ı gibi `Explorer\StartupApproved` altına kapalı işareti (`03…`) yazılır. Uygulama Run değerini yeniden yazsa da kapalı kalır, kullanıcı Görev Yöneticisi'nden açabilir. Jokersiz ad, değer henüz yokken de HKCU'da önceden kapatılır (ilk açılışta yazan uygulamalar için). |
 | `startupTaskNames` | Oturum açılışında uygulamayı başlatan zamanlanmış görevi kapatır. |
 | `removeDesktopShortcut` + `desktopShortcutNames` | Kurulum sırasında kullanıcı / ortak masaüstüne eklenen **her** `.lnk` silinir (önce / sonra karşılaştırması); adı listede olanlar her çalıştırmada silinir (güncellemeyle geri gelenler). |
+| `quietUninstall` (`{ path, args }`, uygulama düzeyi) | Geri almada winget yerine çalışan sessiz kaldırıcı. Kaldırma kaydında sessiz komut olmayan kurucular için (winget onları etkileşimli başlatır): Steam. |
 | `flattenStartMenu` + `startMenuFolders` | Başlat > Programlar altındaki klasörün kısayolları köke taşınır, kaldırma kısayolları ve `.url`'ler silinir, boş klasör silinir. |
 | profilde `keepAutostart` | O uygulamanın otomatik başlatma kuralı uygulanmaz (fedai: WhatsApp, Telegram). |
 
@@ -58,16 +59,18 @@ Store sürümüne geçildi. Keşif dökümünde Ollama (`Ollama`) ve Proton (`Pr
 katalog düzeltildi. Chrome runner imajında zaten kurulu.
 
 **Son koşu (2026-11-24, 3b74cdd):** 12/12 kurulum, masaüstünde 0 yeni kısayol, ikinci çalıştırma 12/12 ZATEN UYGUN,
-`-Undo` 11/12. **Steam** sessiz kaldırması bitmiyor: winget başarı döner, paket 120 sn sonra hâlâ kurulu (sağlayıcı artık
-bunu HATA olarak raporlar, oturum geri alınmamış kalır). Olası neden: kurulumdan sonra çalışan `steam.exe` kaldırıcıyı
-bekletiyor; doğrulanmadı.
+`-Undo` 11/12: **Steam** kalkmadı. Teşhis (winget `--verbose-logs`): Steam'in kaldırma kaydında `QuietUninstallString`
+yok; winget `--silent` verilse de `uninstall.exe`'yi **argümansız** başlatıyor, NSIS kaldırıcısı (`Un_A.exe`) görünmez
+onay penceresinde bekliyor, winget yine "Successfully uninstalled" diyor. Aynı dosya `/S` ile 3-6 sn'de tamamen kaldırıyor.
+Çözüm: katalogda `quietUninstall` (`%ProgramFiles(x86)%\Steam\uninstall.exe /S`); geri alma winget yerine bunu çalıştırır.
+Sağlayıcı her kaldırmadan sonra paket listeden düşene kadar bekler (en çok 120 sn), düşmezse HATA (sessizce geçmez).
 
 | id | Run / Başlangıç | Masaüstü | Başlat klasörü | Durum |
 | --- | --- | --- | --- | --- |
 | claude | `*Claude*` (kurulumda yazmadı) | `Claude.lnk` | kısayol kökte ✓ | Run adı açılışta görülecek |
 | telegram | `Telegram Desktop` (önceden kapatıldı) | `Telegram.lnk` | `Telegram Desktop` ✓ | Run ilk açılışta yazılır |
 | discord | HKCU `Discord` ✓ | `Discord.lnk` | `Discord Inc` → kökte ✓ | ✓ |
-| steam | HKCU `Steam` ✓ | `Steam.lnk` | `Steam` ✓ | ✓ (geri alma: sessiz kaldırma bitmiyor) |
+| steam | HKCU `Steam` ✓ | `Steam.lnk` | `Steam` ✓ | ✓ (geri alma `quietUninstall` ile) |
 | ollama | Başlangıç klasörü `Ollama.lnk` ✓ | `Ollama.lnk` | `Ollama` → kökte ✓ | ✓ |
 | vscode | — | `Visual Studio Code.lnk` | `Visual Studio Code` ✓ | ✓ |
 | protonvpn | `ProtonVPN`, `Proton VPN` (kurulumda yazmadı) | `Proton VPN.lnk` | `Proton` → kökte ✓ | Run adı açılışta görülecek |

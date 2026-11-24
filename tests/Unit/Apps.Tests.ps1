@@ -282,6 +282,37 @@ Describe 'App eylemi: kurulu uygulama' {
     }
 }
 
+Describe 'App eylemi: sessiz kaldırıcı (quietUninstall)' {
+    It 'geri alma winget yerine kataloğun kaldırıcısını çalıştırır' {
+        $ctx = New-AppContext
+        $cat = @{ steam = (ConvertFrom-JsonText '{ "id": "steam", "name": "Steam", "source": "winget", "packageId": "Valve.Steam", "quietUninstall": { "path": "%ProgramFiles(x86)%\\Steam\\uninstall.exe", "args": "/S" } }') }
+        $r = Invoke-FaiEngine -Profile (New-AppProfile @('steam')) -Context $ctx -Catalog @{} -AppCatalog $cat
+        $r.HasFailures() | Should -BeFalse -Because ($r.Render())
+        $u = Invoke-FaiEngine -Undo -Context $ctx -Catalog @{}
+        $u.HasFailures() | Should -BeFalse -Because ($u.Render())
+        $ctx.Packages.IsInstalled('Valve.Steam', 'winget') | Should -BeFalse
+        @($ctx.Packages.WriteLog | Where-Object { $_ -like 'RunUninstaller winget Valve.Steam *Steam\uninstall.exe /S' }).Count | Should -Be 1
+    }
+
+    It 'şema: yol mutlak olmalı, args yol olmadan verilmez; katalogda { path, args }' {
+        $e = @(Get-FaiActionError @{ Type = 'App'; Id = 'A.B'; UninstallPath = 'uninstall.exe'; UninstallArgs = 3 })
+        ($e -join "`n") | Should -Match 'UninstallPath: mutlak yol'
+        ($e -join "`n") | Should -Match 'UninstallArgs: metin olmalı'
+        @(Get-FaiActionError @{ Type = 'App'; Id = 'A.B'; UninstallArgs = '/S' }) -join "`n" | Should -Match 'UninstallPath olmadan'
+        $bad = ConvertFrom-JsonText '{ "apps": [ { "id": "a", "name": "A", "source": "winget", "packageId": "A.A", "quietUninstall": { "args": "/S", "x": 1 } } ] }'
+        $ce = @(Get-FaiAppCatalogError $bad)
+        Test-HasError $ce 'apps[0].quietUninstall.path: zorunlu' | Should -BeTrue -Because ($ce -join '; ')
+        Test-HasError $ce 'apps[0].quietUninstall.x: bilinmeyen alan' | Should -BeTrue
+    }
+
+    It 'gerçek katalogda Steam quietUninstall kullanır' {
+        $steam = (Import-FaiAppCatalog -Path (Join-Path $script:FaiRepoRoot 'apps/catalog.json'))['steam']
+        $def = (ConvertTo-FaiAppTweak -App $steam).Actions[0].Definition
+        $def['UninstallPath'] | Should -Be '%ProgramFiles(x86)%\Steam\uninstall.exe'
+        $def['UninstallArgs'] | Should -Be '/S'
+    }
+}
+
 Describe 'App eylemi: dry-run, msstore, rapor' {
     It 'dry-run hiçbir sağlayıcıya yazmaz, ÖNİZLEME satırı kurulumu söyler' {
         $ctx = New-AppContext -DryRun
