@@ -380,6 +380,44 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
 
 > Faz 2'de görüldü: hedef dizüstünde yalnız Ultimate'in içe aktardığı plan var (`99999999-9999-9999-9999-999999999999`, "Ultimate Performance"); Balanced / High performance silinmiş. `power.plan` var olmayan planı varsaymamalı (`powercfg /duplicatescheme` ile kendi planını kurup etkinleştirmeli; geri alma eski planı etkin yapar).
 
+**Faz 7 notları (uygulama kararları):**
+- Tweak alanları: `First` (apps'ten de önce: `system.restore-point`), `AlwaysConfirm` (profil autoConfirm işlemez,
+  -Unattended'da atlanır, bekleyen eylem varsa her çalıştırmada sorulur: `graphics.p0-state`), `Tool` (profille
+  çalışmaz; `-AllowTools`, Faz 8 menü / -Only: `refresh.reboot-to-bios`). Eylem düzeyi koşul `When` (ör. hazırda
+  bekletme yalnız `IsLaptop`); oturum kaydına girmez.
+- Yeni arayüzler: `ISystemControlProvider` (geri yükleme noktası, firmware'e yeniden başlatma), `IMemoryAgentProvider`,
+  `IUpdateProvider` (WUA COM, ilerleme basar); `IPowerProvider.CreateScheme / DeleteScheme / Get|SetHibernate`,
+  `ISystemInfoProvider.GetLogicalProcessorCount / GetCoreCount`, `ITaskProvider.RegisterWatcherTask` (süresiz görev),
+  `ExecutionContext.ResumeCommand` (Faz 8 CLI doldurur). Yeni eylemler: `RestorePoint`, `Reboot`, `OpenSettings`,
+  `PowerScheme`, `Hibernate`, `MMAgent`, `WindowsUpdate`, `UpdatePause`, `GameAffinity`; `RegistryEach` + `Include` /
+  `SubKey` / `Match` (GPU sınıf anahtarı: yalnız eşleşen bağdaştırıcı); `AppSetting` + `Key` (LocalState alt anahtarı).
+- `power.plan`: kendi plan `46414900-5769-4e4f-9000-000000000001` ("FAI_WinOP"), Balanced'tan kopya (silinmişse uyarı +
+  etkin plandan). Prizde yüksek performans (işlemci 100, park kapalı, USB / PCIe tasarrufu kapalı, uyku yok), pilde
+  Balanced + uyku 15 dk / hazırda bekletme 180 dk (params), hazırda bekletme açık (`When='IsLaptop'`). Undo eski etkin
+  plana döner, kendi planı siler.
+- `setup.background-apps-off`: ilke `LetAppsRunInBackground=2` + `_ForceAllowTheseApps` (PFN listesi, varsayılan
+  WhatsApp). `GlobalUserDisabled` istisnaları da kapattığı için kullanılmadı; Win32 uygulamaları (winget Telegram)
+  etkilenmez. `setup.store-optimize`: `AutoDownload=2` + Store settings.dat (VideoAutoplay, EnableAppInstallNotifications,
+  PersistentSettings\PersonalizationEnabled). `setup.mmagent-off` (≥16 GB): bellek sıkıştırma, uygulama prefetch / ön
+  yükleme kapalı + `EnablePrefetcher=0`.
+- `setup.edition-pro`: anahtar içermez; Ayarlar → Etkinleştirme açılır, kullanıcı kendi anahtarını girer.
+- `graphics.nvidia-settings` yalnız kayıt defteri (NvTray, EnableGR535 — anahtar varsa). Panel ayarları (düşük gecikme,
+  güç yönetimi, V-Sync) DRS veritabanında: imzasız Profile Inspector kullanılmaz → NVAPI ile sonra (gerçek donanım).
+  `graphics.amd-settings`: CN / DVR + bağdaştırıcı `KMD_DeLagEnabled`, UMD (VSync / TFQ / Tessellation), power_v1 abmlevel.
+- `setup.updates-staged`: `WindowsUpdate` (bekleyenlerin hepsi) → `UpdatePause` (`pauseDays` 365; Ayarlar'ın 6 UX
+  değeri). Yeniden başlatma gerekirse hata ile durur, duraklatma o çalıştırmada uygulanmaz; `ResumeCommand` doluysa HKLM
+  RunOnce. `-UpdatesOn/-UpdatesOff` → `Invoke-FaiUpdatesSwitch` (`Engine.RunTweaks`, -Undo'lanır; CLI bağlaması Faz 8).
+- `gaming.per-game`: profil `games[] {exe, priority, smtOff, excludeCore0}` → motor tweak'lerden sonra tek tweak üretir.
+  Öncelik IFEO `PerfOptions\CpuPriorityClass`. IFEO'da benzeşim yok → `GameAffinity`: maskeler gömülü betik
+  (`%ProgramData%\FAI_WinOP`) + SYSTEM izleyici görevi `\FAI_WinOP\GameAffinity` (`Win32_ProcessStartTrace`).
+  `Get-FaiAffinityMask`: SMT'li çekirdekler önce ve yan yana varsayılır (hibrit Intel P+E dahil), >64 LP hata.
+- Kabul (birim): dizüstünde pil varyantı uyku / hazırda beklemeyi açık bırakıyor; P0 autoConfirm'e rağmen soruluyor,
+  -Unattended'da atlanıyor. 338 birim testi, lint temiz; 5.1'de bundle + smoke geçti. Windows-Actions 28 adım (Faz 7:
+  güç planı döngüsü, MMAgent / geri yükleme okuma, UpdatePause döngüsü, WU bekleyen listesi yalnız CI, Faz 7 dry-run).
+- Açık (VM / gerçek donanım): silinmiş Balanced'ın kopyalanabildiği, powercfg takma adları (CPMINCORES, SYSCOOLPOL,
+  ASPM) `/qh` ile, WU kurulum + yeniden başlatma algısı, 365 günlük duraklatmanın Ayarlar'daki görünümü,
+  GameAffinity izleyicisi, AMD / NVIDIA değerlerinin etkisi, bellek sıkıştırmanın yeniden başlatma sonrası kapalı kalması.
+
 ### Faz 8 — CLI, menü, paketleme, yayın
 **Prompt:**
 > `Cli.ps1` (2.4'teki parametreler) ve `Menu.ps1` (profil yoksa kategori → onay kutulu liste, risk renkleri, Türkçe) yaz. Yönetici değilse kendini yükseltsin. `Bundle.ps1` tüm kaynakları bağımlılık sırasıyla tek `install.ps1`'e birleştirsin; tweak/katalog/profil verileri ya gömülü olsun ya da aynı sürüm etiketinden `raw.githubusercontent` ile çekilsin (karar ver ve gerekçelendir). `release.yml`: etiketle sürüm, `install.ps1` + `.sha256` yayınla. `-ExportProfile` yaz.
