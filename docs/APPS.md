@@ -65,6 +65,9 @@ onay penceresinde bekliyor, winget yine "Successfully uninstalled" diyor. Aynı 
 Çözüm: katalogda `quietUninstall` (`%ProgramFiles(x86)%\Steam\uninstall.exe /S`); geri alma winget yerine bunu çalıştırır.
 Sağlayıcı her kaldırmadan sonra paket listeden düşene kadar bekler (en çok 120 sn), düşmezse HATA (sessizce geçmez).
 
+**Doğrulama (2026-11-24, 66b4d1d):** CI `apps` işi 0 HATA: 12/12 kurulum, masaüstünde 0 yeni kısayol, ikinci çalıştırma
+12/12 ZATEN UYGUN, `-Undo` 12/12 (Steam dahil), geri almadan sonra kurulu kalan yok.
+
 | id | Run / Başlangıç | Masaüstü | Başlat klasörü | Durum |
 | --- | --- | --- | --- | --- |
 | claude | `*Claude*` (kurulumda yazmadı) | `Claude.lnk` | kısayol kökte ✓ | Run adı açılışta görülecek |
