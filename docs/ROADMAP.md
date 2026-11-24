@@ -289,6 +289,9 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
   `tests/Integration/Apps-Install.ps1` (CI `apps` işi yalnız elle tetikleme; Hyper-V VM'de `-Force -Undo`): masaüstünde
   yeni kısayol kalırsa HATA + Run / Başlangıç / Başlat keşif dökümü → katalogdaki tahmini adlar bununla düzeltilir.
 - WhatsApp Temmuz 2025'ten beri WebView2 tabanlı → Faz 5'te WebView2 Runtime + güncellemesi korunmalı.
+- İlk CI `apps` koşusu: 11 kurulum, masaüstünde 0 yeni kısayol (kabul), ikinci çalıştırma ZATEN UYGUN. Spotify winget
+  kurucusu yönetici oturumunu reddediyor → Store (`9NCBCSZSJRSB`). Araç yönetici çalıştığından yönetici olmadan kurulmak
+  isteyen başka kurucu çıkarsa aynı yol (Store) ya da kullanıcı bağlamında kurulum (henüz yok).
 
 ### Faz 5 — Bloatware ve Edge
 **Prompt:**

@@ -47,7 +47,8 @@
       "id": "ollama", "name": "Ollama", "source": "winget", "packageId": "Ollama.Ollama",
       "postInstall": {
         "removeAutostart": true, "startupFolderNames": ["Ollama.lnk"],
-        "removeDesktopShortcut": true, "desktopShortcutNames": ["Ollama.lnk"]
+        "removeDesktopShortcut": true, "desktopShortcutNames": ["Ollama.lnk"],
+        "flattenStartMenu": true, "startMenuFolders": ["Ollama"]
       }
     },
     {
@@ -62,7 +63,7 @@
       "postInstall": {
         "removeAutostart": true, "startupRegistryNames": ["ProtonVPN", "Proton VPN"],
         "removeDesktopShortcut": true, "desktopShortcutNames": ["Proton VPN.lnk"],
-        "flattenStartMenu": true, "startMenuFolders": ["Proton VPN", "Proton AG"]
+        "flattenStartMenu": true, "startMenuFolders": ["Proton"]
       }
     },
     {
@@ -74,11 +75,9 @@
       }
     },
     {
-      "id": "spotify", "name": "Spotify", "source": "winget", "packageId": "Spotify.Spotify",
-      "postInstall": {
-        "removeAutostart": true, "startupRegistryNames": ["Spotify"],
-        "removeDesktopShortcut": true, "desktopShortcutNames": ["Spotify.lnk"]
-      }
+      "id": "spotify", "name": "Spotify", "source": "msstore", "packageId": "9NCBCSZSJRSB",
+      "notes": "Store (MSIX) sürümü: winget sürümünün kurucusu yönetici oturumunda çalışmıyor. Otomatik başlatması MSIX StartupTask ile, bu katalogda yönetilmez.",
+      "postInstall": { "removeDesktopShortcut": true, "desktopShortcutNames": ["Spotify.lnk"] }
     },
     {
       "id": "obs", "name": "OBS Studio", "source": "winget", "packageId": "OBSProject.OBSStudio",

@@ -90,13 +90,14 @@ Describe 'apps/catalog.json' {
             claude = 'Anthropic.Claude'; telegram = 'Telegram.TelegramDesktop'; whatsapp = '9NKSQGP7F2NH'
             discord = 'Discord.Discord'; steam = 'Valve.Steam'; tradingview = 'TradingView.TradingViewDesktop'
             ollama = 'Ollama.Ollama'; vscode = 'Microsoft.VisualStudioCode'; protonvpn = 'Proton.ProtonVPN'
-            chrome = 'Google.Chrome'; spotify = 'Spotify.Spotify'; obs = 'OBSProject.OBSStudio'
+            chrome = 'Google.Chrome'; spotify = '9NCBCSZSJRSB'; obs = 'OBSProject.OBSStudio'
         }
         foreach ($id in $expected.Keys) {
             $script:RealCatalog.ContainsKey($id) | Should -BeTrue -Because $id
             $script:RealCatalog[$id]['packageId'] | Should -BeExactly $expected[$id]
         }
         $script:RealCatalog['whatsapp']['source'] | Should -Be 'msstore'
+        $script:RealCatalog['spotify']['source'] | Should -Be 'msstore' -Because 'winget kurucusu yönetici oturumunda çalışmıyor'
     }
 
     It 'her uygulama tweak''e dönüşür (app.<id>, Safe, tek App eylemi)' {

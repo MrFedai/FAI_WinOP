@@ -109,6 +109,9 @@ function Show-New([string] $Title, [object[]] $Before, [object[]] $After) {
 
 Write-Host ("Apps-Install: {0} uygulama ({1}), CI={2}, Sandbox={3}" -f $selected.Count, ($selected -join ', '), $inCi, $inSandbox)
 $before = Get-Inventory
+# Önceden kurulu olanlar (runner imajında Chrome gibi) geri almada kaldırılmaz.
+$preInstalled = @($selected | Where-Object { $ctx.Packages.IsInstalled($catalog[$_]['packageId'], $catalog[$_]['source']) })
+if ($preInstalled.Count -gt 0) { Write-Host ("  Önceden kurulu: {0}" -f ($preInstalled -join ', ')) }
 
 $appProfile = [Profile]::FromHashtable(@{ name = 'apps-test'; tweaks = @(); apps = @($selected.ToArray()) }, 'Apps-Install')
 Write-Host '[1/3] Kurulum + düzen (uygulama başına birkaç dakika sürebilir; ilerleme günlükte)'
@@ -131,10 +134,17 @@ foreach ($item in $again.Items) {
 }
 
 if ($Undo.IsPresent) {
-    Write-Host '[3/3] -Undo (bu çalıştırmada kurulanlar kaldırılır)'
-    $u = Invoke-FaiEngine -Undo -Context $ctx -Catalog @{}
-    Write-Host ($u.Render())
-    foreach ($item in $u.Items) { if ($item.Status -eq 'Failed') { Fail ("geri alma {0}: {1}" -f $item.TweakId, $item.Reason) } }
+    # Her çalıştırma (ikinci çalıştırmada bir hata olsa bile) ayrı oturum açabilir: hepsi yeniden eskiye geri alınır.
+    Write-Host '[3/3] -Undo (bu test kökündeki bütün oturumlar, yeniden eskiye)'
+    for ($n = 1; $n -le 5; $n++) {
+        if ($null -eq $ctx.Backup.GetLatest()) { break }
+        $u = Invoke-FaiEngine -Undo -Context $ctx -Catalog @{}
+        Write-Host ($u.Render())
+        foreach ($item in $u.Items) { if ($item.Status -eq 'Failed') { Fail ("geri alma {0}: {1}" -f $item.TweakId, $item.Reason) } }
+        if ($u.HasFailures()) { break }
+    }
+    $left = @($selected | Where-Object { $ctx.Packages.IsInstalled($catalog[$_]['packageId'], $catalog[$_]['source']) -and $preInstalled -notcontains $_ })
+    if ($left.Count -gt 0) { Fail ('geri almadan sonra hâlâ kurulu: ' + ($left -join ', ')) }
 }
 else { Write-Host '[3/3] -Undo verilmedi; kurulumlar yerinde.' }
 

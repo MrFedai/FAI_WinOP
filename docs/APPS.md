@@ -43,31 +43,32 @@ push'ta koşar).
 | vscode | `Microsoft.VisualStudioCode` | winget | inno (kullanıcı kapsamı) |
 | protonvpn | `Proton.ProtonVPN` | winget | inno |
 | chrome | `Google.Chrome` | winget | wix (MSI, makine kapsamı) |
-| spotify | `Spotify.Spotify` | winget | exe |
+| spotify | `9NCBCSZSJRSB` | msstore | Store (MSIX) — winget `Spotify.Spotify` kurucusu yönetici oturumunda çalışmıyor (`-1978335146`, CI'da görüldü) |
 | obs | `OBSProject.OBSStudio` | winget | nullsoft |
 
 ## Kurulum sonrası adlar: doğrulama durumu
 
-Başlat klasörü adları bu makinede (11 Pro 26H2) okundu: `Telegram Desktop`, `Visual Studio Code` (kullanıcı), `Steam`
-(ortak); Chrome ve Spotify kısayolu kökte. Run değeri / masaüstü kısayolu / diğer klasör adları bilinen kurucu
-davranışından yazıldı ve **test VM'inde doğrulanacak**: [`tests/Integration/Apps-Install.ps1`](../tests/Integration/Apps-Install.ps1)
-gerçek kurulumdan sonra yeni Run değerlerini, Başlangıç öğelerini, Başlat klasörlerini ve StartupApproved durumunu döker;
-masaüstünde yeni kısayol kalırsa HATA verir. CI'da `apps` işi (yalnız elle tetikleme: Actions → CI → Run workflow) ya da
-Hyper-V VM'de `-Force -Undo` ile.
+Gerçek kurulum testi: [`tests/Integration/Apps-Install.ps1`](../tests/Integration/Apps-Install.ps1) uygulamaları kurar,
+masaüstünde yeni kısayol kalırsa HATA verir, yeni Run değerlerini, Başlangıç öğelerini, Başlat öğelerini ve StartupApproved
+durumunu döker. CI'da `apps` işi (yalnız elle tetikleme: Actions → CI → Run workflow) ya da Hyper-V VM'de `-Force -Undo`.
+
+**İlk koşu (2026-11-24, GitHub `windows-latest`, yönetici):** 11 uygulama kuruldu + düzen uygulandı, ikinci çalıştırma
+hepsi ZATEN UYGUN, **masaüstünde yeni kısayol: 0** (Faz 4 kabulü). Spotify winget kurucusu yönetici oturumunu reddetti →
+Store sürümüne geçildi. Keşif dökümünde Ollama (`Ollama`) ve Proton (`Proton`) Başlat klasörleri düzleştirilmemiş kaldı →
+katalog düzeltildi. Chrome runner imajında zaten kurulu.
 
 | id | Run / Başlangıç | Masaüstü | Başlat klasörü | Durum |
 | --- | --- | --- | --- | --- |
-| claude | `*Claude*` | `Claude.lnk` | `Anthropic`, `Claude` | doğrulanacak |
-| telegram | `Telegram Desktop` | `Telegram.lnk` | `Telegram Desktop` ✓ | Run / masaüstü doğrulanacak |
-| discord | `Discord` | `Discord.lnk` | `Discord Inc` | doğrulanacak |
-| steam | `Steam` | `Steam.lnk` | `Steam` ✓ | Run / masaüstü doğrulanacak |
-| ollama | `Ollama.lnk` (Başlangıç klasörü) | `Ollama.lnk` | — | doğrulanacak |
-| vscode | — | `Visual Studio Code.lnk` | `Visual Studio Code` ✓ | masaüstü doğrulanacak |
-| protonvpn | `ProtonVPN`, `Proton VPN` | `Proton VPN.lnk` | `Proton VPN`, `Proton AG` | doğrulanacak |
-| chrome | `GoogleChromeAutoLaunch_*` | `Google Chrome.lnk` | — (kökte ✓) | Run / masaüstü doğrulanacak |
-| spotify | `Spotify` | `Spotify.lnk` | — | doğrulanacak |
-| obs | — | `OBS Studio.lnk` | `OBS Studio` | doğrulanacak |
-| tradingview, whatsapp | MSIX `StartupTask` (yönetilmiyor) | yeni kısayol temizliği | — | — |
+| claude | `*Claude*` (kurulumda yazmadı) | `Claude.lnk` | kısayol kökte ✓ | Run adı açılışta görülecek |
+| telegram | `Telegram Desktop` (önceden kapatıldı) | `Telegram.lnk` | `Telegram Desktop` ✓ | Run ilk açılışta yazılır |
+| discord | HKCU `Discord` ✓ | `Discord.lnk` | `Discord Inc` → kökte ✓ | ✓ |
+| steam | HKCU `Steam` ✓ | `Steam.lnk` | `Steam` ✓ | ✓ |
+| ollama | Başlangıç klasörü `Ollama.lnk` ✓ | `Ollama.lnk` | `Ollama` (CI'da görüldü) | klasör düzeltildi, yeniden koşu |
+| vscode | — | `Visual Studio Code.lnk` | `Visual Studio Code` ✓ | ✓ |
+| protonvpn | `ProtonVPN`, `Proton VPN` (kurulumda yazmadı) | `Proton VPN.lnk` | `Proton` (CI'da görüldü) | klasör düzeltildi, yeniden koşu |
+| chrome | `GoogleChromeAutoLaunch_*` | `Google Chrome.lnk` | kökte ✓ | runner'da önceden kurulu |
+| obs | — | `OBS Studio.lnk` | `OBS Studio` → kökte ✓ | ✓ |
+| spotify, tradingview, whatsapp | MSIX `StartupTask` (yönetilmiyor) | yeni kısayol temizliği | — (MSIX) | — |
 
 Listede olmayan masaüstü kısayolu da kurulum anındaki önce / sonra karşılaştırmasıyla silinir; tahmini adın yanlış olması
 yalnız güncellemeyle geri gelen kısayolu etkiler.
