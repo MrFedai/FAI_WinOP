@@ -32,6 +32,23 @@ namespace FaiWinOP.Native
         [DllImport("advapi32.dll", CharSet = CharSet.Unicode)]
         private static extern int RegSetValueEx(SafeRegistryHandle key, string name, int reserved, int type, byte[] data, int size);
 
+        [DllImport("advapi32.dll", CharSet = CharSet.Unicode)]
+        private static extern int RegLoadAppKey(string file, out IntPtr key, int samDesired, int options, int reserved);
+
+        private const int KEY_READ = 0x20019;
+        private const int KEY_ALL_ACCESS = 0xF003F;
+
+        // Uygulama hive'ını (settings.dat) bu sürece özel yükler; yönetici gerekmez, HKU'ya bağlanmaz. Son anahtar
+        // kapanınca hive bırakılır (yazılanlar diske işlenir). reg.exe load gerçek uygulama hive'larında
+        // ERROR_FILENAME_EXCED_RANGE verdi (Faz 8, gerçek makine).
+        public static RegistryKey LoadAppKey(string file, bool writable)
+        {
+            IntPtr h;
+            int rc = RegLoadAppKey(file, out h, writable ? KEY_ALL_ACCESS : KEY_READ, 0, 0);
+            if (rc != 0) { throw new System.ComponentModel.Win32Exception(rc); }
+            return RegistryKey.FromHandle(new SafeRegistryHandle(h, true));
+        }
+
         // Boş yol = duvar kağıdı yok (düz renk).
         public static void SetWallpaper(string path)
         {

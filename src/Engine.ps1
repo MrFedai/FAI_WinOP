@@ -191,7 +191,10 @@ class Engine {
         for ($i = 0; $i -lt $tweak.Actions.Count; $i++) {
             # Eylem düzeyi koşul (When) sağlanmıyorsa eylem bu makinede yok sayılır.
             if (-not $tweak.Actions[$i].Applies($cx.SystemInfo)) { continue }
-            if (-not $tweak.Actions[$i].Test($cx)) { $pending.Add($i) }
+            # Hata iletisinde hangi eylemin denetiminde patladığı görünsün (gerçek makinede teşhis için).
+            try { $ok = $tweak.Actions[$i].Test($cx) }
+            catch { throw ('eylem {0} ({1}) denetlenemedi: {2}' -f ($i + 1), $tweak.Actions[$i].Type, $_.Exception.Message) }
+            if (-not $ok) { $pending.Add($i) }
         }
         if ($pending.Count -eq 0) {
             [void]$Report.Add($Id, $tweak.Title, 'UpToDate', '', [string[]]@())

@@ -516,7 +516,8 @@ Describe 'Fabrika, arayüzler ve Windows sağlayıcıları' {
         [WindowsTaskProvider]::SplitPath('\Kok') | Should -Be @('\', 'Kok')
         [WindowsAppSettingsProvider]::SplitName('PersistentSettings\PersonalizationEnabled') | Should -Be @('PersistentSettings', 'PersonalizationEnabled')
         [WindowsAppSettingsProvider]::SplitName('VideoAutoplay') | Should -Be @('', 'VideoAutoplay')
-        [WindowsAppSettingsProvider]::KeyPath('M', 'A\B') | Should -Be 'M\LocalState\A\B'
+        [WindowsAppSettingsProvider]::KeyPath('A\B') | Should -Be 'LocalState\A\B'
+        [WindowsAppSettingsProvider]::KeyPath('') | Should -Be 'LocalState'
     }
 
     It 'eylemler doğrudan Windows API''sine dokunmaz (kaynak taraması, Faz 2 komutları)' {

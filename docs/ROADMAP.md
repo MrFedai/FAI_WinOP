@@ -344,7 +344,7 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
   anlamları VM'de doğrulanacak). Sohbet düğmesi `TaskbarMn` yerine ilke `ChatIcon=3`.
 - Yeni eylemler: `RegistryByte` (ikili değerin tek baytı + maske: StuckRects3 8. bayt 0. bit = otomatik gizle),
   `TaskbarPins`, `SolidImage` (tek renk görüntü, `IImageProvider` System.Drawing), `AppSetting` (paketli uygulama
-  settings.dat hive'ı: `reg load` + ham tür 0x5F5E10B bool / 0x5F5E104 int32 + 8 bayt FILETIME; `IAppSettingsProvider`),
+  settings.dat hive'ı: `RegLoadAppKey` (Faz 8'e kadar `reg load`) + ham tür 0x5F5E10B bool / 0x5F5E104 int32 + 8 bayt FILETIME; `IAppSettingsProvider`),
   `File` + `Base64` (ikili içerik). Native `src/Native/ShellNative.cs`: duvar kağıdı, masaüstü rengi, WM_SETTINGCHANGE, ham
   kayıt defteri değeri.
 - Görev çubuğu sabitlemeleri: Windows'un desteklenen yolu, tek seferlik. Taskband değerleri + `User Pinned\TaskBar`
@@ -461,6 +461,11 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
 - `release.yml`: `v*` etiketi → lint + birim → `Bundle.ps1 -Version <etiket>` → install.ps1, install.ps1.sha256, get.ps1
   sürüme. CI windows işi `tests/Integration/OneLiner.ps1`: yerel HTTP (python) → tek satır `-Profile fedai -DryRun` 0
   dönmeli; install.ps1'i kurcalanmış kopyada çıkış ≠ 0 ve eklenen satır çalışmamış olmalı.
+- Gerçek makinede ilk `-Profile fedai -DryRun` (yönetici): 31 önizleme · 8 zaten uygun · 3 HATA. `reg load` gerçek
+  uygulama `settings.dat`'ında "The filename or extension is too long" (store-optimize, notepad-settings) →
+  `WindowsAppSettingsProvider` `RegLoadAppKey`'e geçti (yönetici gerekmez; bu makinede yükseltmesiz okuma doğrulandı,
+  yazma döngüsü CI'da). `bloat.persistence`: "Access is denied" (betik / görev yok → büyük olasılıkla
+  `Get-AppxProvisionedPackage -Online`); teşhis için motor hatası artık "eylem N (Tür) denetlenemedi: ..." der.
 - Birim: 374 (Cli.Tests 34: gömülü veri, CLI, menü, dışa aktarma, SHA-256), lint temiz; 5.1'de `-List` ve bundle
   yükleme geçti.
 

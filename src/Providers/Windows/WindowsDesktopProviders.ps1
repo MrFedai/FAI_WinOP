@@ -1,5 +1,5 @@
 ﻿# Kabuk yenileme (explorer.exe, duvar kağıdı, tema yayını, Başlat), tek renkli görüntü (System.Drawing) ve paketli
-# uygulama ayarları (settings.dat hive'ı, reg.exe load / unload + ShellNative ham değer).
+# uygulama ayarları (settings.dat hive'ı, RegLoadAppKey + ShellNative ham değer).
 # Native tipler bundle ayrıştırılırken yoktur: sınıf gövdesinde [FaiWinOP.Native.X] yazılamaz, ('...' -as [type]) kullanılır.
 # Aynısı System.Drawing için de geçerli (5.1'de derleme yüklenmeden sınıf ayrıştırılamaz): yalnız metin tip adları.
 
@@ -149,8 +149,10 @@ class WindowsImageProvider : IImageProvider {
     }
 }
 
-# settings.dat bir kayıt defteri hive'ıdır (kök\LocalState altında değerler). Okuma kopyadan (uygulama açıkken de);
-# yazma asıl dosyaya, uygulamanın süreçleri kapatıldıktan sonra. reg.exe load / unload yönetici ister.
+# settings.dat bir kayıt defteri hive'ıdır (kök\LocalState altında değerler). Hive RegLoadAppKey ile bu sürece özel
+# açılır (ShellNative.LoadAppKey: yönetici gerekmez, HKU'ya bağlanmaz, anahtar kapanınca bırakılır). Okuma kopyadan
+# (uygulama açıkken de); yazma asıl dosyaya, uygulamanın süreçleri kapatıldıktan sonra.
+# reg.exe load gerçek uygulama hive'larında "The filename or extension is too long" verdi (Faz 8, gerçek makine).
 class WindowsAppSettingsProvider : IAppSettingsProvider {
     WindowsAppSettingsProvider() { }
 
@@ -160,22 +162,14 @@ class WindowsAppSettingsProvider : IAppSettingsProvider {
 
     [bool] HasSettings([string] $Package) { return [System.IO.File]::Exists([WindowsAppSettingsProvider]::DatPath($Package)) }
 
-    static [string] Mount([string] $File) {
-        $name = 'FAI_' + [guid]::NewGuid().ToString('N')
-        $out = & reg.exe load "HKU\$name" $File 2>&1
-        if ($LASTEXITCODE -ne 0) { throw ("settings.dat yüklenemedi ({0}): {1}" -f $File, ((@($out) | ForEach-Object { [string]$_ }) -join ' ')) }
-        return $name
-    }
-
-    static [void] Unmount([string] $Name) {
-        for ($i = 0; $i -lt 10; $i++) {
-            [System.GC]::Collect()
-            [System.GC]::WaitForPendingFinalizers()
-            & reg.exe unload "HKU\$Name" 2>&1 | Out-Null
-            if ($LASTEXITCODE -eq 0) { return }
-            Start-Sleep -Milliseconds 500
+    static [Microsoft.Win32.RegistryKey] Open([string] $File, [bool] $Writable) {
+        $t = Get-FaiShellNativeType
+        try { return $t::LoadAppKey($File, $Writable) }
+        catch {
+            $e = $_.Exception
+            if ($null -ne $e.InnerException) { $e = $e.InnerException }
+            throw ("settings.dat açılamadı ({0}): {1}" -f $File, $e.Message)
         }
-        throw "settings.dat hive'ı bırakılamadı: HKU\$Name"
     }
 
     # Paketin süreçleri (kurulum klasörü WindowsApps\<ad>_*): ayar dosyasını kilitler.
@@ -193,9 +187,9 @@ class WindowsAppSettingsProvider : IAppSettingsProvider {
         return [string[]]@($Name.Substring(0, $i), $Name.Substring($i + 1))
     }
 
-    static [string] KeyPath([string] $Mount, [string] $Sub) {
-        if ($Sub) { return ('{0}\LocalState\{1}' -f $Mount, $Sub) }
-        return ('{0}\LocalState' -f $Mount)
+    static [string] KeyPath([string] $Sub) {
+        if ($Sub) { return ('LocalState\{0}' -f $Sub) }
+        return 'LocalState'
     }
 
     [hashtable] GetValue([string] $Package, [string] $Name) {
@@ -206,9 +200,9 @@ class WindowsAppSettingsProvider : IAppSettingsProvider {
         $tmp = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), 'FAI_' + [guid]::NewGuid().ToString('N') + '.dat')
         [System.IO.File]::Copy($src, $tmp)
         try {
-            $mount = [WindowsAppSettingsProvider]::Mount($tmp)
+            $root = [WindowsAppSettingsProvider]::Open($tmp, $false)
             try {
-                $key = [Microsoft.Win32.Registry]::Users.OpenSubKey([WindowsAppSettingsProvider]::KeyPath($mount, $parts[0]))
+                $key = $root.OpenSubKey([WindowsAppSettingsProvider]::KeyPath($parts[0]))
                 if ($null -eq $key) { return $null }
                 try {
                     $type = 0
@@ -218,30 +212,35 @@ class WindowsAppSettingsProvider : IAppSettingsProvider {
                 }
                 finally { $key.Dispose() }
             }
-            finally { [WindowsAppSettingsProvider]::Unmount($mount) }
+            finally { $root.Dispose() }
         }
         finally {
-            foreach ($f in @($tmp, "$tmp.LOG1", "$tmp.LOG2")) { if ([System.IO.File]::Exists($f)) { [System.IO.File]::Delete($f) } }
+            foreach ($f in @($tmp, "$tmp.LOG1", "$tmp.LOG2")) {
+                if ([System.IO.File]::Exists($f)) { try { [System.IO.File]::Delete($f) } catch { Write-Verbose "geçici dosya silinemedi: $f" } }
+            }
         }
     }
 
-    # Yazma için açar: @{ Mount; Key }. CloseWrite ile kapatılmalı.
+    # Yazma için açar: @{ Root; Key }. CloseWrite ile kapatılmalı.
     hidden [hashtable] OpenWrite([string] $Package, [string] $Sub) {
         $src = [WindowsAppSettingsProvider]::DatPath($Package)
         if (-not [System.IO.File]::Exists($src)) { throw "Paket ayar dosyası yok: $src" }
         [WindowsAppSettingsProvider]::StopPackage($Package)
-        $mount = [WindowsAppSettingsProvider]::Mount($src)
-        try { $key = [Microsoft.Win32.Registry]::Users.CreateSubKey([WindowsAppSettingsProvider]::KeyPath($mount, $Sub)) }
+        $root = [WindowsAppSettingsProvider]::Open($src, $true)
+        try { $key = $root.CreateSubKey([WindowsAppSettingsProvider]::KeyPath($Sub)) }
         catch {
-            [WindowsAppSettingsProvider]::Unmount($mount)
+            $root.Dispose()
             throw
         }
-        return @{ Mount = $mount; Key = $key }
+        return @{ Root = $root; Key = $key }
     }
 
     hidden [void] CloseWrite([hashtable] $Handle) {
-        try { $Handle['Key'].Dispose() }
-        finally { [WindowsAppSettingsProvider]::Unmount([string]$Handle['Mount']) }
+        try {
+            $Handle['Key'].Flush()
+            $Handle['Key'].Dispose()
+        }
+        finally { $Handle['Root'].Dispose() }
     }
 
     [void] SetValue([string] $Package, [string] $Name, [int] $Type, [byte[]] $Data) {
