@@ -414,6 +414,8 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
 - Kabul (birim): dizüstünde pil varyantı uyku / hazırda beklemeyi açık bırakıyor; P0 autoConfirm'e rağmen soruluyor,
   -Unattended'da atlanıyor. 338 birim testi, lint temiz; 5.1'de bundle + smoke geçti. Windows-Actions 28 adım (Faz 7:
   güç planı döngüsü, MMAgent / geri yükleme okuma, UpdatePause döngüsü, WU bekleyen listesi yalnız CI, Faz 7 dry-run).
+- CI windows işi (5.1) 28 adım 0 HATA 2 ATLA: PowerScheme Balanced'tan kopyala → etkin → geri al, UpdatePause döngüsü,
+  WU araması 6 sn (0 bekleyen), Faz 7 dry-run gerçek sağlayıcılarla 8 planlanan / 5 koşul dışı (runner 4 LP / 2 çekirdek).
 - Açık (VM / gerçek donanım): silinmiş Balanced'ın kopyalanabildiği, powercfg takma adları (CPMINCORES, SYSCOOLPOL,
   ASPM) `/qh` ile, WU kurulum + yeniden başlatma algısı, 365 günlük duraklatmanın Ayarlar'daki görünümü,
   GameAffinity izleyicisi, AMD / NVIDIA değerlerinin etkisi, bellek sıkıştırmanın yeniden başlatma sonrası kapalı kalması.
