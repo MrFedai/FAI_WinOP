@@ -468,6 +468,9 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
   `Get-AppxProvisionedPackage -Online`); teşhis için motor hatası artık "eylem N (Tür) denetlenemedi: ..." der.
   Düzeltme sonrası ikinci çalıştırma (yönetici): 33 önizleme · 9 zaten uygun · 0 HATA; persistence tek başına da
   hatasız → "Access is denied" tekrarlanmadı (geçici; o anda bekleyen Defender güncellemesi vardı).
+- Kabul ✓ CI windows işi (5.1, temiz runner): tek satır get.ps1 → SHA-256 doğrulandı → `-Profile fedai -DryRun` çıkış 0
+  (37 önizleme · 2 zaten uygun · 3 atlandı, 67 sn); kurcalanmış install.ps1 → "BASARISIZ", çıkış 1, eklenen satır
+  çalışmadı. Windows eylem entegrasyonu 28 adım 0 HATA (AppSetting yazma döngüsü RegLoadAppKey ile geçti).
 - Birim: 374 (Cli.Tests 34: gömülü veri, CLI, menü, dışa aktarma, SHA-256), lint temiz; 5.1'de `-List` ve bundle
   yükleme geçti.
 
