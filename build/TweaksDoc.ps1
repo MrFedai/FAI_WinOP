@@ -56,6 +56,8 @@ $lines.Add('')
 $lines.Add('Risk: **Safe** doğrudan uygulanır · **⚠ Caution** onay ister · **⛔ Risk** "EVET" yazılmasını ister, `-Unattended` kipte uygulanmaz.')
 $lines.Add('Değişiklikler varsayılan parametrelerle listelenir; profil parametreleri geçersiz kılabilir.')
 $lines.Add('')
+$lines.Add('Profilden üretilen tweak''ler katalogda dosya olarak yok: `app.<id>` (profil `apps`, `apps/catalog.json`), `gaming.per-game` (profil `games`: IFEO `CpuPriorityClass` + işlemci benzeşimi için `\FAI_WinOP\GameAffinity` açılış görevi; maskeler makinenin işlemci sayısından), `layout.profile` (profil `layout`), `updates.on` / `updates.off` (`-UpdatesOn` / `-UpdatesOff`). Biçim: `profiles/_schema.json`.')
+$lines.Add('')
 $lines.Add('| Id | Başlık | Risk | Koşul | Parametre |')
 $lines.Add('| --- | --- | --- | --- | --- |')
 foreach ($id in $ids) {

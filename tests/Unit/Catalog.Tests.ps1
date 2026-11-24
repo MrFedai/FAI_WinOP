@@ -80,6 +80,8 @@ BeforeAll {
         $Ctx.Registry.Seed('HKLM:\SYSTEM\CurrentControlSet\Services\nvlddmkm\Parameters\FTS', 'EnableGR535', 1, 'DWord')
         $stamp = [System.BitConverter]::GetBytes([long]133000000000000000)
         $Ctx.AppSettings.Seed('Microsoft.WindowsStore_8wekyb3d8bbwe', 'VideoAutoplay', 100000011, [byte[]](@([byte]1) + $stamp))
+        # Faz 7 (C): bekleyen güncellemeler (setup.updates-staged).
+        $Ctx.Updates.Seed([string[]]@('2026-11 Toplu Güncelleştirme (KB5099999)', 'Windows Kötü Amaçlı Yazılım Temizleme Aracı'))
     }
 
     function New-CatalogProfile([object[]] $Tweaks) {
@@ -91,7 +93,7 @@ BeforeAll {
                 foreach ($v in @($Ctx.AppSettings.Packages[$pk].Values | Sort-Object { $_['Name'] })) { '{0}|{1}|{2}|{3}' -f $pk, $v['Name'], $v['Type'], [Convert]::ToBase64String([byte[]]$v['Data']) }
             })
         return (@($Ctx.Registry.Dump()) + @($Ctx.Services.Dump()) + @($Ctx.Tasks.Tasks.Keys | Sort-Object | ForEach-Object { "$_=$($Ctx.Tasks.Tasks[$_])" }) + @('ses=' + $Ctx.Audio.Volume) +
-            @($Ctx.Files.Dump()) + $apps + @($Ctx.Power.Dump()) + @($Ctx.MemoryAgent.Dump())) -join "`n"
+            @($Ctx.Files.Dump()) + $apps + @($Ctx.Power.Dump()) + @($Ctx.MemoryAgent.Dump()) + @($Ctx.Tasks.Commands.Keys | Sort-Object)) -join "`n"
     }
 }
 

@@ -47,6 +47,8 @@ class ITaskProvider {
     [void] RegisterStartupTask([string] $TaskPath, [string] $Execute, [string] $Arguments, [string] $Description) { throw [System.NotImplementedException]::new('ITaskProvider.RegisterStartupTask') }
     # Görevi siler; yoksa sessizce geçer. YAZMA.
     [void] UnregisterTask([string] $TaskPath) { throw [System.NotImplementedException]::new('ITaskProvider.UnregisterTask') }
+    # RegisterStartupTask gibi, ama süre sınırı yok (sürekli çalışan izleyici, ör. gaming.per-game). YAZMA.
+    [void] RegisterWatcherTask([string] $TaskPath, [string] $Execute, [string] $Arguments, [string] $Description) { throw [System.NotImplementedException]::new('ITaskProvider.RegisterWatcherTask') }
 }
 
 # Appx (Store) paketleri: kullanıcı ve provisioned.
@@ -109,6 +111,16 @@ class IMemoryAgentProvider {
     [hashtable] GetState() { throw [System.NotImplementedException]::new('IMemoryAgentProvider.GetState') }
     # YAZMA.
     [void] SetFeature([string] $Feature, [bool] $Enabled) { throw [System.NotImplementedException]::new('IMemoryAgentProvider.SetFeature') }
+}
+
+# Windows Update (Windows Update Agent). Yalnız yazılım güncellemeleri (sürücüler hariç), gizlenmemiş ve kurulmamış olanlar.
+class IUpdateProvider {
+    # Bekleyen güncellemelerin başlıkları (arama sürebilir; salt okunur).
+    [string[]] GetPending() { throw [System.NotImplementedException]::new('IUpdateProvider.GetPending') }
+    # Bekleyenleri indirir ve kurar (ilerleme basar): @{ Installed = <int>; Failed = <int>; RebootRequired = <bool> }. YAZMA.
+    [hashtable] InstallPending() { throw [System.NotImplementedException]::new('IUpdateProvider.InstallPending') }
+    # Kurulmuş güncelleme yeniden başlatma bekliyor mu.
+    [bool] IsRebootPending() { throw [System.NotImplementedException]::new('IUpdateProvider.IsRebootPending') }
 }
 
 # Kullanıcıya soru. Onaylar yalnız buradan gelir (Unattended modda motor bunu hiç çağırmaz).

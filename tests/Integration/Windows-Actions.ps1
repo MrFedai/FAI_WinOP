@@ -26,6 +26,11 @@
       Kabuk           IsShellRunning, Settings / Desktop / StartMenu yenilemesi
       Faz 6 dry-run   ui.* görünüm tweak'leri önizlemesi + Export-FaiLayout (salt okunur)
       Faz 6 uygula    yalnız etkileşimli kabukta (Sandbox): görünüm tweak'leri uygula → düzen doğrula → -Undo (CI'da ATLA)
+      PowerScheme     geçici test planı (etkin plandan kopya): oluştur → etkin → geri al (plan silinir); hazırda bekletme okunur
+      Salt okunur     MMAgent özellikleri, Sistem Geri Yükleme durumu
+      UpdatePause     Windows Update 7 gün duraklat → geri al (UX\Settings değerleri birebir)
+      Windows Update  bekleyen güncelleme listesi (salt okunur; yalnız CI, Sandbox'ta ATLA)
+      Faz 7 dry-run   sistem / güç / grafik / setup tweak'leri + profil games önizlemesi (gerçek sağlayıcılar, sıfır hata)
     Her döngüde snapshot JSON'a yazılıp okunur (BackupStore gibi). Test hedefleri sonda temizlenir.
 
     GÜVENLİK: yalnız GitHub Actions'ta (GITHUB_ACTIONS=true) ya da Windows Sandbox'ta (WDAGUtilityAccount) çalışır;
@@ -74,7 +79,7 @@ $failed = 0
 $skipped = 0
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 $stepNo = 0
-$stepTotal = 23
+$stepTotal = 28
 function Step([string] $Name, [scriptblock] $Body) {
     $script:stepNo++
     $t = [System.Diagnostics.Stopwatch]::StartNew()
@@ -375,6 +380,61 @@ try {
         $after = & $view
         Assert ($after -eq $before) ("geri alma düzeni getirmedi:`n  önce  $before`n  sonra $after")
         "(sabitlemeler: $((@($pins) | ForEach-Object { @($_.Values)[0] }) -join ', '))"
+    }
+
+    Step 'PowerScheme (geçici plan: oluştur → etkin → geri al) + hazırda bekletme okuma' {
+        $active = $ctx.Power.GetActiveScheme()
+        $testGuid = 'fa1f7e57-0000-4000-8000-000000000007'
+        if ($ctx.Power.ResolveScheme($testGuid)) { & powercfg.exe /delete $testGuid | Out-Null }
+        $state = { '{0}|{1}' -f $ctx.Power.GetActiveScheme(), [bool]$ctx.Power.ResolveScheme($testGuid) }
+        try {
+            $after = Invoke-Cycle @{ Type = 'PowerScheme'; Guid = $testGuid; Name = 'FAI_WinOP_Test'; Base = $active } $state
+            Assert ($after -eq "$testGuid|True") "plan etkin olmadı: $after"
+        }
+        finally {
+            if ($ctx.Power.GetActiveScheme() -ne $active) { $ctx.Power.SetActiveScheme($active) }
+            if ($ctx.Power.ResolveScheme($testGuid)) { & powercfg.exe /delete $testGuid | Out-Null }
+        }
+        Assert ($ctx.Power.GetActiveScheme() -eq $active) 'etkin plan geri dönmedi'
+        "(hazırda bekletme: $($ctx.Power.GetHibernate()))"
+    }
+
+    Step 'MMAgent + Sistem Geri Yükleme (salt okunur)' {
+        $mm = $ctx.MemoryAgent.GetState()
+        foreach ($f in @('MemoryCompression', 'ApplicationLaunchPrefetching', 'ApplicationPreLaunch')) { Assert $mm.ContainsKey($f) "MMAgent özelliği okunamadı: $f" }
+        $on = @($mm.Keys | Sort-Object | ForEach-Object { '{0}={1}' -f $_, $mm[$_] }) -join ', '
+        "($on; geri yükleme koruması: $($ctx.SystemControl.IsRestoreEnabled()))"
+    }
+
+    Step 'UpdatePause (7 gün duraklat → geri al)' {
+        $ux = Get-FaiUpdatePauseKey
+        $state = { (@((Get-FaiUpdatePauseName).Keys) | ForEach-Object { '{0}={1}' -f $_, [string]$ctx.Registry.GetValue($ux, $_) }) -join ';' }
+        $after = Invoke-Cycle @{ Type = 'UpdatePause'; Days = 7 } $state
+        Assert ($after -match 'PauseUpdatesExpiryTime=\d{4}-\d\d-\d\dT') "duraklatma yazılmadı: $after"
+        ''
+    }
+
+    Step 'Windows Update (salt okunur: bekleyen liste)' {
+        if (-not $inCi) { return 'ATLA yalnız CI (Sandbox''ta Windows Update kapalı / yavaş)' }
+        $t = [System.Diagnostics.Stopwatch]::StartNew()
+        $pending = @($ctx.Updates.GetPending())
+        "($($pending.Count) bekleyen, yeniden başlatma bekliyor: $($ctx.Updates.IsRebootPending()), arama $([int]$t.Elapsed.TotalSeconds) sn)"
+    }
+
+    Step 'Faz 7 dry-run: sistem / güç / grafik / setup + games (gerçek sağlayıcılar)' {
+        $catalog = Import-FaiTweakCatalog -Path (Join-Path $repoRoot 'tweaks')
+        $faz7 = @('system.restore-point', 'system.timer-resolution', 'power.plan', 'setup.mmagent-off', 'setup.background-apps-off',
+            'setup.store-optimize', 'setup.edition-pro', 'graphics.nvidia-settings', 'graphics.amd-settings', 'graphics.p0-state', 'refresh.reboot-to-bios')
+        if ($inCi) { $faz7 += 'setup.updates-staged' }
+        $faiProfile = [Profile]::FromHashtable(@{ name = 'faz7-dry'; tweaks = $faz7; games = @(@{ exe = 'fai-test.exe'; priority = 'High'; smtOff = $true; excludeCore0 = $true }) }, 'test')
+        $ctx.DryRun = $true
+        try { $dry = Invoke-FaiEngine -Profile $faiProfile -Context $ctx -Catalog $catalog }
+        finally { $ctx.DryRun = $false }
+        Write-Host ($dry.Render())
+        Assert (-not $dry.HasFailures()) ('dry-run hatası: ' + $dry.Render())
+        Assert ($dry.Find('refresh.reboot-to-bios').Status -eq 'Skipped') 'araç tweak''i profilde atlanmadı'
+        Assert ($dry.Find('gaming.per-game').Status -eq 'Planned') 'games önizlenmedi'
+        "(planlanan $($dry.Count('Planned')), atlanan $($dry.Count('Skipped')), zaten uygun $($dry.Count('UpToDate')); $($ctx.SystemInfo.GetLogicalProcessorCount()) mantıksal / $($ctx.SystemInfo.GetCoreCount()) çekirdek)"
     }
 
     Step 'Appx (listeleme + kullanıcı paketi kaldır / geri kaydet)' {

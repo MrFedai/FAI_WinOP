@@ -3,7 +3,7 @@
 
 function Get-FaiActionType {
     <# .SYNOPSIS  Bilinen eylem türü adları. #>
-    return [string[]]@('Registry', 'RegistryEach', 'Service', 'ScheduledTask', 'Appx', 'Winget', 'Power', 'File', 'Shortcut', 'Script', 'Volume', 'TimerResolution', 'App', 'DefaultBrowser', 'AppxCleanup', 'EdgeRemove', 'RegistryByte', 'TaskbarPins', 'SolidImage', 'AppSetting', 'RestorePoint', 'Reboot', 'OpenSettings', 'PowerScheme', 'Hibernate', 'MMAgent')
+    return [string[]]@('Registry', 'RegistryEach', 'Service', 'ScheduledTask', 'Appx', 'Winget', 'Power', 'File', 'Shortcut', 'Script', 'Volume', 'TimerResolution', 'App', 'DefaultBrowser', 'AppxCleanup', 'EdgeRemove', 'RegistryByte', 'TaskbarPins', 'SolidImage', 'AppSetting', 'RestorePoint', 'Reboot', 'OpenSettings', 'PowerScheme', 'Hibernate', 'MMAgent', 'WindowsUpdate', 'UpdatePause', 'GameAffinity')
 }
 
 function New-FaiAction {
@@ -47,6 +47,9 @@ function New-FaiAction {
         'PowerScheme' { return [PowerSchemeAction]::new($Definition) }
         'Hibernate' { return [HibernateAction]::new($Definition) }
         'MMAgent' { return [MMAgentAction]::new($Definition) }
+        'WindowsUpdate' { return [WindowsUpdateAction]::new($Definition) }
+        'UpdatePause' { return [UpdatePauseAction]::new($Definition) }
+        'GameAffinity' { return [GameAffinityAction]::new($Definition) }
         default { throw ("Bilinmeyen eylem türü: '{0}' (bilinenler: {1})" -f $Definition['Type'], ((Get-FaiActionType) -join ', ')) }
     }
 }
@@ -108,6 +111,9 @@ function Get-FaiActionError {
         'PowerScheme' { $messages = [PowerSchemeAction]::Validate($Definition) }
         'Hibernate' { $messages = [HibernateAction]::Validate($Definition) }
         'MMAgent' { $messages = [MMAgentAction]::Validate($Definition) }
+        'WindowsUpdate' { $messages = [WindowsUpdateAction]::Validate($Definition) }
+        'UpdatePause' { $messages = [UpdatePauseAction]::Validate($Definition) }
+        'GameAffinity' { $messages = [GameAffinityAction]::Validate($Definition) }
     }
     foreach ($m in $messages) { $errs.Add("${Path}.$m") }
     return $errs.ToArray()

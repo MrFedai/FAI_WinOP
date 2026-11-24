@@ -51,6 +51,17 @@ class WindowsTaskProvider : ITaskProvider {
             -Description $Description -Force -ErrorAction Stop | Out-Null
     }
 
+    # Süre sınırı yok (ExecutionTimeLimit sıfır): sürekli çalışan izleyici; yeniden başlatılmaz, açılışta bir kez başlar.
+    [void] RegisterWatcherTask([string] $TaskPath, [string] $Execute, [string] $Arguments, [string] $Description) {
+        $p = [WindowsTaskProvider]::SplitPath($TaskPath)
+        $action = New-ScheduledTaskAction -Execute $Execute -Argument $Arguments
+        $trigger = New-ScheduledTaskTrigger -AtStartup
+        $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+        $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero)
+        Register-ScheduledTask -TaskPath $p[0] -TaskName $p[1] -Action $action -Trigger $trigger -Principal $principal -Settings $settings `
+            -Description $Description -Force -ErrorAction Stop | Out-Null
+    }
+
     [void] UnregisterTask([string] $TaskPath) {
         $t = $this.Find($TaskPath)
         if ($null -eq $t) { return }

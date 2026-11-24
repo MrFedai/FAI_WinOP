@@ -20,6 +20,7 @@ class ExecutionContext {
     [IAppSettingsProvider] $AppSettings
     [ISystemControlProvider] $SystemControl
     [IMemoryAgentProvider] $MemoryAgent
+    [IUpdateProvider] $Updates
 
     [BackupStore] $Backup
     [Logger] $Logger

@@ -5,6 +5,8 @@
 Risk: **Safe** doğrudan uygulanır · **⚠ Caution** onay ister · **⛔ Risk** "EVET" yazılmasını ister, `-Unattended` kipte uygulanmaz.
 Değişiklikler varsayılan parametrelerle listelenir; profil parametreleri geçersiz kılabilir.
 
+Profilden üretilen tweak'ler katalogda dosya olarak yok: `app.<id>` (profil `apps`, `apps/catalog.json`), `gaming.per-game` (profil `games`: IFEO `CpuPriorityClass` + işlemci benzeşimi için `\FAI_WinOP\GameAffinity` açılış görevi; maskeler makinenin işlemci sayısından), `layout.profile` (profil `layout`), `updates.on` / `updates.off` (`-UpdatesOn` / `-UpdatesOff`). Biçim: `profiles/_schema.json`.
+
 | Id | Başlık | Risk | Koşul | Parametre |
 | --- | --- | --- | --- | --- |
 | [`bloat.edge-remove`](#bloatedge-remove) | Microsoft Edge'i kaldır (WebView2 kalır) | ⚠ Caution | — | — |
@@ -23,6 +25,7 @@ Değişiklikler varsayılan parametrelerle listelenir; profil parametreleri geç
 | [`setup.edition-pro`](#setupedition-pro) | Windows Home → Pro yükseltmesi (Ayarlar üzerinden) | ⚠ Caution | Edition Core | — |
 | [`setup.mmagent-off`](#setupmmagent-off) | Bellek sıkıştırma ve ön getirmeyi kapat | Safe | MinRamGB 16 | — |
 | [`setup.store-optimize`](#setupstore-optimize) | Microsoft Store: otomatik güncelleme, video ve kişiselleştirme kapalı | Safe | — | — |
+| [`setup.updates-staged`](#setupupdates-staged) | Windows Update: önce bekleyenleri kur, sonra duraklat | Safe | — | `pauseDays` |
 | [`sound.startup-sound-off`](#soundstartup-sound-off) | Açılış sesini kapat | Safe | — | — |
 | [`sound.volume`](#soundvolume) | Ses seviyesini ayarla | Safe | — | `level` |
 | [`system.restore-point`](#systemrestore-point) | Sistem Geri Yükleme noktası | Safe | — | `description` |
@@ -402,6 +405,19 @@ Değişiklikler (4):
 - `Uygulama ayarı: Microsoft.WindowsStore VideoAutoplay = False (Bool)`
 - `Uygulama ayarı: Microsoft.WindowsStore EnableAppInstallNotifications = False (Bool)`
 - `Uygulama ayarı: Microsoft.WindowsStore PersistentSettings\PersonalizationEnabled = False (Bool)`
+
+### setup.updates-staged
+
+**Windows Update: önce bekleyenleri kur, sonra duraklat** · Risk: Safe
+
+Önce bekleyen bütün yazılım güncellemeleri (Windows Update Agent; sürücüler hariç) indirilip kurulur, ilerleme basılır. Kurulum yeniden başlatma isterse çalıştırma burada durur: yeniden başlatıp profili tekrar çalıştırın (CLI ResumeCommand verirse RunOnce ile kendiliğinden sürer); kalan güncellemeler ve duraklatma o çalıştırmada yapılır. Hiç bekleyen kalmayınca güncellemeler pauseDays (varsayılan 365) gün duraklatılır: Ayarlar \> Windows Update'in duraklatma değerleri (UX\\Settings, başlangıç / bitiş UTC). FlightSettingsMaxPauseDays yazılmaz; 365 günün Ayarlar'da nasıl göründüğü VM'de doğrulanacak. -UpdatesOn / -UpdatesOff ayrıca duraklatmayı kaldırır / yeniden koyar. -Undo duraklatmayı kaldırır; kurulan güncellemeler geri alınmaz.
+
+Parametreler (varsayılan): `pauseDays` = `365`
+
+Değişiklikler (2):
+
+- `Windows Update: bekleyen bütün güncellemeler kurulur`
+- `Windows Update: 365 gün duraklatılır`
 
 ## sound
 

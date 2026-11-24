@@ -185,8 +185,8 @@ function Get-FaiProfileError {
             }
         }
     }
-    foreach ($listKey in @('games')) {
-        if ($Data.Contains($listKey) -and -not (Test-FaiIsList $Data[$listKey])) { $errs.Add("${listKey}: dizi olmalı") }
+    if ($Data.Contains('games')) {
+        foreach ($m in @(Get-FaiGameError -Games $Data['games'])) { $errs.Add($m) }
     }
     foreach ($objKey in @('layout', 'exceptions')) {
         if ($Data.Contains($objKey) -and $Data[$objKey] -isnot [System.Collections.IDictionary]) { $errs.Add("${objKey}: nesne olmalı") }

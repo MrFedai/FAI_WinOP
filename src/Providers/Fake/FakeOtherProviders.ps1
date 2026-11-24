@@ -43,6 +43,12 @@ class FakeTaskProvider : ITaskProvider {
         $this.Commands[$k] = @{ Execute = $Execute; Arguments = $Arguments; Description = $Description }
     }
 
+    # Süresiz görev: sahte sağlayıcıda RegisterStartupTask ile aynı kayıt + NoTimeLimit işareti.
+    [void] RegisterWatcherTask([string] $TaskPath, [string] $Execute, [string] $Arguments, [string] $Description) {
+        $this.RegisterStartupTask($TaskPath, $Execute, $Arguments, $Description)
+        $this.Commands[$TaskPath.ToLowerInvariant()]['NoTimeLimit'] = $true
+    }
+
     [void] UnregisterTask([string] $TaskPath) {
         $k = $TaskPath.ToLowerInvariant()
         if (-not $this.Tasks.ContainsKey($k)) { return }
@@ -210,6 +216,39 @@ class FakeMemoryAgentProvider : IMemoryAgentProvider {
     [string[]] Dump() {
         return [string[]]@($this.Features.Keys | Sort-Object | ForEach-Object { '{0}={1}' -f $_, $this.Features[$_] })
     }
+}
+
+# Windows Update taklidi: Pending başlıkları; InstallPending hepsini Installed'a taşır, RebootAfterInstall ise yeniden
+# başlatma bekler duruma geçer. FailTitles'taki başlıklar kurulamaz (bekleyen kalır).
+class FakeUpdateProvider : IUpdateProvider {
+    [System.Collections.Generic.List[string]] $Pending = (New-Object 'System.Collections.Generic.List[string]')
+    [System.Collections.Generic.List[string]] $Installed = (New-Object 'System.Collections.Generic.List[string]')
+    [string[]] $FailTitles = @()
+    [bool] $RebootAfterInstall = $false
+    [bool] $RebootPending = $false
+    [int] $WriteCount = 0
+
+    FakeUpdateProvider() { }
+
+    [void] Seed([string[]] $Titles) { foreach ($t in $Titles) { $this.Pending.Add($t) } }
+
+    [string[]] GetPending() { return $this.Pending.ToArray() }
+
+    [hashtable] InstallPending() {
+        $this.WriteCount++
+        $ok = 0
+        $failed = 0
+        foreach ($t in $this.Pending.ToArray()) {
+            if ($this.FailTitles -contains $t) { $failed++; continue }
+            [void]$this.Pending.Remove($t)
+            $this.Installed.Add($t)
+            $ok++
+        }
+        if ($ok -gt 0 -and $this.RebootAfterInstall) { $this.RebootPending = $true }
+        return @{ Installed = $ok; Failed = $failed; RebootRequired = $this.RebootPending }
+    }
+
+    [bool] IsRebootPending() { return $this.RebootPending }
 }
 
 # Önceden verilmiş yanıt listesiyle çalışır. Liste biterse güvenli varsayılan: reddet.

@@ -41,6 +41,7 @@ function New-FaiWindowsContext {
     $ctx.AppSettings = [WindowsAppSettingsProvider]::new()
     $ctx.SystemControl = [WindowsSystemControlProvider]::new()
     $ctx.MemoryAgent = [WindowsMemoryAgentProvider]::new()
+    $ctx.Updates = [WindowsUpdateProvider]::new()
     $ctx.Backup = [BackupStore]::new($BackupRoot)
     $ctx.Logger = [Logger]::new($LogPath, (-not $ShowLog.IsPresent))
     $ctx.DryRun = $DryRun.IsPresent

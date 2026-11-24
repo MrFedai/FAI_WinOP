@@ -58,7 +58,21 @@
         ]
       }
     },
-    "games": { "type": "array", "description": "Faz 7: oyun başına ayarlar." },
+    "games": {
+      "type": "array",
+      "description": "Faz 7 (gaming.per-game): oyun başına öncelik (IFEO CpuPriorityClass) ve işlemci benzeşimi (açılış görevi). Maskeler makinenin mantıksal işlemci / çekirdek sayısından hesaplanır. Tweak'lerden sonra, layout'tan önce uygulanır.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [ "exe" ],
+        "properties": {
+          "exe": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._ \\-]*\\.[Ee][Xx][Ee]$", "description": "Yalnız dosya adı (ör. cs2.exe), yol değil." },
+          "priority": { "type": "string", "enum": [ "Idle", "BelowNormal", "Normal", "AboveNormal", "High" ] },
+          "smtOff": { "type": "boolean", "description": "Her fiziksel çekirdeğin yalnız ilk mantıksal işlemcisi." },
+          "excludeCore0": { "type": "boolean", "description": "Çekirdek 0'ın mantıksal işlemcileri kullanılmaz." }
+        }
+      }
+    },
     "layout": {
       "type": "object",
       "additionalProperties": false,

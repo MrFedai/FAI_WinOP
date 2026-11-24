@@ -77,12 +77,47 @@ class Engine {
                 $this.Ctx.Logger.Error("${id}: $($_.Exception.Message)")
             }
         }
+        if (@($FaiProfile.Games).Count -gt 0) {
+            $id = 'gaming.per-game'
+            try {
+                $sys = $this.Ctx.SystemInfo
+                $gamesTweak = ConvertTo-FaiGamesTweak -Games @($FaiProfile.Games) -Logical $sys.GetLogicalProcessorCount() -Cores $sys.GetCoreCount()
+                $this.ProcessResolved($FaiProfile, $gamesTweak, $report)
+            }
+            catch {
+                [void]$report.Add($id, $id, 'Failed', $_.Exception.Message, [string[]]@())
+                $this.Ctx.Logger.Error("${id}: $($_.Exception.Message)")
+            }
+        }
         if ($null -ne $FaiProfile.Layout -and $FaiProfile.Layout.Count -gt 0) {
             $id = 'layout.profile'
             try { $this.ProcessResolved($FaiProfile, (ConvertTo-FaiLayoutTweak -Layout $FaiProfile.Layout), $report) }
             catch {
                 [void]$report.Add($id, $id, 'Failed', $_.Exception.Message, [string[]]@())
                 $this.Ctx.Logger.Error("${id}: $($_.Exception.Message)")
+            }
+        }
+        $this.RunRefresh($report)
+        $this.Ctx.Logger.Info($report.Summary())
+        return $report
+    }
+
+    # Profil dışı, kod içinde üretilmiş tweak'leri (ör. -UpdatesOn / -UpdatesOff) aynı yoldan işler: koşul, onay,
+    # yedek oturumu ('Name' adıyla), rapor, kabuk yenilemesi. -Undo bu oturumu da geri alır.
+    [Reporter] RunTweaks([string] $Name, [Tweak[]] $Tweaks) {
+        $report = [Reporter]::new()
+        if ($this.Ctx.DryRun) { $report.Heading = "$Name — ÖNİZLEME (dry-run, hiçbir şey değişmedi)" }
+        else { $report.Heading = $Name }
+        $this.Ctx.Logger.Info($report.Heading)
+        $this.Session = $null
+        $this.PendingRefresh.Clear()
+        $p = [Profile]::new()
+        $p.Name = $Name
+        foreach ($t in $Tweaks) {
+            try { $this.ProcessResolved($p, $t, $report) }
+            catch {
+                [void]$report.Add($t.Id, $t.Title, 'Failed', $_.Exception.Message, [string[]]@())
+                $this.Ctx.Logger.Error("$($t.Id): $($_.Exception.Message)")
             }
         }
         $this.RunRefresh($report)
@@ -290,4 +325,30 @@ function Invoke-FaiEngine {
     if ($Undo.IsPresent) { return $engine.Undo($Session) }
     if ($null -eq $FaiProfile) { throw 'Profil verilmedi.' }
     return $engine.Run($FaiProfile)
+}
+
+function Invoke-FaiUpdatesSwitch {
+    <#
+    .SYNOPSIS
+        -UpdatesOn / -UpdatesOff (CLI bağlaması Faz 8): Windows Update duraklatmasını kaldırır ya da Days gün duraklatır.
+        Motor üzerinden çalışır (yedek oturumu + rapor); -Undo ile geri alınır.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)] [ExecutionContext] $Context,
+        [Parameter(Mandatory = $true, ParameterSetName = 'On')] [switch] $On,
+        [Parameter(Mandatory = $true, ParameterSetName = 'Off')] [switch] $Off,
+        [Parameter(ParameterSetName = 'Off')] [ValidateRange(1, 3650)] [int] $Days = 365
+    )
+
+    if ($On.IsPresent -and -not $Off.IsPresent) {
+        $tweak = ConvertTo-FaiUpdatesSwitchTweak -On
+        $name = 'updates-on'
+    }
+    else {
+        $tweak = ConvertTo-FaiUpdatesSwitchTweak -Off -Days $Days
+        $name = 'updates-off'
+    }
+    $engine = [Engine]::new($Context, @{})
+    return $engine.RunTweaks($name, [Tweak[]]@($tweak))
 }
