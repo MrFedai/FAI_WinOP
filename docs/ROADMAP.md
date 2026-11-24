@@ -466,6 +466,8 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
   `WindowsAppSettingsProvider` `RegLoadAppKey`'e geçti (yönetici gerekmez; bu makinede yükseltmesiz okuma doğrulandı,
   yazma döngüsü CI'da). `bloat.persistence`: "Access is denied" (betik / görev yok → büyük olasılıkla
   `Get-AppxProvisionedPackage -Online`); teşhis için motor hatası artık "eylem N (Tür) denetlenemedi: ..." der.
+  Düzeltme sonrası ikinci çalıştırma (yönetici): 33 önizleme · 9 zaten uygun · 0 HATA; persistence tek başına da
+  hatasız → "Access is denied" tekrarlanmadı (geçici; o anda bekleyen Defender güncellemesi vardı).
 - Birim: 374 (Cli.Tests 34: gömülü veri, CLI, menü, dışa aktarma, SHA-256), lint temiz; 5.1'de `-List` ve bundle
   yükleme geçti.
 
