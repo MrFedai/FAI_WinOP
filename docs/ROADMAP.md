@@ -365,8 +365,11 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
   Gezgin + Chrome (sıra doğru), Bu Bilgisayar + Geri Dönüşüm, FFlags 0x40200224; `ui.account-pictures-black` ZATEN UYGUN.
 - Windows-Actions'a 6 adım (23): RegistryByte, SolidImage, AppSetting (reg save ile sentetik hive), kabuk sağlayıcısı,
   Faz 6 dry-run + Export, Faz 6 uygula → Undo (yalnız etkileşimli kabukta: Sandbox).
-- Açık (Sandbox / VM'de doğrulanacak): Start Layout ilkesinin var olan kullanıcıda sabitlemeleri gerçekten uyguladığı,
-  start2.bin geri yazımı, Not Defteri değer anlamları, PersonalizationCSP'nin Pro'da etkisi, IconLayouts geri yazımının
+- Sandbox (5.1, etkileşimli kabuk) 23 adım 0 HATA: Faz 6 görünüm tweak'leri gerçek Gezgin'de uygulandı — sabitlemeler
+  Gezgin + Edge → yalnız Gezgin (Chrome kurulu değil, atlandı; Start Layout yöntemi var olan kullanıcıda çalışıyor),
+  otomatik gizleme açık, ikinci çalıştırma ZATEN UYGUN, -Undo düzeni (Gezgin + Edge) birebir geri getirdi. AppSetting
+  sentetik hive'da Bool + Int32 döngüsü geçti.
+- Açık (VM / gerçek donanım): referans görünümün görsel kontrolü (Faz 9), start2.bin geri yazımı, Not Defteri değer anlamları, PersonalizationCSP'nin Pro'da etkisi, IconLayouts geri yazımının
   konumları getirdiği.
 
 ### Faz 7 — Sistem, güç, grafik, oyun
