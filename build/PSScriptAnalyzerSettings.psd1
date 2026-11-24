@@ -13,7 +13,9 @@
 
     ExcludeRules = @(
         # Konsol aracı: renkli çıktı Write-Host ile verilir.
-        'PSAvoidUsingWriteHost'
+        'PSAvoidUsingWriteHost',
+        # New-FaiAction gibi iç fabrikalar sistem durumunu değiştirmez; -WhatIf / -Confirm anlamsız.
+        'PSUseShouldProcessForStateChangingFunctions'
     )
 
     Rules        = @{

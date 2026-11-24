@@ -96,6 +96,9 @@ foreach ($file in $files) {
     $parseErrors = $null
     [void][System.Management.Automation.Language.Parser]::ParseFile($file, [ref]$tokens, [ref]$parseErrors)
     foreach ($err in $parseErrors) {
+        # Sınıflar dosyalar arası tipleri kullanır (ActionBase, ExecutionContext...); tek dosyada bu tipler bilinmez.
+        # Tip çözümlemesi bundle'ın ayrıştırılmasında denetlenir (build/Bundle.ps1 hata verirse bundle üretilmez).
+        if ($err.ErrorId -eq 'TypeNotFound') { continue }
         $findings.Add([pscustomobject]@{ File = $rel; Line = $err.Extent.StartLineNumber; Rule = 'FAI.Parse'; Message = $err.Message })
     }
     foreach ($t in $tokens) {
@@ -109,6 +112,7 @@ foreach ($file in $files) {
     $fileSettings = $settingsData
     if ($file.EndsWith('.Tests.ps1')) { $fileSettings = $testSettings }
     foreach ($r in (Invoke-ScriptAnalyzer -Path $file -Settings $fileSettings)) {
+        if ($r.RuleName -eq 'TypeNotFound') { continue }   # yukarıdaki açıklama: tip çözümlemesi bundle'da
         $findings.Add([pscustomobject]@{ File = $rel; Line = $r.Line; Rule = $r.RuleName; Message = $r.Message })
     }
 }
