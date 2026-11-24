@@ -5,6 +5,11 @@ on:
     branches: [main, dev]
   pull_request:
   workflow_dispatch:
+    inputs:
+      apps:
+        description: 'apps işi: yalnız bu uygulamalar (virgüllü, ör. steam,chrome; boş = katalogdaki hepsi)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -122,6 +127,9 @@ jobs:
         run: .\build\Bundle.ps1
 
       - name: Uygulamaları kur → doğrula → keşif dökümü → geri al
+        env:
+          FAI_APPS: ${{ inputs.apps }}
         run: |
-          .\tests\Integration\Apps-Install.ps1 -Undo
+          $only = @($env:FAI_APPS -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+          .\tests\Integration\Apps-Install.ps1 -Undo -Only $only
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

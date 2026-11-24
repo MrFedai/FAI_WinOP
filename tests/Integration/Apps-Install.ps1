@@ -109,6 +109,7 @@ function Show-New([string] $Title, [object[]] $Before, [object[]] $After) {
 
 Write-Host ("Apps-Install: {0} uygulama ({1}), CI={2}, Sandbox={3}" -f $selected.Count, ($selected -join ', '), $inCi, $inSandbox)
 $before = Get-Inventory
+$procBefore = @(Get-Process | ForEach-Object { $_.ProcessName } | Sort-Object -Unique)
 # Önceden kurulu olanlar (runner imajında Chrome gibi) geri almada kaldırılmaz.
 $preInstalled = @($selected | Where-Object { $ctx.Packages.IsInstalled($catalog[$_]['packageId'], $catalog[$_]['source']) })
 if ($preInstalled.Count -gt 0) { Write-Host ("  Önceden kurulu: {0}" -f ($preInstalled -join ', ')) }
@@ -127,6 +128,8 @@ if (@($newDesktop).Count -gt 0) { Fail ('masaüstünde yeni kısayol kaldı: ' +
 [void](Show-New 'Yeni Başlangıç klasörü öğeleri' $before.Startup $after.Startup)
 [void](Show-New 'Yeni Başlat > Programlar öğeleri' $before.Programs $after.Programs)
 [void](Show-New 'StartupApproved (03 = kapalı)' $before.Approved $after.Approved)
+$procAfter = @(Get-Process | ForEach-Object { $_.ProcessName } | Sort-Object -Unique)
+[void](Show-New 'Kurulumdan sonra çalışan yeni süreçler' $procBefore $procAfter)
 
 $again = Invoke-FaiEngine -Profile $appProfile -Context $ctx -Catalog @{} -AppCatalog $catalog
 foreach ($item in $again.Items) {
@@ -144,7 +147,26 @@ if ($Undo.IsPresent) {
         if ($u.HasFailures()) { break }
     }
     $left = @($selected | Where-Object { $ctx.Packages.IsInstalled($catalog[$_]['packageId'], $catalog[$_]['source']) -and $preInstalled -notcontains $_ })
-    if ($left.Count -gt 0) { Fail ('geri almadan sonra hâlâ kurulu: ' + ($left -join ', ')) }
+    if ($left.Count -gt 0) {
+        Fail ('geri almadan sonra hâlâ kurulu: ' + ($left -join ', '))
+        # Teşhis: kaldırma kaydı (ARP), çalışan süreçler, winget'in son çıktısı.
+        $arpRoots = @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall', 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall',
+            'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall')
+        foreach ($id in $left) {
+            $name = [string]$catalog[$id]['name']
+            Write-Host ("  Teşhis {0}:" -f $id)
+            foreach ($root in $arpRoots) {
+                foreach ($k in @(Get-ChildItem -LiteralPath $root -ErrorAction SilentlyContinue)) {
+                    $p = Get-ItemProperty -LiteralPath $k.PSPath -ErrorAction SilentlyContinue
+                    if ([string]$p.DisplayName -notlike "*$name*") { continue }
+                    Write-Host ("    ARP {0}: {1} | Uninstall: {2} | Quiet: {3}" -f $k.PSChildName, $p.DisplayName, $p.UninstallString, $p.QuietUninstallString)
+                }
+            }
+            $procs = @(Get-Process | Where-Object { $_.ProcessName -like "*$id*" -or $_.ProcessName -like 'Au_*' -or $_.ProcessName -like '*uninst*' })
+            Write-Host ("    Süreçler: {0}" -f (($procs | ForEach-Object { '{0}({1})' -f $_.ProcessName, $_.Id }) -join ', '))
+            Write-Host ("    winget son çıktı: {0}" -f $ctx.Packages.LastOutput)
+        }
+    }
 }
 else { Write-Host '[3/3] -Undo verilmedi; kurulumlar yerinde.' }
 

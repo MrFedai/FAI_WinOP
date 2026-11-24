@@ -59,10 +59,11 @@ class WindowsPackageProvider : IPackageProvider {
         }
         # Bazı kaldırıcılar (NSIS: Steam) kendini geçici klasöre kopyalayıp hemen çıkar; winget başarı döner ama
         # kaldırma sürer. Paket listeden düşene kadar beklenir; düşmezse sessizce geçilmez.
+        $uninstallTail = $this.Tail()
         $deadline = [DateTime]::UtcNow.AddSeconds([WindowsPackageProvider]::UninstallWaitSeconds)
         while ($this.IsInstalled($PackageId, $Source)) {
             if ([DateTime]::UtcNow -gt $deadline) {
-                throw ('winget uninstall {0}: kaldırıcı {1} sn içinde bitmedi (paket hâlâ kurulu)' -f $PackageId, [WindowsPackageProvider]::UninstallWaitSeconds)
+                throw ('winget uninstall {0}: kaldırıcı {1} sn içinde bitmedi (paket hâlâ kurulu); winget: {2}' -f $PackageId, [WindowsPackageProvider]::UninstallWaitSeconds, $uninstallTail)
             }
             Start-Sleep -Seconds 3
         }
