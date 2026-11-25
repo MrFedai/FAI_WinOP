@@ -197,6 +197,8 @@ class FakeSystemControlProvider : ISystemControlProvider {
 class FakeMemoryAgentProvider : IMemoryAgentProvider {
     [hashtable] $Features = @{ MemoryCompression = $true; PageCombining = $true; ApplicationLaunchPrefetching = $true; ApplicationPreLaunch = $true; OperationAPI = $true }
     [int] $WriteCount = 0
+    # Test: özellik → 'persist' (değeri yazıp hata atar, Windows'taki "not supported") | 'fail' (yazmadan hata atar).
+    [hashtable] $Throw = @{}
 
     FakeMemoryAgentProvider() { }
 
@@ -209,7 +211,10 @@ class FakeMemoryAgentProvider : IMemoryAgentProvider {
     [void] SetFeature([string] $Feature, [bool] $Enabled) {
         $this.WriteCount++
         if (-not $this.Features.ContainsKey($Feature)) { throw "Bilinmeyen MMAgent özelliği: $Feature" }
+        $mode = [string]$this.Throw[$Feature]
+        if ($mode -eq 'fail') { throw 'The request is not supported.' }
         $this.Features[$Feature] = $Enabled
+        if ($mode -eq 'persist') { throw 'The request is not supported.' }
     }
 
     # Sıralı döküm: 'özellik=bool'.

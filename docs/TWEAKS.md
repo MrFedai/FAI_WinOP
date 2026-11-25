@@ -38,7 +38,7 @@ Profilden üretilen tweak'ler katalogda dosya olarak yok: `app.<id>` (profil `ap
 | [`ui.notepad-settings`](#uinotepad-settings) | Not Defteri ayarları | Safe | — | `aiRewrite`, `openInNewWindow`, `restoreSession` |
 | [`ui.notifications`](#uinotifications) | Bildirimleri kapat (istisna listesi hariç) | Safe | — | `exceptions` |
 | [`ui.taskbar`](#uitaskbar) | Görev çubuğu: ortalı, otomatik gizlenir, yalnız Dosya Gezgini + Chrome | Safe | — | `autoHide` |
-| [`ui.theme-black`](#uitheme-black) | Siyah tema (koyu, saydamlık kapalı, düz siyah duvar kağıdı) | Safe | — | — |
+| [`ui.theme-black`](#uitheme-black) | Siyah tema (koyu, saydamlık kapalı, otomatik vurgu, düz siyah duvar kağıdı) | Safe | — | — |
 | [`ui.visual-effects`](#uivisual-effects) | Görsel efektleri azalt (yazı yumuşatma açık) | Safe | — | — |
 | [`ui.widgets-off`](#uiwidgets-off) | Pencere öğelerini (Widgets) kapat | Safe | — | — |
 
@@ -594,23 +594,18 @@ Değişiklikler (8):
 
 ### ui.theme-black
 
-**Siyah tema (koyu, saydamlık kapalı, düz siyah duvar kağıdı)** · Risk: Safe
+**Siyah tema (koyu, saydamlık kapalı, otomatik vurgu, düz siyah duvar kağıdı)** · Risk: Safe
 
-Uygulamalar ve Windows koyu kipe geçer, saydamlık efektleri kapanır. Vurgu rengi neredeyse siyah (#191919) yapılır ve Başlat / görev çubuğu ile pencere başlıklarında gösterilir; Ayarlar'daki açma / kapama düğmeleri okunur kalsın diye vurgu paletinin açık tonları gri bırakılır. Duvar kağıdı kaldırılır, masaüstü düz siyah renk olur (Kişiselleştir \> Arka plan: Düz renk). Değişiklikler hemen yayınlanır; bazı uygulamalar yeniden açılınca koyulaşır.
+Uygulamalar ve Windows koyu kipe geçer, saydamlık efektleri kapanır. Vurgu rengi Otomatik (duvar kağıdından; düz siyahta Windows varsayılanı) ve Başlat / görev çubuğu ile pencere başlıklarında gösterilmez: yüzeyler koyu kipin kendi koyu grisinde kalır. Duvar kağıdı kaldırılır, masaüstü düz siyah renk olur (Kişiselleştir \> Arka plan: Düz renk). Değişiklikler hemen yayınlanır; bazı uygulamalar yeniden açılınca koyulaşır.
 
-Değişiklikler (14):
+Değişiklikler (9):
 
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme = 0 (DWord)`
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\SystemUsesLightTheme = 0 (DWord)`
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\EnableTransparency = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\ColorPrevalence = 1 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Accent\AccentPalette = 128,128,128,0,107,107,107,0,85,85,85,0,25,25,25,0,17,17,17,0,10,10,10,0,0,0,0,0,0,0,0,0 (Binary)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Accent\AccentColorMenu = 4279834905 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Accent\StartColorMenu = 4279308561 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\DWM\EnableWindowColorization = 1 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\DWM\AccentColor = 4279834905 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\DWM\ColorizationColor = 3289979161 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\DWM\ColorizationAfterglow = 3289979161 (DWord)`
+- `Kayıt defteri: HKCU:\Control Panel\Desktop\AutoColorization = 1 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\ColorPrevalence = 0 (DWord)`
+- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\DWM\ColorPrevalence = 0 (DWord)`
 - `Kayıt defteri: HKCU:\Control Panel\Desktop\WallPaper =  (String)`
 - `Kayıt defteri: HKCU:\Control Panel\Colors\Background = 0 0 0 (String)`
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Wallpapers\BackgroundType = 1 (DWord)`

@@ -491,6 +491,18 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
   `& "$env:USERPROFILE\FAI_WinOP_test\repo\dist\install.ps1" -Profile fedai -DryRun`.
   Uygulama sonrası aynı dry-run'da her şey ZATEN UYGUN olmalı (araç / her seferinde onaylı olanlar hariç).
 - Adım 6 ön koşulu: ilk sürüm etiketi (`releases/latest/download/get.ps1`; kullanıcı) + Win11 ISO.
+- Adım 1 ✓ dry-run 33 önizleme · 9 zaten uygun · 0 HATA. Makine önceden Ultimate ile ayarlanmış (yalnız `9999…`
+  "Ultimate Performance" planı, bildirimler kapalı, siyah kilit ekranı) → `-Undo` oraya döner. Atlandı:
+  `graphics.p0-state` (Optimus dizüstü: dGPU hep P0), `app.chrome` (winget kararlı Chrome'u Beta sanıyor).
+- Adım 2 uygulama: 28 uygulandı · 9 zaten uygun · 3 HATA, ~16 dk (6 uygulama kurulumu dahil):
+  - `setup.mmagent-off`: `Disable-MMAgent -MemoryCompression` "The request is not supported" verdi ama ayar kaydoldu
+    (Hyper-V açık). → MMAgent eylemi hatadan sonra durumu yeniden okur; tutuyorsa uyarı + başarı.
+  - `ui.widgets-off`: `HKLM\...\Policies\Microsoft\Dsh` yönetici olarak da yazılamıyor (UCPD sürücüsü; ACL değil).
+    Bu makinede WebExperience paketi yok (pencere öğeleri zaten yok). Temiz kurulumda paket var → çözüm VM'de (adım 6).
+  - `power.plan`: Modern Standby (S0) + silinmiş Balanced → `/duplicatescheme` ne Balanced ne etkin plan için çalışıyor.
+    Temiz kurulumda Balanced var. Hata mesajı artık `powercfg -restoredefaultschemes` önerir.
+- Tema kararı (kullanıcı, adım 3): vurgu rengi Otomatik, Başlat / görev çubuğu ve başlıklarda vurgu kapalı, saydamlık
+  kapalı → `ui.theme-black` siyah vurgu paleti ve DWM renklendirmesi yerine `AutoColorization=1`, iki `ColorPrevalence=0`.
 
 ---
 

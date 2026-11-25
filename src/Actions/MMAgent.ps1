@@ -3,6 +3,8 @@
 #   @{ Type='MMAgent'; Feature='MemoryCompression'; Enabled=$false }
 # Feature: MemoryCompression | PageCombining | ApplicationLaunchPrefetching | ApplicationPreLaunch | OperationAPI.
 # Bellek sıkıştırma ve sayfa birleştirme yeniden başlatınca etkinleşir. Undo: önceki durum.
+# Windows bazen ayarı kaydedip canlı değişikliği reddeder ("The request is not supported"; Hyper-V açık makinede
+# MemoryCompression): komut hata verse de durum istenen değerdeyse başarı sayılır, uyarı günlüğe yazılır.
 
 class MMAgentAction : ActionBase {
     MMAgentAction([hashtable] $Definition) : base($Definition) { }
@@ -34,12 +36,21 @@ class MMAgentAction : ActionBase {
 
     [void] Apply([ExecutionContext] $Ctx) {
         $want = [bool]$this.Definition['Enabled']
-        if ($this.Current($Ctx) -ne $want) { $Ctx.MemoryAgent.SetFeature($this.Feature(), $want) }
+        if ($this.Current($Ctx) -ne $want) { $this.SetTo($Ctx, $want) }
     }
 
     [void] Revert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
         $was = [bool]$Snapshot['Enabled']
-        if ($this.Current($Ctx) -ne $was) { $Ctx.MemoryAgent.SetFeature($this.Feature(), $was) }
+        if ($this.Current($Ctx) -ne $was) { $this.SetTo($Ctx, $was) }
+    }
+
+    hidden [void] SetTo([ExecutionContext] $Ctx, [bool] $Value) {
+        try { $Ctx.MemoryAgent.SetFeature($this.Feature(), $Value) }
+        catch {
+            $err = $_.Exception
+            if ($this.Current($Ctx) -ne $Value) { throw $err }
+            $Ctx.Logger.Warn(('MMAgent {0}: komut hata verdi ama ayar kaydedildi, yeniden başlatınca etkinleşir ({1})' -f $this.Feature(), $err.Message.Trim()))
+        }
     }
 
     [string] Describe() {

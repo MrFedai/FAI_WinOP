@@ -814,6 +814,18 @@ Describe 'Güç planı ve bellek yöneticisi eylemleri: PowerScheme, Hibernate, 
         $after | Should -Match 'PageCombining=True'
     }
 
+    It 'MMAgent: komut hata verip ayarı kaydettiyse başarı + uyarı; kaydetmediyse hata (Faz 9)' {
+        $ctx = New-Ctx
+        $m = Act @{ Type = 'MMAgent'; Feature = 'MemoryCompression'; Enabled = $false }
+        $ctx.MemoryAgent.Throw['MemoryCompression'] = 'persist'
+        { $m.Apply($ctx) } | Should -Not -Throw
+        $m.Test($ctx) | Should -BeTrue
+        $ctx.Logger.Count('WARN') | Should -Be 1
+        $p = Act @{ Type = 'MMAgent'; Feature = 'PageCombining'; Enabled = $false }
+        $ctx.MemoryAgent.Throw['PageCombining'] = 'fail'
+        { $p.Apply($ctx) } | Should -Throw '*not supported*'
+    }
+
     It 'AppSetting Key: LocalState altındaki anahtara yazar' {
         $ctx = New-Ctx
         $ctx.AppSettings.SeedPackage('Microsoft.WindowsStore_8wekyb3d8bbwe')

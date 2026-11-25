@@ -71,7 +71,11 @@ class WindowsPowerProvider : IPowerProvider {
 
     [void] CreateScheme([string] $Source, [string] $Guid, [string] $Name) {
         [void]$this.Invoke([string[]]@('/duplicatescheme', $this.SourceGuid($Source), $Guid.ToLowerInvariant()))
-        if (-not $this.ResolveScheme($Guid)) { throw ('Güç planı kopyalanamadı: {0} → {1}' -f $Source, $Guid) }
+        if (-not $this.ResolveScheme($Guid)) {
+            throw (('Güç planı kopyalanamadı: {0} → {1}. Varsayılan planlar silinmiş olabilir (Modern Standby makinede ' +
+                'silinen plan kopyalanamaz): yönetici olarak "powercfg -restoredefaultschemes" (özel planları siler), ' +
+                'sonra yeniden deneyin') -f $Source, $Guid)
+        }
         [void]$this.Invoke([string[]]@('/changename', $Guid.ToLowerInvariant(), $Name))
     }
 
