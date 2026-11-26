@@ -1,7 +1,7 @@
 name: Release
 
 # v* etiketi itilince: lint + birim testleri → bundle (sürüm = etiket) → install.ps1, install.ps1.sha256, get.ps1
-# GitHub sürümüne yüklenir. Etiketlemek kullanıcının işidir (CLAUDE.md: yayın kullanıcıda).
+# GitHub sürümüne yüklenir (önce Windows 5.1 yükleme testi geçmeli). Etiketlemek kullanıcının işidir (CLAUDE.md: yayın kullanıcıda).
 # Tek satır (yönetici PowerShell):
 #   & ([scriptblock]::Create((irm https://github.com/MrFedai/FAI_WinOP/releases/latest/download/get.ps1))) -Profile fedai -DryRun
 
@@ -13,11 +13,11 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Sürüm yayınla
+  build:
+    name: Derle · lint + birim + bundle
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - name: Etiket biçimi (vX.Y.Z)
         run: |
@@ -54,9 +54,58 @@ jobs:
         working-directory: dist
         run: sha256sum -c install.ps1.sha256
 
+      - name: Bundle'ı sonraki işlere aktar
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-bundle
+          path: |
+            dist/install.ps1
+            dist/install.ps1.sha256
+            dist/get.ps1
+          if-no-files-found: error
+
+  windows:
+    name: Windows · yayınlanacak bundle yükleme testi (powershell.exe 5.1)
+    needs: build
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Bundle'ı indir (yayınlanacak olan)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-bundle
+          path: dist
+
+      - name: Sürüm
+        run: $PSVersionTable
+
+      - name: Bundle yükleme testi (5.1)
+        run: |
+          .\tests\Integration\Load-Bundle.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  release:
+    name: Sürüm yayınla
+    needs: [build, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bundle'ı indir (5.1 testinden geçen)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-bundle
+          path: dist
+
+      - name: Özet doğrula (sha256sum)
+        working-directory: dist
+        run: sha256sum -c install.ps1.sha256
+
       - name: GitHub sürümü
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${GITHUB_REF_NAME}" dist/install.ps1 dist/install.ps1.sha256 dist/get.ps1 \
-            --title "FAI_WinOP ${GITHUB_REF_NAME}" --generate-notes --verify-tag
+            --title "FAI_WinOP ${GITHUB_REF_NAME}" --generate-notes --verify-tag --repo "${GITHUB_REPOSITORY}"

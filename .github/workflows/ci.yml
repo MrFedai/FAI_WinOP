@@ -19,7 +19,7 @@ jobs:
     name: Ubuntu · lint + birim + bundle (pwsh 7)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - name: Modülleri kur (Pester 5, PSScriptAnalyzer)
         shell: pwsh
@@ -73,7 +73,7 @@ jobs:
           ./tests/Integration/Engine-Smoke.ps1 -AnyVersion
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: install-ps1
           path: |
@@ -87,7 +87,7 @@ jobs:
       run:
         shell: powershell
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - name: Sürüm
         run: $PSVersionTable
@@ -99,6 +99,22 @@ jobs:
         run: |
           .\tests\Integration\Load-Bundle.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # Windows PowerShell 5.1'de de birim testleri (testi atlama: geçmeyen varsa düzeltilir ya da raporlanır).
+      - name: Modülleri kur (Pester 5.7.1)
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser | Out-Null
+          Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
+
+      - name: Birim testleri (Pester, powershell.exe 5.1)
+        run: |
+          Import-Module Pester -RequiredVersion 5.7.1
+          $c = New-PesterConfiguration
+          $c.Run.Path = 'tests/Unit'
+          $c.Run.Exit = $true
+          $c.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $c
 
       # Faz 8 kabulü: temiz runner'da tek satır (get.ps1 → SHA-256 → install.ps1) -DryRun uçtan uca; özet tutmazsa durur.
       - name: Tek satır komut (-Profile fedai -DryRun) + kurcalanmış özet
@@ -135,7 +151,7 @@ jobs:
       run:
         shell: powershell
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - name: Bundle (5.1 ile üret)
         run: .\build\Bundle.ps1
