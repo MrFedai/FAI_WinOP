@@ -106,6 +106,7 @@ jobs:
       - name: GitHub sürümü
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}  # bu işte checkout yok: gh depoyu buradan bilir
         run: |
           gh release create "${GITHUB_REF_NAME}" dist/install.ps1 dist/install.ps1.sha256 dist/get.ps1 \
             --title "FAI_WinOP ${GITHUB_REF_NAME}" --generate-notes --verify-tag --repo "${GITHUB_REPOSITORY}"
