@@ -5,7 +5,8 @@ function New-FaiWindowsContext {
     .SYNOPSIS
         Bütün sağlayıcıları Windows* olan bir ExecutionContext döndürür.
     .PARAMETER BackupRoot
-        Snapshot oturumlarının klasörü. Varsayılan %ProgramData%\FAI_WinOP\backup.
+        Snapshot oturumlarının klasörü. Varsayılan %ProgramData%\FAI_WinOP\backup. Oturum dosyası okunmadan önce sahibi
+        denetlenir (BackupStore.Security).
     .PARAMETER LogPath
         Günlük dosyası (boşsa yalnız bellekte).
     .PARAMETER ShowLog
@@ -43,6 +44,7 @@ function New-FaiWindowsContext {
     $ctx.MemoryAgent = [WindowsMemoryAgentProvider]::new()
     $ctx.Updates = [WindowsUpdateProvider]::new()
     $ctx.Backup = [BackupStore]::new($BackupRoot)
+    $ctx.Backup.Security = [WindowsFileSecurityProvider]::new()
     $ctx.Logger = [Logger]::new($LogPath, (-not $ShowLog.IsPresent))
     $ctx.DryRun = $DryRun.IsPresent
     $ctx.Unattended = $Unattended.IsPresent

@@ -259,6 +259,10 @@ class Engine {
         $sess = $null
         if ($SessionId) { $sess = $cx.Backup.Load($SessionId) }
         else { $sess = $cx.Backup.GetLatest() }
+        foreach ($w in $cx.Backup.Warnings) {
+            $cx.Logger.Warn($w)
+            [void]$report.Add('(yedek)', 'Güvenilmeyen yedek oturumu kullanılmadı', 'Skipped', $w, [string[]]@())
+        }
 
         if ($null -eq $sess) {
             $report.Heading = 'Geri alma'

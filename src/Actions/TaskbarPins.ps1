@@ -7,7 +7,8 @@
 #
 # Windows'un desteklenen yolu kullanılır (LayoutModification.xml, "Start Layout" ilkesi, PinListPlacement=Replace):
 #   1) var olan sabitlemeler silinir: HKCU\...\Explorer\Taskband değerleri + User Pinned\TaskBar\*.lnk
-#   2) XML %ProgramData%\FAI_WinOP\TaskbarLayout.xml'e yazılır, ilke (StartLayoutFile + LockedStartLayout=1) kurulur
+#   2) XML %ProgramData%\FAI_WinOP\shared\TaskbarLayout.xml'e yazılır, ilke (StartLayoutFile + LockedStartLayout=1) kurulur
+#      (Gezgin kullanıcı bağlamında okur: shared\ alt klasörünü Users okur, yalnız yönetici yazar)
 #   3) Gezgin yeniden başlar, düzeni uygular (Taskband'e yazar); en çok ~15 sn beklenir
 #   4) ilke ve XML eski haline döner (tek seferlik: kullanıcı sonradan sabitleme ekleyip çıkarabilir)
 # Kısayolu (Link) olmayan uygulama atlanır (henüz kurulu değil): sonraki çalıştırmada eklenir.
@@ -20,7 +21,7 @@ class TaskbarPinsAction : ActionBase {
     static [string] $TaskbandKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Taskband'
     static [string] $PinnedDir = '%APPDATA%\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar'
     static [string] $PolicyKey = 'HKCU:\Software\Policies\Microsoft\Windows\Explorer'
-    static [string] $XmlPath = '%ProgramData%\FAI_WinOP\TaskbarLayout.xml'
+    static [string] $XmlPath = '%ProgramData%\FAI_WinOP\shared\TaskbarLayout.xml'
 
     TaskbarPinsAction([hashtable] $Definition) : base($Definition) { }
 

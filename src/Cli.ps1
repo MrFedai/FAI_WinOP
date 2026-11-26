@@ -9,8 +9,54 @@
 function Get-FaiRepoUrl { return 'https://github.com/MrFedai/FAI_WinOP' }
 
 function Get-FaiDataDir {
-    <# .SYNOPSIS  %ProgramData%\FAI_WinOP (yedek, günlük, yeniden başlatma sonrası devam kopyası). #>
+    <# .SYNOPSIS  %ProgramData%\FAI_WinOP (yedek, günlük, betikler, shared\: devam kopyası). Yalnız yönetici: Protect-FaiDataDirectory. #>
     return (Join-Path $env:ProgramData 'FAI_WinOP')
+}
+
+function Get-FaiUserDataDir {
+    <# .SYNOPSIS  %LOCALAPPDATA%\FAI_WinOP (yönetici gerektirmeyen işlerin günlüğü; ProgramData'ya dokunulmaz). #>
+    return (Join-Path $env:LOCALAPPDATA 'FAI_WinOP')
+}
+
+function Test-FaiNeedsAdmin {
+    <# .SYNOPSIS  Çalıştırma yönetici ister mi. -ExportProfile / -ExportLayout istemez; bu işler ProgramData'ya da dokunmaz. #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param([System.Collections.IDictionary] $Options = @{})
+    $exportProfile = $Options.Contains('ExportProfile') -and [bool][string]$Options['ExportProfile']
+    $exportLayout = $Options.Contains('ExportLayout') -and [bool]$Options['ExportLayout']
+    return (-not ($exportProfile -or $exportLayout))
+}
+
+function Initialize-FaiRunStorage {
+    <#
+    .SYNOPSIS
+        Günlük ve yedek klasörünü seçer. Yönetici işi: veri klasörü önce korunur (Protect-FaiDataDirectory), ikisi de
+        orada. Yönetici gerektirmeyen iş: ProgramData'ya hiç dokunulmaz (sağlayıcı çağrılmaz), ikisi kullanıcının klasöründe.
+    .OUTPUTS
+        @{ LogDir; BackupRoot; Quarantined = <kenara alınanlar>; AclFixed = <izni düzeltilen klasörler> }
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param(
+        [Parameter(Mandatory = $true)] [bool] $NeedsAdmin,
+        [Parameter(Mandatory = $true)] [IFileSecurityProvider] $Security,
+        [string] $DataDir = '',
+        [string] $UserDataDir = ''
+    )
+    if (-not $NeedsAdmin) {
+        if (-not $UserDataDir) { $UserDataDir = Get-FaiUserDataDir }
+        return @{
+            LogDir = ($UserDataDir.TrimEnd('\') + '\logs'); BackupRoot = ($UserDataDir.TrimEnd('\') + '\backup')
+            Quarantined = [string[]]@(); AclFixed = [string[]]@()
+        }
+    }
+    if (-not $DataDir) { $DataDir = Get-FaiDataDir }
+    $guard = Protect-FaiDataDirectory -Security $Security -Path $DataDir
+    return @{
+        LogDir = ($DataDir.TrimEnd('\') + '\logs'); BackupRoot = ($DataDir.TrimEnd('\') + '\backup')
+        Quarantined = [string[]]@($guard['Quarantined']); AclFixed = [string[]]@($guard['AclFixed'])
+    }
 }
 
 function Get-FaiDocumentsDir {
@@ -383,8 +429,9 @@ function Resolve-FaiExportTarget {
 function Get-FaiResumeCommand {
     <#
     .SYNOPSIS
-        Yeniden başlatma sonrası devam komutu (HKLM RunOnce): betiği %ProgramData%\FAI_WinOP\install.ps1'e kopyalar,
-        aynı parametrelerle (yerel profil yolu mutlak) çalıştıran powershell.exe satırını döndürür.
+        Yeniden başlatma sonrası devam komutu (HKLM RunOnce): betiği %ProgramData%\FAI_WinOP\shared\install.ps1'e kopyalar,
+        aynı parametrelerle (yerel profil yolu mutlak) çalıştıran powershell.exe satırını döndürür. shared\ yalnız
+        yöneticinin yazdığı, Users'ın okuyabildiği yer (RunOnce yükseltilmemiş başlarsa betik okunup yükseltme istenir).
     #>
     [CmdletBinding()]
     param(
@@ -394,8 +441,9 @@ function Get-FaiResumeCommand {
     )
 
     if (-not $DataDir) { $DataDir = Get-FaiDataDir }
-    $target = Join-Path $DataDir 'install.ps1'
-    if (-not (Test-Path -LiteralPath $DataDir)) { [void](New-Item -ItemType Directory -Path $DataDir -Force) }
+    $sharedDir = Join-Path $DataDir (Get-FaiSharedDataName)
+    $target = Join-Path $sharedDir 'install.ps1'
+    if (-not (Test-Path -LiteralPath $sharedDir)) { [void](New-Item -ItemType Directory -Path $sharedDir -Force) }
     if ([System.IO.Path]::GetFullPath($ScriptPath) -ne [System.IO.Path]::GetFullPath($target)) {
         Copy-Item -LiteralPath $ScriptPath -Destination $target -Force
     }
@@ -515,7 +563,7 @@ function Invoke-FaiCli {
             return 0
         }
 
-        $needsAdmin = -not ((& $text 'ExportProfile') -or (& $flag 'ExportLayout'))
+        $needsAdmin = Test-FaiNeedsAdmin -Options $o
         if ($needsAdmin -and -not $injected -and -not (Test-FaiIsAdmin)) {
             if ($ScriptPath) { return (Invoke-FaiElevated -ScriptPath $ScriptPath -Bound $o) }
             Write-Host 'Yönetici yetkisi gerekiyor. Yönetici PowerShell açın ya da doğrulamalı tek satırı kullanın:' -ForegroundColor Red
@@ -524,11 +572,22 @@ function Invoke-FaiCli {
         }
 
         if (-not $injected) {
-            $logDir = Join-Path (Get-FaiDataDir) 'logs'
+            # Yönetici işi: veri klasörü önce korunur (izin + güvenilmeyen öğeler kenara), günlük ve yedek oraya.
+            # -ExportProfile / -ExportLayout (yönetici olarak çalışsa da) ProgramData'ya dokunmaz: kullanıcının klasörü.
+            $storage = Initialize-FaiRunStorage -NeedsAdmin $needsAdmin -Security ([WindowsFileSecurityProvider]::new())
+            $logDir = $storage['LogDir']
             if (-not (Test-Path -LiteralPath $logDir)) { [void](New-Item -ItemType Directory -Path $logDir -Force) }
             $logPath = Join-Path $logDir ((Get-Date -Format 'yyyyMMdd-HHmmss') + '.log')
-            $Context = New-FaiWindowsContext -LogPath $logPath
+            $Context = New-FaiWindowsContext -LogPath $logPath -BackupRoot $storage['BackupRoot']
             Write-Host ('Günlük: {0}' -f $logPath) -ForegroundColor DarkGray
+            foreach ($dir in $storage['AclFixed']) {
+                Write-Host ('Veri klasörünün izni düzeltildi (yalnız SYSTEM + Administrators): {0}' -f $dir) -ForegroundColor Yellow
+                $Context.Logger.Warn("veri klasörü: izin düzeltildi: $dir")
+            }
+            foreach ($q in $storage['Quarantined']) {
+                Write-Host ('UYARI: sahibi SYSTEM / Administrators olmayan ya da bağlantı olan öğe kenara alındı, kullanılmayacak: {0}' -f $q) -ForegroundColor Yellow
+                $Context.Logger.Warn("veri klasörü: güvenilmeyen öğe kenara alındı: $q")
+            }
         }
         $Context.DryRun = (& $flag 'DryRun')
         $Context.Unattended = (& $flag 'Unattended')

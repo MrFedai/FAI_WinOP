@@ -105,7 +105,7 @@ Describe 'TaskbarPinsAction' {
         $a.Test($ctx) | Should -BeTrue
         $ctx.Registry.ValueExists($script:Policy, 'StartLayoutFile') | Should -BeFalse
         $ctx.Registry.ValueExists($script:Policy, 'LockedStartLayout') | Should -BeFalse
-        $ctx.Files.FileExists((Expand-FaiPath '%ProgramData%\FAI_WinOP\TaskbarLayout.xml')) | Should -BeFalse
+        $ctx.Files.FileExists((Expand-FaiPath '%ProgramData%\FAI_WinOP\shared\TaskbarLayout.xml')) | Should -BeFalse
         @($ctx.Desktop.Refreshed) | Should -Contain 'Shell'
         $a.Revert($ctx, $snap)
         Get-LayoutState $ctx | Should -Be $before

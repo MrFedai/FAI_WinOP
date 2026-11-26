@@ -98,3 +98,58 @@ Describe 'BackupStore' {
         { $store.Load('yok') } | Should -Throw '*Yedek oturumu yok*'
     }
 }
+
+Describe 'BackupStore: sahip denetimi (Security)' {
+    BeforeAll {
+        $script:User = 'S-1-5-21-1000-1000-1000-1001'
+        # Oturumları gerçek diske yazar, sahiplerini sahte güvenlik sağlayıcısına tohumlar.
+        function New-GuardedStore([string] $Name) {
+            $store = [BackupStore]::new((Join-Path $TestDrive $Name))
+            $first = $store.BeginSession('a')
+            $second = $store.BeginSession('b')
+            $sec = [FakeFileSecurityProvider]::new()
+            $sec.SeedFile($first.Path, 'S-1-5-32-544')
+            $sec.SeedFile($second.Path, $script:User)
+            $store.Security = $sec
+            return @{ Store = $store; First = $first; Second = $second; Security = $sec }
+        }
+    }
+
+    It 'sahibi kullanıcı olan oturum Load ile okunmaz, açık hata' {
+        $g = New-GuardedStore 'guard-load'
+        { $g.Store.Load($g.Second.Id) } | Should -Throw '*güvenilmez*'
+        $g.Store.Load($g.First.Id).Id | Should -Be $g.First.Id
+    }
+
+    It 'GetLatest güvenilmeyen son oturumu atlar, uyarı bırakır, öncekini döndürür' {
+        $g = New-GuardedStore 'guard-latest'
+        $g.Store.GetLatest().Id | Should -Be $g.First.Id
+        @($g.Store.Warnings).Count | Should -Be 1
+        @($g.Store.Warnings)[0] | Should -BeLike "*$($g.Second.Id).json*"
+    }
+
+    It 'bağlantı (symlink) olan oturum dosyası güvenilmez' {
+        $g = New-GuardedStore 'guard-link'
+        $g.Security.SeedLink($g.First.Path, 'File', 'S-1-5-32-544')
+        { $g.Store.Load($g.First.Id) } | Should -Throw '*güvenilmez*'
+        $g.Store.GetLatest() | Should -BeNullOrEmpty
+        @($g.Store.Warnings).Count | Should -Be 2
+    }
+
+    It '-Undo: güvenilmeyen oturum kullanılmaz, raporda uyarı satırı olur' {
+        $ctx = New-FakeContext -BackupRoot (Join-Path $TestDrive 'guard-undo')
+        $first = $ctx.Backup.BeginSession('a')
+        $second = $ctx.Backup.BeginSession('b')
+        $sec = [FakeFileSecurityProvider]::new()
+        $sec.SeedFile($first.Path, 'S-1-5-18')
+        $sec.SeedFile($second.Path, $script:User)
+        $ctx.Backup.Security = $sec
+        $report = Invoke-FaiEngine -Undo -Context $ctx -Catalog @{} -AppCatalog @{} 6>$null
+        $report.Heading | Should -BeLike "*$($first.Id)*"
+        $row = @($report.Items | Where-Object { $_.TweakId -eq '(yedek)' })
+        $row.Count | Should -Be 1
+        $row[0].Status | Should -Be 'Skipped'
+        $row[0].Reason | Should -BeLike "*$($second.Id).json*"
+    }
+}
+

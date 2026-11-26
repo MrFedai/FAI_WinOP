@@ -69,6 +69,11 @@ class BackupStore {
     [string] $Root
     # Kaç oturum açıldı (dry-run'da 0 olmalı; testler bunu doğrular).
     [int] $SessionsOpened = 0
+    # Verilirse oturum dosyası okunmadan önce denetlenir: bağlantıysa ya da sahibi SYSTEM / Administrators değilse
+    # kullanılmaz (yönetici olmayan kullanıcının bıraktığı eylem tanımı -Undo'da yönetici olarak çalışırdı).
+    [IFileSecurityProvider] $Security
+    # Atlanan güvenilmeyen oturumlar (GetLatest); motor günlüğe yazar.
+    [System.Collections.Generic.List[string]] $Warnings = (New-Object 'System.Collections.Generic.List[string]')
 
     BackupStore([string] $Root) { $this.Root = $Root }
 
@@ -103,6 +108,9 @@ class BackupStore {
     [BackupSession] Load([string] $Id) {
         $path = Join-Path $this.Root ($Id + '.json')
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Yedek oturumu yok: $Id" }
+        if ($null -ne $this.Security -and -not $this.Security.IsTrusted($path)) {
+            throw "Yedek oturumu güvenilmez (sahibi SYSTEM / Administrators değil ya da bağlantı), kullanılmadı: $path"
+        }
         $data = Read-JsonFile -Path $path
         return [BackupSession]::FromHashtable($data, $path)
     }
@@ -111,6 +119,13 @@ class BackupStore {
     [BackupSession] GetLatest() {
         $ids = $this.ListSessionIds()
         for ($i = $ids.Count - 1; $i -ge 0; $i--) {
+            if ($null -ne $this.Security) {
+                $path = Join-Path $this.Root ($ids[$i] + '.json')
+                if (-not $this.Security.IsTrusted($path)) {
+                    $this.Warnings.Add("güvenilmeyen yedek oturumu atlandı (sahibi SYSTEM / Administrators değil ya da bağlantı): $path")
+                    continue
+                }
+            }
             $s = $this.Load($ids[$i])
             if (-not $s.IsUndone()) { return $s }
         }

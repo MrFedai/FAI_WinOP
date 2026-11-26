@@ -287,3 +287,56 @@ Describe 'Export-FaiProfile' {
         @($p.Tweaks | ForEach-Object { $_['Id'] }) | Should -Be @('ui.alpha')
     }
 }
+
+Describe 'Veri klasörü (Initialize-FaiRunStorage)' {
+    BeforeAll {
+        $script:DataDir = 'C:\ProgramData\FAI_WinOP'
+        $script:UserDir = 'C:\Users\fai\AppData\Local\FAI_WinOP'
+    }
+
+    It '-ExportProfile ve -ExportLayout yönetici istemez; diğer işler ister' {
+        Test-FaiNeedsAdmin -Options @{ ExportProfile = 'ev' } | Should -BeFalse
+        Test-FaiNeedsAdmin -Options @{ ExportLayout = $true } | Should -BeFalse
+        Test-FaiNeedsAdmin -Options @{ ExportLayout = $true; Profile = 'C:\x\layout.json' } | Should -BeFalse
+        Test-FaiNeedsAdmin -Options @{ Profile = 'fedai' } | Should -BeTrue
+        Test-FaiNeedsAdmin -Options @{ Undo = $true } | Should -BeTrue
+        Test-FaiNeedsAdmin -Options @{ ExportProfile = '' } | Should -BeTrue
+        Test-FaiNeedsAdmin -Options @{} | Should -BeTrue
+    }
+
+    It '-ExportProfile / -ExportLayout yolu ProgramData''ya dokunmaz: sağlayıcı hiç çağrılmaz, günlük ve yedek kullanıcıda' {
+        foreach ($opts in @(@{ ExportProfile = 'ev' }, @{ ExportLayout = $true })) {
+            $sec = [FakeFileSecurityProvider]::new()
+            $st = Initialize-FaiRunStorage -NeedsAdmin (Test-FaiNeedsAdmin -Options $opts) -Security $sec -DataDir $script:DataDir -UserDataDir $script:UserDir
+            $sec.CallLog.Count | Should -Be 0
+            $sec.Touched('C:\ProgramData') | Should -BeFalse
+            $st['LogDir'] | Should -BeLike "$script:UserDir*"
+            $st['BackupRoot'] | Should -BeLike "$script:UserDir*"
+            $st['LogDir'] | Should -Not -BeLike '*ProgramData*'
+            @($st['Quarantined']).Count | Should -Be 0
+        }
+    }
+
+    It 'yönetici işi veri klasörünü önce korur; günlük ve yedek orada, kenara alınanlar döner' {
+        $sec = [FakeFileSecurityProvider]::new()
+        $sec.SeedDirectory($script:DataDir, 'S-1-5-32-544')
+        $sec.SeedFile("$script:DataDir\BloatCleanup.ps1", 'S-1-5-21-1000-1000-1000-1001')
+        $st = Initialize-FaiRunStorage -NeedsAdmin $true -Security $sec -DataDir $script:DataDir -UserDataDir $script:UserDir
+        Test-FaiRestrictedAcl -Acl $sec.GetAcl($script:DataDir) | Should -BeTrue
+        @($st['AclFixed']) | Should -Contain $script:DataDir
+        @($st['Quarantined']).Count | Should -Be 1
+        $st['LogDir'] | Should -BeLike "$script:DataDir*"
+        $st['BackupRoot'] | Should -BeLike "$script:DataDir*"
+    }
+
+    It 'devam kopyası shared\ altına yazılır' {
+        $data = Join-Path $TestDrive 'resume-data'
+        $src = Join-Path $TestDrive 'resume-src.ps1'
+        [System.IO.File]::WriteAllText($src, '# betik')
+        $cmd = Get-FaiResumeCommand -ScriptPath $src -Bound @{ Profile = 'fedai' } -DataDir $data
+        $target = Join-Path (Join-Path $data 'shared') 'install.ps1'
+        Test-Path -LiteralPath $target | Should -BeTrue
+        $cmd | Should -BeLike ('*"{0}"*' -f $target)
+    }
+}
+
