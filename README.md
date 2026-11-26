@@ -14,6 +14,11 @@ Yönetici PowerShell'de (önce önizleme):
 ```
 
 `get.ps1` sürümdeki `install.ps1`'i indirir, yayımlanan `install.ps1.sha256` ile doğrular; tutmazsa çalıştırmaz.
+`%TEMP%`'teki dosya doğrudan çalıştırılmaz: yönetici süreci (UAC sonrası) onu `%ProgramData%` altında her seferinde yeni açılan,
+yalnız SYSTEM + Administrators'ın yazabildiği klasöre kopyalar, özeti orada yeniden doğrular ve yalnız o kopyayı çalıştırır.
+**SHA-256 yalnız bozulmayı (yarım / değişmiş indirme) yakalar, kaynağı kanıtlamaz:** özet de aynı yerden indirilir.
+İmza / attestation sonraki sürümlere bırakıldı. `FAI_WINOP_BASEURL` (yalnız test) yalnız `https://` ya da
+`http://localhost` / `http://127.0.0.1` kabul eder.
 Profil yoksa Türkçe menü açılır. Diğer parametreler: `-Unattended`, `-Undo [-Session <kimlik>]`, `-Only` / `-Skip`,
 `-UpdatesOn` / `-UpdatesOff`, `-ExportProfile <ad>`, `-ExportLayout`, `-Version vX.Y.Z`, `-List`
 (`Get-Help .\install.ps1 -Detailed`). Tweak, katalog ve profil verisi `install.ps1`'e gömülüdür.

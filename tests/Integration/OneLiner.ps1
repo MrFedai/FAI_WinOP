@@ -8,6 +8,7 @@
     iki klasörde sunulur:
       good/  özgün dosyalar            → çıkış 0, 'SHA-256 dogrulandi', rapor 'ÖNİZLEME'
       bad/   install.ps1'e satır eklenmiş (özet aynı) → çıkış ≠ 0, 'BASARISIZ', eklenen satır ÇALIŞMAMIŞ
+    Ayrıca: çalışan kopya yönetici-yalnız klasörde yeniden doğrulanır; https / localhost dışı FAI_WINOP_BASEURL reddedilir.
     Tek satır kullanıcınınkiyle aynıdır; yalnız FAI_WINOP_BASEURL yerel sunucuyu gösterir. Yönetici (CI runner) ister.
     Başarılıysa 0, değilse 1 ile çıkar. Önce: build\Bundle.ps1.
 
@@ -65,10 +66,10 @@ try {
     if (-not $ready) { throw 'yerel HTTP sunucusu açılmadı' }
     Write-Host ("Yerel sunucu: {0} → {1}" -f $base, $serve)
 
-    function Invoke-OneLiner([string] $Sub) {
+    function Invoke-OneLiner([string] $Sub, [string] $BaseUrl) {
         # 5.1: Stop + 2>&1 yerel komutun stderr satırını sonlandırıcı hataya çevirir.
         $ErrorActionPreference = 'Continue'
-        $env:FAI_WINOP_BASEURL = "$base/$Sub"
+        if ($BaseUrl) { $env:FAI_WINOP_BASEURL = $BaseUrl } else { $env:FAI_WINOP_BASEURL = "$base/$Sub" }
         $cmd = "& ([scriptblock]::Create((irm '$base/$Sub/get.ps1'))) -Profile $ProfileName -DryRun; exit `$LASTEXITCODE"
         Write-Host ("  > {0}" -f $cmd)
         $out = & powershell.exe -NoProfile -Command $cmd 2>&1 | Out-String
@@ -80,6 +81,11 @@ try {
         Write-Host $r.Output
         if ($r.Code -ne 0) { throw "çıkış kodu $($r.Code)" }
         if ($r.Output -notmatch 'SHA-256 dogrulandi') { throw 'doğrulama satırı yok' }
+        # Çalışan kopya %TEMP%'teki değil, yönetici-yalnız klasörde yeniden doğrulanan (ProgramData) kopya.
+        if ($r.Output -notmatch 'Yonetici-yalniz kopya yeniden dogrulandi') { throw 'yönetici-yalnız kopya doğrulama satırı yok' }
+        if (@(Get-ChildItem -LiteralPath $env:ProgramData -Directory -Filter 'FAI_WinOP_get_*' -ErrorAction SilentlyContinue).Count -gt 0) {
+            throw 'yönetici-yalnız geçici klasör silinmedi'
+        }
         if ($r.Output -notmatch 'ÖNİZLEME|ONIZLEME|dry-run') { throw 'dry-run raporu yok' }
         $sum = ($r.Output -split "`r?`n" | Where-Object { $_ -match '^Özet:|^Ozet:|Özet:' } | Select-Object -Last 1)
         "($sum)"
@@ -96,6 +102,15 @@ try {
             $bad = (Get-FileHash -LiteralPath (Join-Path $serve 'bad\install.ps1') -Algorithm SHA256).Hash
             if ($h -eq $bad) { throw 'kurcalanmış dosya diskte kaldı' }
         }
+        "(çıkış $($r.Code))"
+    }
+
+    Step 'https / localhost dışı FAI_WINOP_BASEURL → reddedilir, indirilmez' {
+        $r = Invoke-OneLiner 'good' 'http://example.com/good'
+        Write-Host $r.Output
+        if ($r.Code -eq 0) { throw 'çıkış kodu 0 (reddetmeliydi)' }
+        if ($r.Output -notmatch 'FAI_WINOP_BASEURL reddedildi') { throw 'red iletisi yok' }
+        if ($r.Output -match 'Indiriliyor') { throw 'indirmeye başladı' }
         "(çıkış $($r.Code))"
     }
 }
