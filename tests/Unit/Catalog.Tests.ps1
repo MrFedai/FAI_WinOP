@@ -58,7 +58,7 @@ BeforeAll {
         $ctx.Registry.Seed("$script:GpuClass\0001", 'ProviderName', 'Intel Corporation', 'String')
         $ctx.Registry.Seed("$script:GpuClass\Configuration", 'Reset', 0, 'DWord')
         Initialize-Faz7BState -Ctx $ctx
-        $ctx.Prompt.Enqueue([string[]]@('E', 'E', 'E', 'E', 'E', 'E', 'E', 'E'))
+        $ctx.Prompt.Enqueue([string[]]@('E', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E'))
         return $ctx
     }
 

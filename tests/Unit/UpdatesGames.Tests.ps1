@@ -84,6 +84,7 @@ Describe 'WindowsUpdate eylemi ve setup.updates-staged' {
     It 'bekleyenler kurulur, sonra 365 gün duraklatılır; ikinci çalıştırma ZATEN UYGUN; -Undo yalnız duraklatmayı kaldırır' {
         $ctx = New-Ctx
         $ctx.Updates.Seed([string[]]@('KB1', 'KB2'))
+        $ctx.Prompt.Enqueue([string[]]@('E', 'E'))   # AlwaysConfirm: her çalıştırmada sorulur
         $before = Get-State $ctx
         $p = [Profile]::FromHashtable(@{ name = 'g'; tweaks = @('setup.updates-staged') }, 'test')
         $dry = Invoke-FaiEngine -Profile $p -Context (New-Ctx -DryRun) -Catalog $script:Catalog
@@ -105,6 +106,7 @@ Describe 'WindowsUpdate eylemi ve setup.updates-staged' {
     It 'yeniden başlatma gerekirse duraklatma uygulanmaz; ResumeCommand doluysa RunOnce yazılır' {
         $ctx = New-Ctx
         $ctx.Updates.Seed([string[]]@('KB1'))
+        $ctx.Prompt.Enqueue([string[]]@('E', 'E'))   # AlwaysConfirm: her çalıştırmada sorulur
         $ctx.Updates.RebootAfterInstall = $true
         $ctx.ResumeCommand = 'powershell.exe -File C:\FAI\install.ps1 -Profile fedai'
         $p = [Profile]::FromHashtable(@{ name = 'g'; tweaks = @('setup.updates-staged') }, 'test')
