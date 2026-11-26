@@ -270,3 +270,38 @@ class IAppSettingsProvider {
     # Değer yoksa sessizce geçer. YAZMA.
     [void] DeleteValue([string] $Package, [string] $Name) { throw [System.NotImplementedException]::new('IAppSettingsProvider.DeleteValue') }
 }
+
+# Dosya sistemi güvenliği (veri klasörü %ProgramData%\FAI_WinOP: sahip, yeniden ayrıştırma noktası, izin). Yollar açılmış,
+# '\' ayırıcılı gelir. Sahip / kural kimlikleri SID metni (yerelleştirilmiş ad değil). Kullanım: src/Core/DataGuard.ps1.
+class IFileSecurityProvider {
+    # Güvenilen sahipler: SYSTEM, BUILTIN\Administrators. Başka sahibin öğesi (yönetici olmayan kullanıcının bıraktığı
+    # yedek oturumu / betik) kullanılmaz.
+    static [string[]] $TrustedOwnerSid = @('S-1-5-18', 'S-1-5-32-544')
+
+    # '' (yok) | 'File' | 'Directory'. Bağlantı hedefine bakılmaz: kırık bağlantı da var sayılır.
+    [string] GetItemType([string] $Path) { throw [System.NotImplementedException]::new('IFileSecurityProvider.GetItemType') }
+    # Junction, sembolik bağlantı ya da başka yeniden ayrıştırma noktası mı.
+    [bool] IsReparsePoint([string] $Path) { throw [System.NotImplementedException]::new('IFileSecurityProvider.IsReparsePoint') }
+    # Sahibin SID'i; okunamıyorsa boş metin.
+    [string] GetOwnerSid([string] $Path) { throw [System.NotImplementedException]::new('IFileSecurityProvider.GetOwnerSid') }
+    # Klasörün doğrudan öğelerinin (dosya + klasör) tam yolları, sıralı; bağlantıların içine girilmez.
+    [string[]] GetEntries([string] $Directory) { throw [System.NotImplementedException]::new('IFileSecurityProvider.GetEntries') }
+    # Klasörün izni: @{ Protected = <kalıtım kapalı>; Owner = <SID>; Rules = @(@{ Sid; Access = Full | Read | Write;
+    # Deny = <bool>; Inherited = <bool>; Inherits = <alt klasör + dosyaya geçer> }) }. Read = okuma / çalıştırma;
+    # Write = okumadan fazlası ama tam değil.
+    [hashtable] GetAcl([string] $Path) { throw [System.NotImplementedException]::new('IFileSecurityProvider.GetAcl') }
+    # Klasör oluşturur (üst klasörler dahil); varsa geçer. YAZMA.
+    [void] CreateDirectory([string] $Path) { throw [System.NotImplementedException]::new('IFileSecurityProvider.CreateDirectory') }
+    # Öğeyi taşır / yeniden adlandırır; bağlantının kendisi taşınır, hedefi değil. YAZMA.
+    [void] MoveItem([string] $Path, [string] $Destination) { throw [System.NotImplementedException]::new('IFileSecurityProvider.MoveItem') }
+    # Klasörün izni: kalıtım kapalı; SYSTEM + Administrators tam, ReaderSid'ler okuma (alt öğelere geçer); sahip
+    # Administrators. Var olan alt öğeler yeni kalıtımı alır. YAZMA.
+    [void] SetRestrictedAcl([string] $Path, [string[]] $ReaderSid) { throw [System.NotImplementedException]::new('IFileSecurityProvider.SetRestrictedAcl') }
+
+    # Öğe var, bağlantı değil ve sahibi güvenilen SID'lerden biri.
+    [bool] IsTrusted([string] $Path) {
+        if ($this.GetItemType($Path) -eq '') { return $false }
+        if ($this.IsReparsePoint($Path)) { return $false }
+        return ([IFileSecurityProvider]::TrustedOwnerSid -contains $this.GetOwnerSid($Path))
+    }
+}
