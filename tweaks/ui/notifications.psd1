@@ -3,7 +3,7 @@
     Title       = 'Bildirimleri kapat (istisna listesi hariç)'
     Description = 'Bildirimler genel olarak açık tutulur, ama bildirim gönderen uygulama ve sistem bileşenlerinin hepsi tek tek kapatılır; exceptions parametresindeki kalıplara (-like, varsayılan *WhatsApp*, *Telegram*) uyanlar açık kalır. Windows Güvenliği / Defender ile Güvenlik ve Bakım bildirimleri her zaman korunur. Ayrıca Windows hoş geldin deneyimi, kurulumu tamamlama önerileri ve ipucu / öneri bildirimleri kapanır. Bir uygulamanın bildirim kaydı ilk bildiriminde oluşur: sonradan kurulan uygulama profil yeniden çalıştırılınca kapanır.'
     Category    = 'ui'
-    Risk        = 'Safe'
+    Risk        = 'Caution'
     Params      = @{ exceptions = @('*WhatsApp*', '*Telegram*') }
     Actions     = @(
         # Genel anahtar açık: istisnalar bildirim gösterebilsin

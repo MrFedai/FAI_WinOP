@@ -24,8 +24,8 @@ Profilden üretilen tweak'ler katalogda dosya olarak yok: `app.<id>` (profil `ap
 | [`setup.default-browser`](#setupdefault-browser) | Varsayılan tarayıcı (Ayarlar üzerinden) | ⚠ Caution | — | `appName`, `progId`, `scope` |
 | [`setup.edition-pro`](#setupedition-pro) | Windows Home → Pro yükseltmesi (Ayarlar üzerinden) | ⚠ Caution | Edition Core | — |
 | [`setup.mmagent-off`](#setupmmagent-off) | Bellek sıkıştırma ve ön getirmeyi kapat | Safe | MinRamGB 16 | — |
-| [`setup.store-optimize`](#setupstore-optimize) | Microsoft Store: otomatik güncelleme, video ve kişiselleştirme kapalı | Safe | — | — |
-| [`setup.updates-staged`](#setupupdates-staged) | Windows Update: önce bekleyenleri kur, sonra duraklat | Safe | — | `pauseDays` |
+| [`setup.store-optimize`](#setupstore-optimize) | Microsoft Store: otomatik güncelleme, video ve kişiselleştirme kapalı | ⚠ Caution | — | — |
+| [`setup.updates-staged`](#setupupdates-staged) | Windows Update: önce bekleyenleri kur, sonra duraklat | ⚠ Caution | — | `pauseDays` |
 | [`sound.startup-sound-off`](#soundstartup-sound-off) | Açılış sesini kapat | Safe | — | — |
 | [`sound.volume`](#soundvolume) | Ses seviyesini ayarla | Safe | — | `level` |
 | [`system.restore-point`](#systemrestore-point) | Sistem Geri Yükleme noktası | Safe | — | `description` |
@@ -36,7 +36,7 @@ Profilden üretilen tweak'ler katalogda dosya olarak yok: `app.<id>` (profil `ap
 | [`ui.explorer`](#uiexplorer) | Dosya Gezgini düzeni | Safe | — | — |
 | [`ui.lockscreen-black`](#uilockscreen-black) | Kilit ve oturum açma ekranı siyah | Safe | — | — |
 | [`ui.notepad-settings`](#uinotepad-settings) | Not Defteri ayarları | Safe | — | `aiRewrite`, `openInNewWindow`, `restoreSession` |
-| [`ui.notifications`](#uinotifications) | Bildirimleri kapat (istisna listesi hariç) | Safe | — | `exceptions` |
+| [`ui.notifications`](#uinotifications) | Bildirimleri kapat (istisna listesi hariç) | ⚠ Caution | — | `exceptions` |
 | [`ui.taskbar`](#uitaskbar) | Görev çubuğu: ortalı, otomatik gizlenir, yalnız Dosya Gezgini + Chrome | Safe | — | `autoHide` |
 | [`ui.theme-black`](#uitheme-black) | Siyah tema (koyu, saydamlık kapalı, otomatik vurgu, düz siyah duvar kağıdı) | Safe | — | — |
 | [`ui.visual-effects`](#uivisual-effects) | Görsel efektleri azalt (yazı yumuşatma açık) | Safe | — | — |
@@ -282,7 +282,7 @@ Değişiklikler (15):
 
 **Telemetriyi en aza indir** · Risk: Safe
 
-Tanılama verisini sürümün izin verdiği en düşük düzeye indirir: telemetri ilkesi, DiagTrack (Bağlı Kullanıcı Deneyimleri ve Telemetri) ve dmwappushservice servisleri, CEIP / uyumluluk / disk tanılama görevleri, reklam kimliği, kişiye özel deneyimler, geri bildirim istekleri, hata raporlama, etkinlik geçmişi, mürekkep ve yazma verisi gönderimi. Sürüm farkı: AllowTelemetry=0 (Güvenlik) yalnız Enterprise, Education ve Server sürümlerinde tam etkilidir; Home ve Pro bu değeri 1 (Gerekli tanılama verisi) olarak uygular, yani Home / Pro için ulaşılabilecek en düşük ilke düzeyi Gerekli'dir. Home / Pro'da gönderimi asıl durduran DiagTrack servisinin kapatılmasıdır. CEIPEnable ve AITEnable ilkeleri yeni sürümlerde etkisiz olabilir, eski bileşenler için yazılır. Windows Update, Store ve Defender çalışmaya devam eder; Ayarlar'da "Bazı ayarlar kuruluşunuz tarafından yönetiliyor" yazısı görünür. MDM / Intune ile yönetilen cihazda kullanmayın (dmwappushservice kayıt iletilerini taşır).
+Tanılama verisini sürümün izin verdiği en düşük düzeye indirir: telemetri ilkesi, DiagTrack (Bağlı Kullanıcı Deneyimleri ve Telemetri) ve dmwappushservice servisleri, CEIP / uyumluluk / disk tanılama görevleri, reklam kimliği, kişiye özel deneyimler, geri bildirim istekleri, hata raporlama, etkinlik geçmişi, mürekkep ve yazma verisi gönderimi. Sürüm farkı: AllowTelemetry=0 (Güvenlik) yalnız Enterprise, Education ve Server sürümlerinde tam etkilidir; Home ve Pro bu değeri 1 (Gerekli tanılama verisi) olarak uygular, yani Home / Pro için ulaşılabilecek en düşük ilke düzeyi Gerekli'dir. Home / Pro'da gönderimi asıl durduran DiagTrack servisinin kapatılmasıdır. CEIPEnable ve AITEnable ilkeleri yeni sürümlerde etkisiz olabilir, eski bileşenler için yazılır. AllowTelemetry=0 Windows Insider uçuşlarını keser (Insider yapıları güncelleme almaz). Windows Update, Store ve Defender çalışmaya devam eder; Ayarlar'da "Bazı ayarlar kuruluşunuz tarafından yönetiliyor" yazısı görünür. MDM / Intune ile yönetilen cihazda kullanmayın (dmwappushservice kayıt iletilerini taşır).
 
 Değişiklikler (30):
 
@@ -395,7 +395,7 @@ Değişiklikler (4):
 
 ### setup.store-optimize
 
-**Microsoft Store: otomatik güncelleme, video ve kişiselleştirme kapalı** · Risk: Safe
+**Microsoft Store: otomatik güncelleme, video ve kişiselleştirme kapalı** · Risk: ⚠ Caution
 
 Store uygulamalarının otomatik indirilip güncellenmesi kapatılır (WindowsStore\\WindowsUpdate\\AutoDownload=2); Store uygulamaları bunun yerine winget upgrade ile güncellenir. Store'un kendi ayarlarında (settings.dat) videoların otomatik oynatılması, uygulama kurulum bildirimleri ve kişiselleştirilmiş deneyim kapatılır. Store hiç açılmamışsa ayar dosyası yoktur: o adımlar atlanır, Store bir kez açıldıktan sonraki çalıştırmada uygulanır. Yazarken Store açıksa kapatılır.
 
@@ -408,9 +408,13 @@ Değişiklikler (4):
 
 ### setup.updates-staged
 
-**Windows Update: önce bekleyenleri kur, sonra duraklat** · Risk: Safe
+**Windows Update: önce bekleyenleri kur, sonra duraklat** · Risk: ⚠ Caution
 
-Önce bekleyen bütün yazılım güncellemeleri (Windows Update Agent; sürücüler hariç) indirilip kurulur, ilerleme basılır. Kurulum yeniden başlatma isterse çalıştırma burada durur: yeniden başlatıp profili tekrar çalıştırın (CLI ResumeCommand verirse RunOnce ile kendiliğinden sürer); kalan güncellemeler ve duraklatma o çalıştırmada yapılır. Hiç bekleyen kalmayınca güncellemeler pauseDays (varsayılan 365) gün duraklatılır: Ayarlar \> Windows Update'in duraklatma değerleri (UX\\Settings, başlangıç / bitiş UTC). FlightSettingsMaxPauseDays yazılmaz; 365 günün Ayarlar'da nasıl göründüğü VM'de doğrulanacak. -UpdatesOn / -UpdatesOff ayrıca duraklatmayı kaldırır / yeniden koyar. -Undo duraklatmayı kaldırır; kurulan güncellemeler geri alınmaz.
+Önce bekleyen bütün yazılım güncellemeleri (Windows Update Agent; sürücüler hariç) indirilip kurulur, ilerleme basılır. Kurulum yeniden başlatma isterse çalıştırma burada durur: yeniden başlatıp profili tekrar çalıştırın (CLI ResumeCommand verirse RunOnce ile kendiliğinden sürer); kalan güncellemeler ve duraklatma o çalıştırmada yapılır. Hiç bekleyen kalmayınca güncellemeler pauseDays (varsayılan 365) gün duraklatılır: Ayarlar \> Windows Update'in duraklatma değerleri (UX\\Settings, başlangıç / bitiş UTC). FlightSettingsMaxPauseDays yazılmaz; 365 günün Ayarlar'da nasıl göründüğü VM'de doğrulanacak. -UpdatesOn / -UpdatesOff ayrıca duraklatmayı kaldırır / yeniden koyar. -Undo duraklatmayı kaldırır; kurulan güncellemeler geri alınmaz. Güvenlik yamaları da duraklatılır; uzun duraklatma Insider yapısının süresini doldurabilir. Onay her çalıştırmada istenir.
+
+Onay uyarısı: Güvenlik yamaları dahil bütün güncellemeler 365 gün duraklatılır; uzun duraklatma Insider yapısının süresini doldurabilir.
+
+Çalışma: onay her çalıştırmada sorulur (autoConfirm işlemez, `-Unattended` kipte uygulanmaz)
 
 Parametreler (varsayılan): `pauseDays` = `365`
 
@@ -554,7 +558,7 @@ Değişiklikler (3):
 
 ### ui.notifications
 
-**Bildirimleri kapat (istisna listesi hariç)** · Risk: Safe
+**Bildirimleri kapat (istisna listesi hariç)** · Risk: ⚠ Caution
 
 Bildirimler genel olarak açık tutulur, ama bildirim gönderen uygulama ve sistem bileşenlerinin hepsi tek tek kapatılır; exceptions parametresindeki kalıplara (-like, varsayılan \*WhatsApp\*, \*Telegram\*) uyanlar açık kalır. Windows Güvenliği / Defender ile Güvenlik ve Bakım bildirimleri her zaman korunur. Ayrıca Windows hoş geldin deneyimi, kurulumu tamamlama önerileri ve ipucu / öneri bildirimleri kapanır. Bir uygulamanın bildirim kaydı ilk bildiriminde oluşur: sonradan kurulan uygulama profil yeniden çalıştırılınca kapanır.
 
