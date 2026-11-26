@@ -12,7 +12,7 @@ Format sonrası tek komut → kullanıcının profili (ayarlar + uygulamalar + m
 Açık GitHub reposunda barınır; başka kullanıcılar kendi profillerini yazıp aynı komutla yükler.
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/MrFedai/FAI_WinOP/main/install.ps1))) -Profile fedai
+& ([scriptblock]::Create((irm https://github.com/MrFedai/FAI_WinOP/releases/latest/download/get.ps1))) -Profile fedai
 ```
 
 Repo: **https://github.com/MrFedai/FAI_WinOP** (public)
@@ -40,9 +40,9 @@ Repo: **https://github.com/MrFedai/FAI_WinOP** (public)
 ### 1.2 Geliştirme ortamı — WSL Ubuntu + gerçek Windows 11 Pro
 - Geliştirme: aynı makinede **WSL 2 Ubuntu** (ajan + pwsh 7 + Pester + PSScriptAnalyzer).
 - Repo kullanıcının düzenine uygun olarak **WSL tarafında** durur: `~/PROJECTS/FAI_WinOP` (Windows'tan `\\wsl.localhost\Ubuntu\home\mrfedai\PROJECTS\FAI_WinOP`). Projeye `/proje-kur` ile bağlanır; ortak kurallar `~/PROJECTS/claude-ortak`'tan gelir (proje `CLAUDE.md`'si yalnız farkı yazar).
-- Windows testleri için `tools/Sync-ToWindows.sh`: bundle + test dosyalarını `/mnt/c/Users/MrFedai/FAI_WinOP_test/` altına kopyalar. `powershell.exe` (5.1) ve Windows Sandbox (`MappedFolders` UNC yolu desteklemez) bu Windows kopyasını kullanır. WSL'den doğrudan `powershell.exe -ExecutionPolicy Bypass -File C:\Users\MrFedai\FAI_WinOP_test\...` çağrılabilir.
+- Windows testleri için `tools/Sync-ToWindows.sh`: bundle + test dosyalarını `/mnt/c/Users/<kullanıcı>/FAI_WinOP_test/` altına kopyalar. `powershell.exe` (5.1) ve Windows Sandbox (`MappedFolders` UNC yolu desteklemez) bu Windows kopyasını kullanır. WSL'den doğrudan `powershell.exe -ExecutionPolicy Bypass -File C:\Users\<kullanıcı>\FAI_WinOP_test\...` çağrılabilir.
 - `.gitattributes`: `*.ps1 *.psd1 *.psm1 *.cs text eol=crlf`, `*.json *.md text eol=lf` (WSL ↔ Windows satır sonu karmaşasını önler).
-- Referans: Ultimate klasörü `C:\Users\MrFedai\Desktop\Ultimate` (WSL: `/mnt/c/Users/MrFedai/Desktop/Ultimate`) — sadece okunur, repoya girmez.
+- Referans: Ultimate klasörü `%USERPROFILE%\Desktop\Ultimate` (WSL: `/mnt/c/Users/<kullanıcı>/Desktop/Ultimate`) — sadece okunur, repoya girmez.
 - Windows 11 **Pro** sayesinde: **Windows Sandbox** (her açılışta temiz, kapanınca silinen Win11) ve **Hyper-V** (tam temiz kurulum VM'i) kullanılabilir.
 
 Ubuntu'da **PowerShell 7 (pwsh)** çalışır, ama hedef **Windows PowerShell 5.1** ve Windows API'leri (kayıt defteri, servisler, Appx, winget, COM) Linux'ta yok. Çözüm üç katmanlı test:
@@ -174,7 +174,7 @@ FAI_WinOP/
 - Dil, bölge, klavye ve saat dilimine **dokunulmaz** — kullanıcı kendisi ayarlar
 
 **Fare** (kullanıcının mevcut ayarları, ekran görüntüsü + kayıt defterinden okundu)
-- `input.mouse` — parametreler: birincil düğme **Sol**, işaretçi hızı **7** (`MouseSensitivity`), **İşaretçi hassasiyetini artır: AÇIK** (`MouseSpeed=1`, `Threshold1=6`, `Threshold2=10`), tekerlek **satır satır, 5 satır** (`WheelScrollLines`), **etkin olmayan pencereleri kaydır: AÇIK** (`MouseWheelRouting=2`), kaydırma yönü normal
+- `input.mouse` (katalogda yok, sonra) — parametreler: birincil düğme **Sol**, işaretçi hızı **7** (`MouseSensitivity`), **İşaretçi hassasiyetini artır: AÇIK** (`MouseSpeed=1`, `Threshold1=6`, `Threshold2=10`), tekerlek **satır satır, 5 satır** (`WheelScrollLines`), **etkin olmayan pencereleri kaydır: AÇIK** (`MouseWheelRouting=2`), kaydırma yönü normal
 - Not: Ultimate işaretçi hassasiyetini kapatır; `fedai` profili bilinçli olarak **açık** tutar
 
 **Uygulamalar** (winget sessiz; kimlikler Faz 4'te doğrulanacak)
@@ -457,7 +457,7 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
   c çalıştır · 3 son oturumu geri al · 4 Windows Update · 5 araçlar. Her çalıştırmada Ö önizle / U uygula / G geri.
   Girdi `IPromptProvider.ReadLine` (yeni; Fake kuyruğu ile test).
 - `profiles/fedai.json`: 3.2'deki tweak'ler (setup.updates-staged en sonda: yeniden başlatma isterse diğerleri uygulanmış
-  olur), 12 uygulama (Telegram / WhatsApp keepAutostart), autoConfirm boş. `input.mouse` katalogda yok → profilde yok.
+  olur), 12 uygulama (Telegram / WhatsApp keepAutostart), autoConfirm boş. `input.mouse` katalogda yok (sonra) → profilde yok.
 - `release.yml`: `v*` etiketi → lint + birim → `Bundle.ps1 -Version <etiket>` → install.ps1, install.ps1.sha256, get.ps1
   sürüme. CI windows işi `tests/Integration/OneLiner.ps1`: yerel HTTP (python) → tek satır `-Profile fedai -DryRun` 0
   dönmeli; install.ps1'i kurcalanmış kopyada çıkış ≠ 0 ve eklenen satır çalışmamış olmalı.
@@ -484,7 +484,7 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
 6. Hyper-V VM'de temiz Win11 kurulumu → tek satır komut → uçtan uca
 
 **Faz 9 notları:**
-- Hedef dizüstü: Acer Nitro AN16-41 (pil var → `power.plan` dizüstü varyantı), Windows 11 Pro, Hyper-V çalışıyor.
+- Hedef dizüstü (RTX + iGPU, Modern Standby) (pil var → `power.plan` dizüstü varyantı), Windows 11 Pro, Hyper-V çalışıyor.
 - Rapor artık günlükte madde madde (`Logger.Block` ← `Write-FaiReport -Logger`; CLI ve menü):
   `%ProgramData%\FAI_WinOP\logs\<zaman>.log` = özet + her tweak'in eylem satırları. Adım 1 ve 5 bu dosyadan incelenir.
 - Adım 1–5 yerel kopyadan (`tools/Sync-ToWindows.sh`; yönetici PowerShell):

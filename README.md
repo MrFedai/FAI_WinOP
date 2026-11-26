@@ -3,9 +3,9 @@
 [![CI](https://github.com/MrFedai/FAI_WinOP/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/MrFedai/FAI_WinOP/actions/workflows/ci.yml)
 
 Windows 11 için profil odaklı, nesne tabanlı optimizer. Format sonrası tek komut: profildeki ayarlar, uygulamalar ve
-masaüstü / görev çubuğu düzeni uygulanır. Her değişiklikten önce anlık görüntü alınır; `-Undo` gerçek önceki duruma döner.
+masaüstü / görev çubuğu düzeni uygulanır. Her değişiklikten önce anlık görüntü alınır; `-Undo` anlık görüntüyle önceki duruma döner. Geri alınamayanlar: kaldırılan AppX'in provisioned kopyası (`bloat.persistence`; Store'dan yeniden kurulur), kurulan Windows güncellemeleri, yeniden başlatma, varsayılan tarayıcı (Ayarlar'dan elle) ve Sistem Geri Yükleme noktası oluşturma.
 
-> **Durum: geliştirme aşamasında (Faz 8 — CLI ve yayın).** İlk sürüm etiketlenene kadar aşağıdaki komut çalışmaz.
+> **Durum: ilk yayın öncesi (v0.1.0 hazırlanıyor).** Fazlar 1–9 tamam; yayın etiketlenene kadar aşağıdaki komut çalışmaz.
 
 Yönetici PowerShell'de (önce önizleme):
 
