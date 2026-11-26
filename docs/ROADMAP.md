@@ -529,3 +529,59 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
 - [x] Dil/bölge/klavye: kullanıcı ayarlar, araç dokunmaz
 - [x] Ultimate referansı: Windows'taki mevcut klasör, WSL'den `/mnt/c/...` ile okunur
 - [x] Sürüm: Windows 11 Pro → Sandbox + Hyper-V test ortamı
+
+---
+
+## 6. İnceleme düzeltmeleri — sürüm planı (27.11.2026)
+
+Kaynak: kod incelemesi (lint temiz, 379 birim testi yeşilken bulunanlar). Sıra = önem. Her madde ayrı commit, görev dalı
+`gorev/inceleme-duzeltmeleri` (`dev`'den). Bir sürümün maddeleri bitmeden sonrakine geçilmez. Etiket ve `main` kullanıcıda.
+"(olası)" = Windows davranışına dayanıyor, VM / CI'da doğrulanacak.
+
+### v0.1.0 — ilk yayın öncesi: güvenlik ve yayın kapısı (ilk etiketi bekletir)
+- [ ] **1.1 Veri klasörü izinleri** · Efor: high — `%ProgramData%\FAI_WinOP` yalnız SYSTEM + Administrators (kalıtım kapalı),
+  sağlayıcı arkasında. Yönetici olmayan sahibin dosyası (yedek oturumu, betik) güvenilmez sayılır; yeniden ayrıştırma noktası
+  reddedilir. Yönetici gerektirmeyen yollar (`-ExportProfile`, `-ExportLayout`) ProgramData'ya dokunmaz.
+- [ ] **1.2 Risk seviyeleri** · Efor: medium — `setup.updates-staged` (365 gün, güvenlik yamaları dahil), `setup.store-optimize`,
+  `ui.notifications` `Safe` → `Caution`; güncelleme duraklatma her seferinde onay ister. Açıklamalara Insider uyarısı
+  (`AllowTelemetry=0` uçuşları keser, uzun duraklatma yapının süresini doldurur; olası).
+- [ ] **1.3 Yayın kapısı** · Efor: medium — `release.yml` Windows 5.1 işini bekler ve yayınlanacak bundle'ı 5.1'de yükler;
+  `ci.yml` Pester birim testlerini `powershell.exe` 5.1'de de koşar; action'lar commit SHA'sına sabitlenir.
+- [ ] **1.4 Önyükleyici** · Efor: high — `get.ps1`: `FAI_WINOP_BASEURL` yalnız https / localhost; doğrulanan betik yükseltmeden
+  sonra, yalnız yöneticinin yazabildiği yerde yeniden doğrulanıp çalışır (`%TEMP%`'te doğrula → yükselt aralığı kapanır).
+  README: SHA-256 yalnız bozulmayı yakalar, kaynağı kanıtlamaz (imza / attestation "sonra bak").
+- [ ] **1.5 Belgeler** · Efor: low — ROADMAP'ten makine modeli + kullanıcı adı içeren yollar, eski tek satır komut (§0),
+  olmayan `input.mouse`; README "Faz 8" ve "-Undo gerçek önceki duruma döner" iddiası (geri alınamayanlar yazılır).
+
+### v0.1.1 — geri alma sağlamlığı
+- [ ] **2.1 Atomik oturum kaydı** · Efor: medium — geçici dosya + yer değiştirme; `GetLatest` bozuk dosyayı uyarıp atlar.
+- [ ] **2.2 Kayıt başına "geri alındı"** · Efor: high — başarısız kayıt oturumu kilitlemez; yeniden denemede başarılılar atlanır,
+  "hatalıyı atla, oturumu kapat" seçeneği.
+- [ ] **2.3 `-Undo -DryRun` önizlemesi** · Efor: medium — snapshot'tan (dönülecek durum), eylemin hedefinden değil.
+- [ ] **2.4 Kayıt defteri türü** · Efor: medium — `REG_NONE` / bilinmeyen tür ham bayt olarak yedeklenir ve geri yüklenir.
+- [ ] **2.5 Kaldırıcı çıkış kodu** · Efor: low — 3010 (yeniden başlatma gerekli) başarı sayılır.
+- [ ] **2.6 Devam sonrası geri alma** · Efor: medium — yeniden başlatma sonrası devam aynı oturuma yazar (ya da kullanıcıya iki
+  oturum olduğu söylenir); oturum JSON'u her eylemde iki kez baştan yazılmaz.
+
+### v0.1.2 — çalışma zamanı sağlamlığı
+- [ ] **3.1 Yükseltilmiş kullanıcı denetimi** · Efor: high — yükseltilmiş kullanıcı ≠ oturum sahibi ise dur / uyar (HKCU,
+  masaüstü, sabitlemeler yanlış profile gitmesin).
+- [ ] **3.2 Yükseltmede yollar** · Efor: low — UAC ve `-Version` yeniden başlatmasında göreli yol mutlak yapılır (olası).
+- [ ] **3.3 Dış süreç zaman aşımı** · Efor: medium — winget, Edge `setup.exe`, kaldırıcı; aşımda süreç ağacı sonlanır.
+- [ ] **3.4 Bloat temizlik damgası** · Efor: low — yalnız hatasız bitişte yazılır (açılışta AppX hazır değilse yinelenir; olası).
+- [ ] **3.5 CLI kenar durumları** · Efor: low — `-Version V1.2.3`; `-ExportLayout` + `-Only` / `-Skip` kullanım hatası; menü çıkış
+  kodu; `-ExportProfile` denetlenemeyen tweak'i uyarır; devam kopyası başarısızsa RunOnce yazılmaz.
+
+### v0.1.3 — test gerçekliği ve temizlik
+- [ ] **4.1 Fake = gerçek** · Efor: medium — `DeleteEmptyKey` kovan altı anahtar, winget kimliği harf duyarlılığı, kısayol
+  `IconLocation` biçimi.
+- [ ] **4.2 Küçük doğruluk** · Efor: low — `Script` Test sonucunda `"False"` / `"0"`; `TimerResolution.cs` `MarshalAs(U1)`;
+  `IsLaptop` UPS'li masaüstü; `Bundle.ps1` `-Version` kaçışı.
+- [ ] **4.3 Veri temizliği** · Efor: low — kullanılmayan profil alanı `exceptions`; iki tweak'te `ShowCopilotButton`; `layout` ile
+  `ui.taskbar` / `ui.desktop-icons` çakışması tek kaynağa.
+- [ ] **4.4 Araçlar** · Efor: low — `Sync-ToWindows.sh` ilerleme + `sed` kaçışı.
+
+### Sonra bak
+- Bundle imzası (Authenticode) ya da `actions/attest-build-provenance`; `get.ps1`'e gömülü sürüm özeti.
+- `store-optimize` yerine zamanlanmış `winget upgrade`; `power.plan` prizde ısı / fan (dizüstü).
+- `settings.dat` uygulama açıkken kopyalanamıyorsa açık hata (olası).
