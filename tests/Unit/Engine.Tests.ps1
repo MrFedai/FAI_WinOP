@@ -577,7 +577,8 @@ Describe 'Motor — diğer davranışlar' {
         $ctx = New-Env
         $a = New-Tweak -Id 'test.a' -Actions @((RegSet 'A' 1))
         [void](Invoke-FaiEngine -Profile (New-Profile @('test.a')) -Context $ctx -Catalog (New-Catalog $a))
-        ($ctx.Logger.Entries | Where-Object { $_.Message -match 'test\.a: uygulandı' }).Count | Should -Be 1
+        # @(): 5.1'de tek PSCustomObject'in .Count'u yok ($null)
+        @($ctx.Logger.Entries | Where-Object { $_.Message -match 'test\.a: uygulandı' }).Count | Should -Be 1
     }
 }
 

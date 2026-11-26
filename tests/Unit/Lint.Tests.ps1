@@ -18,7 +18,8 @@ Describe 'build/Lint.ps1' {
     It '?? işlecini yakalar (PSUseCompatibleSyntax) ve 1 ile çıkar' {
         $r = Invoke-Child $Lint @('-Path', (Join-Path $Fixtures 'NullCoalescing.ps1'))
         $r.ExitCode | Should -Be 1
-        $r.Output | Should -Match 'PSUseCompatibleSyntax'
+        # 5.1 ?? işlecini ayrıştıramaz: orada bulgu FAI.Parse olur (7'de PSUseCompatibleSyntax)
+        $r.Output | Should -Match 'PSUseCompatibleSyntax|FAI\.Parse'
         $r.Output | Should -Match 'NullCoalescing\.ps1:5'
     }
 
@@ -53,8 +54,9 @@ Describe 'build/Lint.ps1' {
 
 Describe 'Depo kodlaması' {
     It 'bütün .ps1 / .psd1 / .psm1 dosyaları UTF-8 BOM ile başlar (önyükleyici hariç)' {
-        $files = Get-ChildItem -LiteralPath $RepoRoot -Recurse -File -Include '*.ps1', '*.psd1', '*.psm1' |
-            Where-Object { $_.FullName -notmatch '[\\/](\.git|dist)[\\/]' -and $_.FullName -notmatch '[\\/]Bootstrap[\\/]get\.ps1$' }
+        # -Include 5.1'de -LiteralPath ile yok sayılır: uzantı süzgeci Where-Object'te
+        $files = Get-ChildItem -LiteralPath $RepoRoot -Recurse -File |
+            Where-Object { @('.ps1', '.psd1', '.psm1') -contains $_.Extension -and $_.FullName -notmatch '[\\/](\.git|dist)[\\/]' -and $_.FullName -notmatch '[\\/]Bootstrap[\\/]get\.ps1$' }
         $files.Count | Should -BeGreaterThan 0
         $missing = foreach ($f in $files) {
             $b = [System.IO.File]::ReadAllBytes($f.FullName)
