@@ -133,6 +133,28 @@ Describe 'Motor: bloat.remove' {
     }
 }
 
+Describe 'ui.widgets-off: WebExperience istisnası' {
+    It 'yalnız WebExperience istisna; öteki MicrosoftWindows.Client.* paketleri korunur' {
+        Test-FaiAppxProtected -Name 'MicrosoftWindows.Client.WebExperience' -Patterns $script:Protected | Should -BeFalse
+        foreach ($n in @('MicrosoftWindows.Client.CBS', 'MicrosoftWindows.Client.Core', 'MicrosoftWindows.Client.FileExp', 'MicrosoftWindows.Client.WebExperienceX')) {
+            Test-FaiAppxProtected -Name $n -Patterns $script:Protected | Should -BeTrue -Because $n
+        }
+    }
+
+    It 'motorla uygula: pano paketi kullanıcıdan kalkar, provisioned kalır; geri alma yeniden kaydeder' {
+        $ctx = New-BloatContext
+        $names = [string[]]@('MicrosoftWindows.Client.WebExperience', 'MicrosoftWindows.Client.CBS')
+        $ctx.Appx.Seed($names, $names)
+        $report = Invoke-FaiEngine (New-BloatProfile -Tweaks @('ui.widgets-off')) -Context $ctx -Catalog $script:Catalog
+        $report.HasFailures() | Should -BeFalse
+        $ctx.Appx.GetInstalled() | Should -Be @('MicrosoftWindows.Client.CBS')
+        @($ctx.Appx.GetProvisioned()) | Should -Contain 'MicrosoftWindows.Client.WebExperience'
+        $undo = Invoke-FaiEngine -Undo -Context $ctx -Catalog $script:Catalog
+        $undo.HasFailures() | Should -BeFalse
+        @($ctx.Appx.GetInstalled()) | Should -Contain 'MicrosoftWindows.Client.WebExperience'
+    }
+}
+
 Describe 'AppxCleanupAction (bloat.persistence)' {
     BeforeAll {
         $script:Def = @{ Type = 'AppxCleanup'; Names = @('Microsoft.BingNews', 'Microsoft.Todos', 'Microsoft.WindowsStore')

@@ -631,9 +631,9 @@ Değişiklikler (8):
 
 **Pencere öğelerini (Widgets) kapat** · Risk: Safe
 
-Pencere öğeleri panosu ve görev çubuğundaki düğmesi ilkeyle kapatılır ("Pencere öğelerine izin ver" = Devre dışı); Windows 10 mirası Haberler ve ilgi alanları da kapalı. Düğme ilkeyle kalkar: TaskbarDa kullanıcı değeri yeni yapılarda Windows tarafından korunur (UCPD), dışarıdan yazılamaz. Pencere öğeleri uygulaması (MicrosoftWindows.Client.WebExperience) kaldırılmaz. Gezgin yeniden başlar.
+Pencere öğeleri uygulaması (MicrosoftWindows.Client.WebExperience) bu kullanıcı için kaldırılır: pano ve görev çubuğundaki düğmesi onunla gider. İlke yolu ("Pencere öğelerine izin ver" = Devre dışı, Policies\\Microsoft\\Dsh) yeni yapılarda UCPD sürücüsü yüzünden yönetici olarak da yazılamıyor; görev çubuğu değeri (TaskbarDa) de korumalı. Paket kabuk için gerekmez; korunan listede (MicrosoftWindows.Client.\*) birebir adıyla istisna. Provisioned kopya kalır: yeni kullanıcılarda pano gelir, geri alma paketi yeniden kaydeder. Windows 10 mirası Haberler ve ilgi alanları da ilkeyle kapalı. Gezgin yeniden başlar.
 
 Değişiklikler (2):
 
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Dsh\AllowNewsAndInterests = 0 (DWord)`
+- `Appx: MicrosoftWindows.Client.WebExperience kaldırılır (kullanıcı)`
 - `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds\EnableFeeds = 0 (DWord)`

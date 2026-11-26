@@ -512,6 +512,9 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
   - `layout.profile`: düzen profile adım 2'den sonra girdi (beklenen). `ui.widgets-off`: UCPD (bilinen, adım 6).
   - `ui.notifications`: sonradan kaydolan uygulamalar (Claude, Ekran Alıntısı) varsayılan açık; joker yalnız var olan alt anahtarlara.
   - `app.discord`: Discord güncelleyicisi Başlat klasörünü (`Discord Inc`) geri getiriyor. `sound.volume`: şu an %0 + sessiz.
+- Widgets kararı (kullanıcı, 27.11): `ui.widgets-off` Dsh ilkesi yerine `MicrosoftWindows.Client.WebExperience` paketini
+  kullanıcıdan kaldırır (Scope User, geri alınabilir). Korunan `MicrosoftWindows.Client.*` kalıbı daraltılmadı; birebir ad
+  istisnası `Get-FaiBloatUnprotected`. UCPD'yi kapatmak (varsayılan tarayıcı koruması da gider) reddedildi. VM'de doğrulanacak.
 
 ---
 

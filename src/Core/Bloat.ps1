@@ -81,13 +81,27 @@ function Get-FaiBloatProtected {
     return $p
 }
 
+function Get-FaiBloatUnprotected {
+    <#
+    .SYNOPSIS  Korunan bir kalıba uyduğu hâlde kaldırılabilen paketler (birebir ad → gerekçe).
+    .NOTES     İstisna kalıbı daraltmaktan güvenli: kalıp yeni kabuk bileşenlerini de korumaya devam eder.
+    #>
+    $u = [ordered]@{}
+    # ui.widgets-off: Dsh ilkesi UCPD yüzünden yazılamıyor; pano yalnız bu paketle gelir, kabuk ona bağlı değil.
+    $u['MicrosoftWindows.Client.WebExperience'] = 'Pencere öğeleri (Widgets) panosu: ui.widgets-off kaldırır'
+    return $u
+}
+
 function Test-FaiAppxProtected {
-    <# .SYNOPSIS  Paket adı korunan kalıplardan birine uyuyor mu (büyük / küçük harf duyarsız). #>
+    <# .SYNOPSIS  Paket adı korunan kalıplardan birine uyuyor mu (büyük / küçük harf duyarsız; Get-FaiBloatUnprotected hariç). #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true, Position = 0)] [string] $Name,
         [Parameter(Position = 1)] [AllowEmptyCollection()] [string[]] $Patterns = @()
     )
+    foreach ($exempt in @((Get-FaiBloatUnprotected).Keys)) {
+        if ($Name -eq $exempt) { return $false }
+    }
     foreach ($pattern in $Patterns) {
         if ($pattern -and $Name -like $pattern) { return $true }
     }
