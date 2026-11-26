@@ -41,7 +41,9 @@ BeforeAll {
             elseif ($Uri -eq 'ms-settings:defaultapps') { $reg.Seed($choice, 'ProgId', 'MSEdgeHTM', 'String') }
         }.GetNewClosure()
         # Faz 5: kara listeden bir paket (kullanıcı + provisioned), korunan Store, kurulu Edge + WebView2.
-        $ctx.Appx.Seed([string[]]@('Microsoft.BingNews', 'Microsoft.WindowsStore'), [string[]]@('Microsoft.BingNews', 'Microsoft.WindowsStore'))
+        # ui.widgets-off: pencere öğeleri paketi (korunan kalıpta istisna).
+        $appx = [string[]]@('Microsoft.BingNews', 'Microsoft.WindowsStore', 'MicrosoftWindows.Client.WebExperience')
+        $ctx.Appx.Seed($appx, $appx)
         $ctx.Edge.EdgeVersion = '131.0.2903.70'
         $ctx.Edge.WebView2Version = '131.0.2903.70'
         # Faz 6: görev çubuğu, hesap resimleri, Not Defteri, Gezgin taklidi.
