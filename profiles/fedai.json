@@ -4,7 +4,6 @@
   "description": "Format sonrası kişisel kurulum (docs/ROADMAP.md 3): koyu / siyah arayüz, sade görev çubuğu, bloatware ve Edge yok, gizlilik, ses %15, dizüstü güç planı. Güncellemeler en sonda: hepsi kurulur, sonra 365 gün duraklatılır.",
   "tweaks": [
     "system.restore-point",
-    "setup.mmagent-off",
     "setup.background-apps-off",
     "setup.store-optimize",
     "setup.default-browser",

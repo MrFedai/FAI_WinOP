@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'setup.mmagent-off'
     Title       = 'Bellek sıkıştırma ve ön getirmeyi kapat'
-    Description = 'Bellek yöneticisinde (MMAgent) bellek sıkıştırma, uygulama başlatma ön getirmesi (prefetch) ve uygulama ön yüklemesi (PreLaunch) kapatılır; ayrıca PrefetchParameters\EnablePrefetcher=0. Bol RAM''li (en az 16 GB) makine içindir: sıkıştırma için harcanan işlemci zamanı ve arka plan disk okumaları kalkar. Sayfa birleştirme ve OperationAPI''ye dokunulmaz. Bellek sıkıştırma yeniden başlatınca etkinleşir. Get-MMAgent SysMain servisinin çalışmasını ister.'
+    Description = 'Bellek yöneticisinde (MMAgent) bellek sıkıştırma, uygulama başlatma ön getirmesi (prefetch) ve uygulama ön yüklemesi (PreLaunch) kapatılır; ayrıca PrefetchParameters\EnablePrefetcher=0. Bol RAM''li (en az 16 GB) makine içindir: sıkıştırma için harcanan işlemci zamanı ve arka plan disk okumaları kalkar. Sayfa birleştirme ve OperationAPI''ye dokunulmaz. Bellek sıkıştırma yeniden başlatınca etkinleşir. Get-MMAgent SysMain servisinin çalışmasını ister. Bedeli: EnablePrefetcher=0 açılış ön getirmesini de kapatır, açılış ve ilk uygulama açılışları uzayabilir; NVMe SSD''de kazanç küçük. Hyper-V açık makinede Windows ön getirme değişikliğini reddedebilir ("The request is not supported"). fedai profilinde değil (Faz 9: açılışı uzattığı gözlendi).'
     Category    = 'setup'
     Risk        = 'Safe'
     Conditions  = @(@{ MinRamGB = 16 })

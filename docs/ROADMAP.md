@@ -166,7 +166,7 @@ FAI_WinOP/
 
 ### 3.2 Tweak listesi
 **Setup**
-- `setup.mmagent-off` — bellek sıkıştırma + prefetch + uygulama ön yükleme kapalı (32 GB RAM)
+- ~~`setup.mmagent-off`~~ — katalogda kalır, profilden çıktı (Faz 9: açılış ön getirmesini kapatıyor, açılış uzuyor; Hyper-V'de prefetch değişikliği reddediliyor)
 - ~~`setup.edition-pro`~~ — makine artık Pro; katalogda isteğe bağlı `Caution` tweak olarak kalır (koşul `Edition=Core`), `fedai`'de yok
 - `setup.background-apps-off` — istisna: **WhatsApp, Telegram**
 - `setup.store-optimize` — Store otomatik güncelleme/video/kişiselleştirme kapalı; Store uygulamaları `winget upgrade` ile güncellenir
@@ -501,6 +501,8 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
     Bu makinede WebExperience paketi yok (pencere öğeleri zaten yok). Temiz kurulumda paket var → çözüm VM'de (adım 6).
   - `power.plan`: Modern Standby (S0) + silinmiş Balanced → `/duplicatescheme` ne Balanced ne etkin plan için çalışıyor.
     Temiz kurulumda Balanced var. Hata mesajı artık `powercfg -restoredefaultschemes` önerir.
+- `setup.mmagent-off` profilden çıktı (kullanıcı: açılış uzun bekliyor); bellek sıkıştırma elle geri açıldı. Kalan uygulama
+  sonucu: `power.plan` `restoredefaultschemes` sonrası uygulandı (FAI_WinOP etkin, hazırda bekletme açık).
 - Tema kararı (kullanıcı, adım 3): vurgu rengi Otomatik, Başlat / görev çubuğu ve başlıklarda vurgu kapalı, saydamlık
   kapalı → `ui.theme-black` siyah vurgu paleti ve DWM renklendirmesi yerine `AutoColorization=1`, iki `ColorPrevalence=0`.
 
