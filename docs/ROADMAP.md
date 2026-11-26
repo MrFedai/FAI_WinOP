@@ -505,6 +505,13 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
   sonucu: `power.plan` `restoredefaultschemes` sonrası uygulandı (FAI_WinOP etkin, hazırda bekletme açık).
 - Tema kararı (kullanıcı, adım 3): vurgu rengi Otomatik, Başlat / görev çubuğu ve başlıklarda vurgu kapalı, saydamlık
   kapalı → `ui.theme-black` siyah vurgu paleti ve DWM renklendirmesi yerine `AutoColorization=1`, iki `ColorPrevalence=0`.
+- Uygulama sonrası dry-run (27.11): 33 zaten uygun · 7 önizleme. Önizlemeler:
+  - `bloat.edge-remove`: `HKLM\SOFTWARE\Classes\microsoft-edge` varsayılan değeri + `URL Protocol` yok → yönlendirme çalışmaz.
+    Neden: motor bekleyen eylemleri en başta seçiyordu; iki değer o an (Edge'in kendi kaydı) uygundu, sonra Edge kaldırıcısı
+    sınıfı sildi. → Motor uygun sayılan eylemi, kendinden önce bir eylem uygulandıysa, uygulamadan hemen önce yeniden denetler.
+  - `layout.profile`: düzen profile adım 2'den sonra girdi (beklenen). `ui.widgets-off`: UCPD (bilinen, adım 6).
+  - `ui.notifications`: sonradan kaydolan uygulamalar (Claude, Ekran Alıntısı) varsayılan açık; joker yalnız var olan alt anahtarlara.
+  - `app.discord`: Discord güncelleyicisi Başlat klasörünü (`Discord Inc`) geri getiriyor. `sound.volume`: şu an %0 + sessiz.
 
 ---
 

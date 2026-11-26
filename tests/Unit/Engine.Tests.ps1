@@ -407,6 +407,25 @@ Describe 'Snapshot → Undo' {
         $ctx.Backup.SessionsOpened | Should -Be 0
         Get-FakeWriteCount $ctx | Should -Be 0
     }
+
+    It 'denetimde uygun olup önceki eylemce bozulan eylem yine uygulanır; Undo başlangıca döner' {
+        # Edge kaldırıcısı microsoft-edge sınıfını siler: baştaki denetimde uygun sayılan değer kaybolmamalı.
+        $ctx = New-SeededEnv
+        $before = Get-State $ctx
+        $t = New-Tweak -Id 'test.side' -Actions @(
+            @{ Type = 'Registry'; Path = $script:Key; Name = 'Existing'; Ensure = 'Absent' }
+            (RegSet 'Existing' 1)
+            (RegSet 'Untouched' 7)
+        )
+        $cat = New-Catalog $t
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.side')) -Context $ctx -Catalog $cat
+        $r.Find('test.side').Status | Should -Be 'Applied'
+        $r.Find('test.side').Lines.Count | Should -Be 2 -Because 'bozulmayan 3. eylem yeniden uygulanmaz'
+        $ctx.Registry.GetValue($script:Key, 'Existing') | Should -Be 1
+
+        [void](Invoke-FaiEngine -Context (Copy-Env $ctx) -Catalog $cat -Undo)
+        Get-State $ctx | Should -Be $before
+    }
 }
 
 Describe 'Dry-run' {

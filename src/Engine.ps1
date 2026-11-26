@@ -233,8 +233,12 @@ class Engine {
         # 5b) gerçek uygulama: her eylem için snapshot → (diske yaz) → uygula
         if ($null -eq $this.Session) { $this.Session = $cx.Backup.BeginSession($FaiProfile.Name) }
         $lines = New-Object 'System.Collections.Generic.List[string]'
-        foreach ($i in $pending) {
+        for ($i = $pending[0]; $i -lt $tweak.Actions.Count; $i++) {
             $action = $tweak.Actions[$i]
+            if (-not $action.Applies($cx.SystemInfo)) { continue }
+            # Denetimde uygun görünen eylemi önceki bir eylemin yan etkisi bozmuş olabilir (Edge kaldırıcısı
+            # microsoft-edge sınıfını siler): uygulamadan hemen önce yeniden denetlenir.
+            if (-not $pending.Contains($i) -and $action.Test($cx)) { continue }
             $snapshot = $action.Snapshot($cx)
             $this.Session.AddEntry($Id, $i, $action.Definition, $snapshot, $tweak.Refresh)
             # Yarıda kalsa da (hata) değişen görünüm yenilensin.
