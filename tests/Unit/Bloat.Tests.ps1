@@ -271,7 +271,8 @@ Describe 'EdgeRemoveAction ve bloat.edge-remove' {
         & $path -Uri 'microsoft-edge:?launchContext1=x&url=https%3A%2F%2Fexample.com%2Fp%3Fq%3D1' -Print | Should -Be 'https://example.com/p?q=1'
         & $path -Uri 'microsoft-edge:///?url=http%3A%2F%2Fexample.org' -Print | Should -Be 'http://example.org'
         foreach ($bad in @('microsoft-edge:file:///C:/Windows/System32/calc.exe', 'microsoft-edge:?url=javascript%3Aalert(1)', 'microsoft-edge:https://a b')) {
-            $out = & pwsh -NoProfile -File $path -Uri $bad -Print
+            # Çalışan kabuk (5.1'de powershell.exe; pwsh kurulu olmayabilir)
+            $out = & (Get-Process -Id $PID).Path -NoProfile -File $path -Uri $bad -Print
             $LASTEXITCODE | Should -Be 1 -Because $bad
             $out | Should -BeNullOrEmpty
         }
