@@ -50,6 +50,17 @@
     "obs"
   ],
   "games": [],
-  "layout": {},
+  "layout": {
+    "taskbar": {
+      "alignment": "center",
+      "autoHide": true,
+      "pins": [
+        { "appId": "Microsoft.Windows.Explorer" },
+        { "link": "%ProgramData%\\Microsoft\\Windows\\Start Menu\\Programs\\Google Chrome.lnk" }
+      ]
+    },
+    "desktopIcons": { "thisPC": true, "recycleBin": true, "userFiles": false, "network": false, "controlPanel": false },
+    "desktop": { "flags": 1075839524, "iconSize": 48 }
+  },
   "exceptions": {}
 }
