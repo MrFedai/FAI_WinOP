@@ -515,6 +515,10 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
 - Widgets kararı (kullanıcı, 27.11): `ui.widgets-off` Dsh ilkesi yerine `MicrosoftWindows.Client.WebExperience` paketini
   kullanıcıdan kaldırır (Scope User, geri alınabilir). Korunan `MicrosoftWindows.Client.*` kalıbı daraltılmadı; birebir ad
   istisnası `Get-FaiBloatUnprotected`. UCPD'yi kapatmak (varsayılan tarayıcı koruması da gider) reddedildi. VM'de doğrulanacak.
+- Adım 3–4 ✓ (kullanıcı: tamam). Adım 5 (kullanıcı kararı: yalnız son oturum; tam geri alma uygulamaları kaldırıp Edge'i
+  kurar → VM'de): `-Undo` 27.11 oturumunu seçti, 11 eylem GERİ ALINDI · 0 hata. Doğrulandı: Edge sınıf değerleri silindi,
+  `Discord Inc` geri geldi, Claude / Ekran Alıntısı bildirim değerleri kalktı. Kusur: `-Undo -DryRun` dönülecek eski durumu
+  değil eylemin hedefini gösteriyor (ses "%15 [şu an %15]") → önizleme snapshot'tan üretilmeli.
 
 ---
 
