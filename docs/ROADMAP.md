@@ -435,8 +435,9 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
   yürütülmeden okunur (`HashtableAst.SafeGetValue`). Satır başında `'@` olan dosya (edge-remove) base64. Kullanıcı
   profili yine yol ya da https URL ile verilebilir (düz http reddedilir).
 - Tek satır: `& ([scriptblock]::Create((irm .../releases/latest/download/get.ps1))) -Profile fedai -DryRun`.
-  `get.ps1` install.ps1 + .sha256 indirir, doğrular (tutmazsa siler, hata, çalıştırmaz), yöneticiyse aynı konsolda
-  `powershell.exe -ExecutionPolicy Bypass -File`, değilse UAC ile yeni pencerede (`-NoExit`). `irm install.ps1 | iex`
+  `get.ps1` install.ps1 + .sha256 indirir, doğrular (tutmazsa siler, hata, çalıştırmaz); yönetici süreci (değilse UAC ile
+  yeni pencerede, `-NoExit -EncodedCommand`) dosyayı `%ProgramData%\FAI_WinOP_get_<guid>` (yalnız SYSTEM + Administrators)
+  klasörüne kopyalar, orada yeniden doğrular ve yalnız o kopyayı çalıştırır (v0.1.0, 1.4). `irm install.ps1 | iex`
   doğrulanamaz; README yalnız get.ps1'i önerir. get.ps1 saf ASCII ve BOM'suz (5.1 `irm` charset'siz yanıtı ISO-8859-1
   çözer); lint BOM kuralı "BOM yok ve ASCII dışı bayt var" olarak daraldı, birim testi get.ps1'i denetler.
 - `install.ps1` başında param bloğu (`src/Entry.ps1`; Bundle AST ile böler: param başa, giriş sona). Nokta-kaynakta
@@ -539,19 +540,19 @@ Kaynak: kod incelemesi (lint temiz, 379 birim testi yeşilken bulunanlar). Sıra
 "(olası)" = Windows davranışına dayanıyor, VM / CI'da doğrulanacak.
 
 ### v0.1.0 — ilk yayın öncesi: güvenlik ve yayın kapısı (ilk etiketi bekletir)
-- [ ] **1.1 Veri klasörü izinleri** · Efor: high — `%ProgramData%\FAI_WinOP` yalnız SYSTEM + Administrators (kalıtım kapalı),
+- [x] **1.1 Veri klasörü izinleri** · Efor: high — `%ProgramData%\FAI_WinOP` yalnız SYSTEM + Administrators (kalıtım kapalı),
   sağlayıcı arkasında. Yönetici olmayan sahibin dosyası (yedek oturumu, betik) güvenilmez sayılır; yeniden ayrıştırma noktası
-  reddedilir. Yönetici gerektirmeyen yollar (`-ExportProfile`, `-ExportLayout`) ProgramData'ya dokunmaz.
-- [ ] **1.2 Risk seviyeleri** · Efor: medium — `setup.updates-staged` (365 gün, güvenlik yamaları dahil), `setup.store-optimize`,
+  reddedilir. Yönetici gerektirmeyen yollar (`-ExportProfile`, `-ExportLayout`) ProgramData'ya dokunmaz. ✓ `932f3d3`
+- [x] **1.2 Risk seviyeleri** · Efor: medium — `setup.updates-staged` (365 gün, güvenlik yamaları dahil), `setup.store-optimize`,
   `ui.notifications` `Safe` → `Caution`; güncelleme duraklatma her seferinde onay ister. Açıklamalara Insider uyarısı
-  (`AllowTelemetry=0` uçuşları keser, uzun duraklatma yapının süresini doldurur; olası).
-- [ ] **1.3 Yayın kapısı** · Efor: medium — `release.yml` Windows 5.1 işini bekler ve yayınlanacak bundle'ı 5.1'de yükler;
-  `ci.yml` Pester birim testlerini `powershell.exe` 5.1'de de koşar; action'lar commit SHA'sına sabitlenir.
-- [ ] **1.4 Önyükleyici** · Efor: high — `get.ps1`: `FAI_WINOP_BASEURL` yalnız https / localhost; doğrulanan betik yükseltmeden
+  (`AllowTelemetry=0` uçuşları keser, uzun duraklatma yapının süresini doldurur; olası). ✓ `62ad792`
+- [x] **1.3 Yayın kapısı** · Efor: medium — `release.yml` Windows 5.1 işini bekler ve yayınlanacak bundle'ı 5.1'de yükler;
+  `ci.yml` Pester birim testlerini `powershell.exe` 5.1'de de koşar; action'lar commit SHA'sına sabitlenir. ✓ `3928516`
+- [x] **1.4 Önyükleyici** · Efor: high — `get.ps1`: `FAI_WINOP_BASEURL` yalnız https / localhost; doğrulanan betik yükseltmeden
   sonra, yalnız yöneticinin yazabildiği yerde yeniden doğrulanıp çalışır (`%TEMP%`'te doğrula → yükselt aralığı kapanır).
-  README: SHA-256 yalnız bozulmayı yakalar, kaynağı kanıtlamaz (imza / attestation "sonra bak").
-- [ ] **1.5 Belgeler** · Efor: low — ROADMAP'ten makine modeli + kullanıcı adı içeren yollar, eski tek satır komut (§0),
-  olmayan `input.mouse`; README "Faz 8" ve "-Undo gerçek önceki duruma döner" iddiası (geri alınamayanlar yazılır).
+  README: SHA-256 yalnız bozulmayı yakalar, kaynağı kanıtlamaz (imza / attestation "sonra bak"). ✓ `52346de`
+- [x] **1.5 Belgeler** · Efor: low — ROADMAP'ten makine modeli + kullanıcı adı içeren yollar, eski tek satır komut (§0),
+  olmayan `input.mouse`; README "Faz 8" ve "-Undo gerçek önceki duruma döner" iddiası (geri alınamayanlar yazılır). ✓ `bb44a73`
 
 ### v0.1.1 — geri alma sağlamlığı
 - [ ] **2.1 Atomik oturum kaydı** · Efor: medium — geçici dosya + yer değiştirme; `GetLatest` bozuk dosyayı uyarıp atlar.
@@ -585,3 +586,7 @@ Kaynak: kod incelemesi (lint temiz, 379 birim testi yeşilken bulunanlar). Sıra
 - Bundle imzası (Authenticode) ya da `actions/attest-build-provenance`; `get.ps1`'e gömülü sürüm özeti.
 - `store-optimize` yerine zamanlanmış `winget upgrade`; `power.plan` prizde ısı / fan (dizüstü).
 - `settings.dat` uygulama açıkken kopyalanamıyorsa açık hata (olası).
+- v0.1.0 1.1: kilit ekranı `Black.png` veri kökünde (VM'de okunamazsa `shared\`'e); hardlink saldırısı (bağlantı sayısı denetimi);
+  güvenilir sahipli alt öğelerdeki açık izin kuralları sıfırlanmıyor. VM'de doğrula (olası): yükseltilmiş yöneticinin yeni dosya
+  sahibi Administrators; Gezgin düzeni `shared\`'ten okuyor; Set-Acl kalıtım yayılımı önceden konmuş junction'a girmiyor.
+- v0.1.0 1.3 / 1.4: CI'da 5.1 Pester ve yönetici-yalnız get.ps1 akışı ilk koşuda görülecek.
