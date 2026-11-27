@@ -245,6 +245,13 @@ Describe 'Profil şeması' {
         $e[0] | Should -Match '^\(kök\):'
     }
 
+    It 'eskimiş exceptions alanı kabul edilir ve yok sayılır (geriye uyum)' {
+        @(Get-FaiProfileError @{ name = 'x'; tweaks = @(); exceptions = @{ a = 1 } }).Count | Should -Be 0
+        @(Get-FaiProfileError @{ name = 'x'; tweaks = @(); exceptions = 'her şey' }).Count | Should -Be 0
+        $p = [Profile]::FromHashtable(@{ name = 'x'; tweaks = @(); exceptions = @{ a = 1 } }, 'test')
+        $p.PSObject.Properties.Name | Should -Not -Contain 'Exceptions'
+    }
+
     It 'tweaks eksik / dizi değil ise hata verir' {
         Test-HasError @(Get-FaiProfileError @{ name = 'x' }) 'tweaks: zorunlu alan eksik' | Should -BeTrue
         Test-HasError @(Get-FaiProfileError @{ name = 'x'; tweaks = 'a.b' }) 'tweaks: dizi olmalı' | Should -BeTrue
@@ -257,7 +264,8 @@ Describe 'Profil şeması' {
     It 'profiles/_schema.json geçerli JSON ve alan adları doğrulayıcıyla birebir aynı' {
         $schema = Read-JsonFile (Join-Path $script:FaiRepoRoot 'profiles/_schema.json')
         $names = @($schema['properties'].Keys | Sort-Object)
-        $expected = @(Get-FaiProfileKey | Sort-Object)
+        # 'exceptions' eskimiş: doğrulayıcı kabul eder ama şemada belgelenmez
+        $expected = @(Get-FaiProfileKey | Where-Object { $_ -ne 'exceptions' } | Sort-Object)
         ($names -join ',') | Should -Be ($expected -join ',')
         ($schema['required'] | Sort-Object) -join ',' | Should -Be 'name,tweaks'
         $schema['additionalProperties'] | Should -BeFalse

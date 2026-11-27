@@ -9,6 +9,5 @@
   "autoConfirm": [ "fixture.params-demo" ],
   "apps": [],
   "games": [],
-  "layout": {},
-  "exceptions": {}
+  "layout": {}
 }

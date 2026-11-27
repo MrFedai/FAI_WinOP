@@ -129,8 +129,7 @@
           }
         }
       }
-    },
-    "exceptions": { "type": "object", "description": "Faz 5+: korunan / istisna listeleri." }
+    }
   },
   "definitions": {
     "appId": {

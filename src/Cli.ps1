@@ -322,7 +322,6 @@ function Select-FaiProfileItem {
     $p.Name = $FaiProfile.Name
     $p.Description = $FaiProfile.Description
     $p.AutoConfirm = $FaiProfile.AutoConfirm
-    $p.Exceptions = $FaiProfile.Exceptions
     $tweaks = New-Object 'System.Collections.Generic.List[hashtable]'
     foreach ($t in $FaiProfile.Tweaks) { if (Test-FaiKeepId -Id ([string]$t['Id']) -Only $Only -Skip $Skip) { $tweaks.Add($t) } }
     $p.Tweaks = $tweaks.ToArray()
@@ -501,7 +500,6 @@ function Export-FaiProfile {
         apps        = $apps.ToArray()
         games       = @()
         layout      = $layout
-        exceptions  = @{}
     }
     $check = @{}
     foreach ($k in $data.Keys) { $check[$k] = $data[$k] }

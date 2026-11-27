@@ -6,7 +6,7 @@
 #     "tweaks": [ "sound.startup-sound-off", { "id": "sound.volume", "params": { "level": 15 } } ],
 #     "autoConfirm": [ "graphics.p0-state" ],     // -Unattended'da onaysız uygulanacak Caution tweak'ler
 #     "apps": [ "chrome", { "id": "telegram", "keepAutostart": true } ],   // apps/catalog.json kimlikleri
-#     "games": [], "layout": {}, "exceptions": {}    // sonraki fazlar
+#     "games": [], "layout": {}    // sonraki fazlar (eski "exceptions" alanı kabul edilir, yok sayılır)
 #   }
 
 class Profile {
@@ -19,7 +19,6 @@ class Profile {
     [hashtable[]] $Apps = @()
     [object[]] $Games = @()
     [hashtable] $Layout = @{}
-    [hashtable] $Exceptions = @{}
 
     Profile() { }
 
@@ -54,7 +53,6 @@ class Profile {
         $p.Apps = $appList.ToArray()
         if ($Data.ContainsKey('games')) { $p.Games = [object[]]@($Data['games']) }
         if ($Data.ContainsKey('layout')) { $p.Layout = $Data['layout'] }
-        if ($Data.ContainsKey('exceptions')) { $p.Exceptions = $Data['exceptions'] }
         return $p
     }
 

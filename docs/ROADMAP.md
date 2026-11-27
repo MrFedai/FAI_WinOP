@@ -189,8 +189,7 @@ Kurulum sonrası: otomatik başlatma kaldır (`keepAutostart` istisna listesi), 
 
 **UI**
 - `ui.theme-black` · `ui.lockscreen-black` · `ui.account-pictures-black`
-- `ui.taskbar` — 3.1'deki düzen (ortalı, otomatik gizle, 2 sabitleme, düğmeler kapalı)
-- `ui.desktop-icons` — Bu Bilgisayar + Geri Dönüşüm Kutusu
+- `ui.taskbar` — 2 sabitleme, düğmeler kapalı, tepsi taşma menüsünde (hiza / otomatik gizle / masaüstü simgeleri: profil `layout`, 0100)
 - `ui.widgets-off` · `ui.copilot-off` · `ui.notepad-settings`
 - `ui.explorer` — Bu Bilgisayar açılır, uzantılar görünür, tam yol, Galeri/Ana Sayfa/3D Nesneler gizli
 - `ui.visual-effects` — animasyon/gölge/solma kapalı, yazı yumuşatma açık
@@ -337,6 +336,7 @@ Her faz kendi başına bir ajan promptu olarak verilebilir. Bir faz **kabul krit
 **Kabul:** Referans ekran görüntüsüyle aynı görünüm; `-ExportLayout` → `-Undo` → profil uygula döngüsü düzeni birebir geri getiriyor.
 
 **Faz 6 notları (uygulama kararları):**
+- v0.1.3 (4.3, karar 0100): görsel düzenin tek kaynağı profil `layout`; `ui.desktop-icons` katalogdan kalktı, `ui.taskbar`'dan hiza / otomatik gizle ve `ShowCopilotButton` çıktı (Copilot düğmesi `ui.copilot-off`'ta).
 - 8 tweak `tweaks/ui/`: `theme-black` (koyu + saydamlık kapalı + vurgu #191919, paletin açık tonları gri: Ayarlar
   düğmeleri okunur; düz siyah masaüstü: `WallPaper=''`, `Colors\Background='0 0 0'`, `BackgroundType=1`), `taskbar`,
   `desktop-icons`, `lockscreen-black` (üretilen `C:\ProgramData\FAI_WinOP\Black.png` + PersonalizationCSP; yol C: varsayılır,

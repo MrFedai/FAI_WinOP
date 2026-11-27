@@ -32,12 +32,11 @@ Profilden üretilen tweak'ler katalogda dosya olarak yok: `app.<id>` (profil `ap
 | [`system.timer-resolution`](#systemtimer-resolution) | Zamanlayıcı çözünürlüğü 0,5 ms | Safe | — | `resolution` |
 | [`ui.account-pictures-black`](#uiaccount-pictures-black) | Varsayılan hesap resimleri siyah | Safe | — | — |
 | [`ui.copilot-off`](#uicopilot-off) | Copilot'u kapat | Safe | — | — |
-| [`ui.desktop-icons`](#uidesktop-icons) | Masaüstü simgeleri: Bu Bilgisayar + Geri Dönüşüm Kutusu | Safe | — | — |
 | [`ui.explorer`](#uiexplorer) | Dosya Gezgini düzeni | Safe | — | — |
 | [`ui.lockscreen-black`](#uilockscreen-black) | Kilit ve oturum açma ekranı siyah | Safe | — | — |
 | [`ui.notepad-settings`](#uinotepad-settings) | Not Defteri ayarları | Safe | — | `aiRewrite`, `openInNewWindow`, `restoreSession` |
 | [`ui.notifications`](#uinotifications) | Bildirimleri kapat (istisna listesi hariç) | ⚠ Caution | — | `exceptions` |
-| [`ui.taskbar`](#uitaskbar) | Görev çubuğu: ortalı, otomatik gizlenir, yalnız Dosya Gezgini + Chrome | Safe | — | `autoHide` |
+| [`ui.taskbar`](#uitaskbar) | Görev çubuğu: düğmeler kapalı, tepsi taşma menüsünde, yalnız Dosya Gezgini + Chrome | Safe | — | — |
 | [`ui.theme-black`](#uitheme-black) | Siyah tema (koyu, saydamlık kapalı, otomatik vurgu, düz siyah duvar kağıdı) | Safe | — | — |
 | [`ui.visual-effects`](#uivisual-effects) | Görsel efektleri azalt (yazı yumuşatma açık) | Safe | — | — |
 | [`ui.widgets-off`](#uiwidgets-off) | Pencere öğelerini (Widgets) kapat | Safe | — | — |
@@ -501,18 +500,6 @@ Değişiklikler (3):
 - `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot\TurnOffWindowsCopilot = 1 (DWord)`
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ShowCopilotButton = 0 (DWord)`
 
-### ui.desktop-icons
-
-**Masaüstü simgeleri: Bu Bilgisayar + Geri Dönüşüm Kutusu** · Risk: Safe
-
-Masaüstünde Bu Bilgisayar ve Geri Dönüşüm Kutusu gösterilir (Ayarlar \> Kişiselleştirme \> Temalar \> Masaüstü simgesi ayarları). "Simgeleri otomatik düzenle" kapatılır, "Simgeleri kılavuza hizala" açık kalır (FFlags: Windows varsayılanı 0x40200225, otomatik düzenle biti 0x1 kaldırılır); böylece simgeler sürüklendikleri yerde kalır. Sağ alt köşe konumu: simgeler bir kez elle yerleştirilip -ExportLayout ile profile alınır (desktop.iconLayouts), profil uygulanınca aynı konumlar geri gelir. Gezgin yeniden başlar.
-
-Değişiklikler (3):
-
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel\{20D04FE0-3AEA-1069-A2D8-08002B30309D} = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel\{645FF040-5081-101B-9F08-00AA002F954E} = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\Shell\Bags\1\Desktop\FFlags = 1075839524 (DWord)`
-
 ### ui.explorer
 
 **Dosya Gezgini düzeni** · Risk: Safe
@@ -579,19 +566,14 @@ Değişiklikler (10):
 
 ### ui.taskbar
 
-**Görev çubuğu: ortalı, otomatik gizlenir, yalnız Dosya Gezgini + Chrome** · Risk: Safe
+**Görev çubuğu: düğmeler kapalı, tepsi taşma menüsünde, yalnız Dosya Gezgini + Chrome** · Risk: Safe
 
-Görev çubuğu ortalanır ve otomatik gizlenir (StuckRects3). Arama kutusu, Görev Görünümü, Sohbet ve Copilot düğmeleri kaldırılır (Widgets düğmesi ui.widgets-off ilkesiyle). Bildirim alanında yalnız taşma oku ve sistem simgeleri (Wi-Fi, ses, pil) kalır: uygulama simgeleri taşma menüsüne alınır, sonradan gelen uygulamalar da Windows'un varsayılanıyla oraya düşer. Sabitlemeler yalnız Dosya Gezgini ve Google Chrome olur (diğerleri kalkar; Windows'un "Start Layout" ilkesi tek seferlik kullanılır, sonra kullanıcı istediğini sabitleyebilir). Chrome kurulu değilse yalnız Gezgin sabitlenir, sonraki çalıştırmada Chrome eklenir. Gezgin yeniden başlar; etkileşimli oturum yoksa (CI) sabitleme adımı uygulanamaz.
+Arama kutusu, Görev Görünümü ve Sohbet düğmeleri kaldırılır (Widgets düğmesi ui.widgets-off, Copilot düğmesi ui.copilot-off ile). Hiza ve otomatik gizleme bu tweak'te değil, profil layout.taskbar.alignment / autoHide ile verilir (tek kaynak; -ExportLayout yakalar). Bildirim alanında yalnız taşma oku ve sistem simgeleri (Wi-Fi, ses, pil) kalır: uygulama simgeleri taşma menüsüne alınır, sonradan gelen uygulamalar da Windows'un varsayılanıyla oraya düşer. Sabitlemeler yalnız Dosya Gezgini ve Google Chrome olur (diğerleri kalkar; Windows'un "Start Layout" ilkesi tek seferlik kullanılır, sonra kullanıcı istediğini sabitleyebilir). Chrome kurulu değilse yalnız Gezgin sabitlenir, sonraki çalıştırmada Chrome eklenir. Gezgin yeniden başlar; etkileşimli oturum yoksa (CI) sabitleme adımı uygulanamaz.
 
-Parametreler (varsayılan): `autoHide` = `True`
+Değişiklikler (5):
 
-Değişiklikler (8):
-
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarAl = 1 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StuckRects3\Settings [8. bayt, maske 0x01] = 0x01`
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Search\SearchboxTaskbarMode = 0 (DWord)`
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ShowTaskViewButton = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ShowCopilotButton = 0 (DWord)`
 - `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Chat\ChatIcon = 3 (DWord)`
 - `Kayıt defteri: HKCU:\Control Panel\NotifyIconSettings\*\IsPromoted = 0 (DWord)`
 - `Görev çubuğu sabitlemeleri yalnız: Microsoft.Windows.Explorer, Google Chrome.lnk`

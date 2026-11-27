@@ -12,6 +12,7 @@ function Get-FaiIdPattern { return '^[a-z][a-z0-9]*\.[a-z0-9]+(-[a-z0-9]+)*$' }
 function Get-FaiTweakKey { return [string[]]@('Id', 'Title', 'Description', 'Category', 'Risk', 'Confirm', 'Conditions', 'Params', 'Refresh', 'First', 'AlwaysConfirm', 'Tool', 'Actions') }
 # Tweak uygulandıktan / geri alındıktan sonra istenebilecek kabuk yenilemeleri; motor bu sırayla, çalıştırma sonunda bir kez yapar.
 function Get-FaiRefreshKind { return [string[]]@('Desktop', 'Settings', 'StartMenu', 'Shell') }
+# 'exceptions': eskimiş, kabul edilir ama yok sayılır (geriye uyum).
 function Get-FaiProfileKey { return [string[]]@('$schema', 'name', 'description', 'tweaks', 'autoConfirm', 'apps', 'games', 'layout', 'exceptions') }
 
 function Get-FaiTweakError {
@@ -188,9 +189,8 @@ function Get-FaiProfileError {
     if ($Data.Contains('games')) {
         foreach ($m in @(Get-FaiGameError -Games $Data['games'])) { $errs.Add($m) }
     }
-    foreach ($objKey in @('layout', 'exceptions')) {
-        if ($Data.Contains($objKey) -and $Data[$objKey] -isnot [System.Collections.IDictionary]) { $errs.Add("${objKey}: nesne olmalı") }
-    }
+    # 'exceptions' eskimiş alan: eski profiller kırılmasın diye kabul edilir, içeriği doğrulanmaz ve yok sayılır.
+    if ($Data.Contains('layout') -and $Data['layout'] -isnot [System.Collections.IDictionary]) { $errs.Add('layout: nesne olmalı') }
     if ($Data.Contains('layout') -and $Data['layout'] -is [System.Collections.IDictionary] -and $Data['layout'].Count -gt 0) {
         foreach ($m in @(Get-FaiLayoutError -Layout $Data['layout'])) { $errs.Add($m) }
     }

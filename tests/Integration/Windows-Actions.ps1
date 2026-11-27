@@ -342,7 +342,7 @@ try {
         "(etkileşimli kabuk: $shell)"
     }
 
-    $faz6 = @('ui.theme-black', 'ui.taskbar', 'ui.desktop-icons', 'ui.lockscreen-black', 'ui.account-pictures-black', 'ui.widgets-off', 'ui.copilot-off', 'ui.notepad-settings')
+    $faz6 = @('ui.theme-black', 'ui.taskbar','ui.lockscreen-black', 'ui.account-pictures-black', 'ui.widgets-off', 'ui.copilot-off', 'ui.notepad-settings')
     Step 'Faz 6 dry-run: görünüm tweak''leri + Export-FaiLayout (salt okunur)' {
         $catalog = Import-FaiTweakCatalog -Path (Join-Path $repoRoot 'tweaks')
         $faiProfile = [Profile]::FromHashtable(@{ name = 'faz6-dry'; tweaks = $faz6 }, 'test')

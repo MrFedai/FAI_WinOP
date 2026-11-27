@@ -374,7 +374,13 @@ Describe 'Profil düzeni (layout)' {
         $start = Get-LayoutState $ctx
 
         # 1) kullanıcının düzeni: fedai görev çubuğu + masaüstü simgeleri, sonra simgeler elle sağ alta (IconLayouts)
-        $r1 = Invoke-FaiEngine -Profile (New-Profile @{ name = 'fedai'; tweaks = @('ui.taskbar', 'ui.desktop-icons') }) -Context $ctx -Catalog $script:Catalog
+        # görsel düzenin tek kaynağı layout (hiza, otomatik gizle, masaüstü simgeleri, FFlags); ui.taskbar yalnız düğmeler + sabitlemeler
+        $fedaiLayout = @{
+            taskbar      = @{ alignment = 'center'; autoHide = $true }
+            desktopIcons = @{ thisPC = $true; recycleBin = $true }
+            desktop      = @{ flags = 1075839524 }
+        }
+        $r1 = Invoke-FaiEngine -Profile (New-Profile @{ name = 'fedai'; tweaks = @('ui.taskbar'); layout = $fedaiLayout }) -Context $ctx -Catalog $script:Catalog
         $r1.HasFailures() | Should -BeFalse -Because ($r1.Render())
         $ctx.Registry.Seed('HKCU:\Software\Microsoft\Windows\Shell\Bags\1\Desktop', 'IconLayouts', [byte[]]@(9, 8, 7, 6), 'Binary')
         $ctx.Files.Seed((Expand-FaiPath '%LOCALAPPDATA%\Packages\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\LocalState\start2.bin'), [byte[]]@(6, 6, 6))
@@ -431,18 +437,18 @@ Describe 'Profil düzeni (layout)' {
 
 Describe 'Faz 6 tweak''leri' {
     It 'katalogda ve fedai hedef masaüstünü kapsıyor' {
-        foreach ($id in @('ui.theme-black', 'ui.taskbar', 'ui.desktop-icons', 'ui.lockscreen-black', 'ui.account-pictures-black', 'ui.widgets-off', 'ui.copilot-off', 'ui.notepad-settings')) {
+        foreach ($id in @('ui.theme-black', 'ui.taskbar', 'ui.lockscreen-black', 'ui.account-pictures-black', 'ui.widgets-off', 'ui.copilot-off', 'ui.notepad-settings')) {
             $script:Catalog.ContainsKey($id) | Should -BeTrue -Because $id
         }
+        # tek kaynak: hiza / otomatik gizle / masaüstü simgeleri tweak'te değil, layout'ta
+        $script:Catalog.ContainsKey('ui.desktop-icons') | Should -BeFalse
+        @($script:Catalog['ui.taskbar'].Params.Keys) | Should -Not -Contain 'autoHide'
+        @($script:Catalog['ui.taskbar'].Actions | Where-Object { $_.Type -eq 'RegistryByte' }).Count | Should -Be 0
+        @($script:Catalog['ui.taskbar'].Actions | Where-Object { $_.Type -eq 'Registry' -and $_.Definition['Name'] -in @('TaskbarAl', 'ShowCopilotButton') }).Count | Should -Be 0
         $tb = $script:Catalog['ui.taskbar']
         ($tb.Actions | Where-Object { $_.Type -eq 'TaskbarPins' }).Definition['Pins'].Count | Should -Be 2
         $tb.Actions[-1].Type | Should -Be 'TaskbarPins'
         @($script:Catalog['ui.theme-black'].Refresh) | Should -Contain 'Desktop'
-    }
-
-    It 'ui.taskbar autoHide parametresiyle kapatılabilir' {
-        $t = $script:Catalog['ui.taskbar'].WithParams(@{ autoHide = $false })
-        ($t.Actions | Where-Object { $_.Type -eq 'RegistryByte' }).Want() | Should -Be 0
     }
 
     It 'ui.notepad-settings parametreleri: varsayılan önceki oturum kapalı' {

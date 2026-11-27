@@ -1,20 +1,15 @@
 ﻿@{
     Id          = 'ui.taskbar'
-    Title       = 'Görev çubuğu: ortalı, otomatik gizlenir, yalnız Dosya Gezgini + Chrome'
-    Description = 'Görev çubuğu ortalanır ve otomatik gizlenir (StuckRects3). Arama kutusu, Görev Görünümü, Sohbet ve Copilot düğmeleri kaldırılır (Widgets düğmesi ui.widgets-off ilkesiyle). Bildirim alanında yalnız taşma oku ve sistem simgeleri (Wi-Fi, ses, pil) kalır: uygulama simgeleri taşma menüsüne alınır, sonradan gelen uygulamalar da Windows''un varsayılanıyla oraya düşer. Sabitlemeler yalnız Dosya Gezgini ve Google Chrome olur (diğerleri kalkar; Windows''un "Start Layout" ilkesi tek seferlik kullanılır, sonra kullanıcı istediğini sabitleyebilir). Chrome kurulu değilse yalnız Gezgin sabitlenir, sonraki çalıştırmada Chrome eklenir. Gezgin yeniden başlar; etkileşimli oturum yoksa (CI) sabitleme adımı uygulanamaz.'
+    Title       = 'Görev çubuğu: düğmeler kapalı, tepsi taşma menüsünde, yalnız Dosya Gezgini + Chrome'
+    Description = 'Arama kutusu, Görev Görünümü ve Sohbet düğmeleri kaldırılır (Widgets düğmesi ui.widgets-off, Copilot düğmesi ui.copilot-off ile). Hiza ve otomatik gizleme bu tweak''te değil, profil layout.taskbar.alignment / autoHide ile verilir (tek kaynak; -ExportLayout yakalar). Bildirim alanında yalnız taşma oku ve sistem simgeleri (Wi-Fi, ses, pil) kalır: uygulama simgeleri taşma menüsüne alınır, sonradan gelen uygulamalar da Windows''un varsayılanıyla oraya düşer. Sabitlemeler yalnız Dosya Gezgini ve Google Chrome olur (diğerleri kalkar; Windows''un "Start Layout" ilkesi tek seferlik kullanılır, sonra kullanıcı istediğini sabitleyebilir). Chrome kurulu değilse yalnız Gezgin sabitlenir, sonraki çalıştırmada Chrome eklenir. Gezgin yeniden başlar; etkileşimli oturum yoksa (CI) sabitleme adımı uygulanamaz.'
     Category    = 'ui'
     Risk        = 'Safe'
-    Params      = @{ autoHide = $true }
     Refresh     = @('Shell')
     Actions     = @(
-        # Ortalı (Windows 11 varsayılanı; açıkça yazılır)
-        @{ Type = 'Registry'; Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'; Name = 'TaskbarAl'; Value = 1; Kind = 'DWord' }
-        # Otomatik gizle: StuckRects3 'Settings' 8. bayt, 0. bit (ABS_AUTOHIDE)
-        @{ Type = 'RegistryByte'; Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StuckRects3'; Name = 'Settings'; Offset = 8; Mask = 1; Value = '{{autoHide}}' }
-        # Düğmeler: arama, Görev Görünümü, Copilot
+        # Hiza (TaskbarAl) ve otomatik gizleme (StuckRects3): profil layout.taskbar (src/Core/Layout.ps1)
+        # Düğmeler: arama, Görev Görünümü (Copilot: ui.copilot-off)
         @{ Type = 'Registry'; Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Search'; Name = 'SearchboxTaskbarMode'; Value = 0; Kind = 'DWord' }
         @{ Type = 'Registry'; Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'; Name = 'ShowTaskViewButton'; Value = 0; Kind = 'DWord' }
-        @{ Type = 'Registry'; Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'; Name = 'ShowCopilotButton'; Value = 0; Kind = 'DWord' }
         # Sohbet (Teams) düğmesi: ilke 3 = gizli (TaskbarMn yerine; yeni yapılarda düğme zaten yok)
         @{ Type = 'Registry'; Path = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Chat'; Name = 'ChatIcon'; Value = 3; Kind = 'DWord' }
         # Bildirim alanı: uygulama simgeleri taşma menüsünde
