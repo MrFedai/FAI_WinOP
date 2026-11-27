@@ -583,6 +583,18 @@ Kaynak: kod incelemesi (lint temiz, 379 birim testi yeşilken bulunanlar). Sıra
   `ui.taskbar` / `ui.desktop-icons` çakışması tek kaynağa (karar 0100: `layout`). ✓ `7cd000a`
 - [x] **4.4 Araçlar** · Efor: low — `Sync-ToWindows.sh` ilerleme + `sed` kaçışı. ✓ `cf2f432`
 
+### v0.2.0 — İngilizce (global)
+Kaynak: kullanıcı isteği 27.11.2026 ("README ve PowerShell bildirimleri İngilizce, global olsun"). Yalnız İngilizce (iki dilli sözlük
+yok); kod yorumları, ROADMAP, CLAUDE.md, commit mesajları ve test adları Türkçe kalır. Durum sözlüğü: APPLIED · ALREADY SET · ERROR ·
+SKIPPED · REVERTED · PREVIEW; risk onayı `YES`, diğerleri `Y` / `N`; menü `P` / `A` / `B`, çoklu seçimde `a` / `n` / `d`.
+- [x] **5.1 README (İngilizce)** — Preview / Run blokları; "What the `fedai` profile does" bölümü `build/ProfileDoc.ps1` ile
+  profil + katalogdan üretilir, CI `-Check`. ✓ `d1cd251`
+- [x] **5.2 Konsol iletileri: çekirdek** — Cli, Menu, Engine, Entry, `src/Core` (Reporter, şema hataları, onaylar). ✓ `ef06fd4`
+- [x] **5.3 Konsol iletileri: eylemler + sağlayıcılar + araçlar** — `src/Actions`, `src/Providers`, native, `get.ps1`, build, araçlar;
+  onay istemi `(Y/N)`, `E` / `evet` kabulü kalktı. ✓ `bd1677e`
+- [x] **5.4 Tweak ve katalog metinleri** — tweak Title / Description / Confirm, katalog, profil, şemalar; TWEAKS.md + APPS.md. ✓ `b8692bd`
+- [x] **5.5 Bekçi testi** — `tests/Unit/EnglishGuard.Tests.ps1`: dize belirteçlerinde ve veri / belgede Türkçe harf kalırsa kırmızı. ✓ `508ca91`
+
 ### Sonra bak
 - Bundle imzası (Authenticode) ya da `actions/attest-build-provenance`; `get.ps1`'e gömülü sürüm özeti.
 - `store-optimize` yerine zamanlanmış `winget upgrade`; `power.plan` prizde ısı / fan (dizüstü).
@@ -601,3 +613,5 @@ Kaynak: kod incelemesi (lint temiz, 379 birim testi yeşilken bulunanlar). Sıra
 - v0.1.3 4.2: `IsLaptop` kasa türü öncelikli (masaüstü kasada UPS pili sayılmaz) gerçek donanımda; `NtSetTimerResolution` `U1` hizmette (olası).
   4.3: kaldırılan `ui.desktop-icons`'ı içeren eski profil o satırda `Failed` ("katalogda yok") verir; istenirse eskimiş kimlik için "layout'a taşındı" uyarısı.
   4.4: `Sync-ToWindows.sh` `set -e` + `pipefail` altında rsync hatasında açık "HATA" iletisinden önce çıkar (rsync'in kendi iletisi görünür).
+- v0.2.0: `tests/Integration/*.ps1` Türkçe ileti bekliyor olabilir (Windows CI ilk koşuda görülecek); `SONUC.txt` adı Türkçe; ASCII Türkçe ileti (ör. "Uygulaniyor") bekçiye takılmaz;
+  menü tuşları ve `YES` değişti: eski alışkanlıkla `EVET` yazan kullanıcı risk tweak'ini onaylamamış olur.
