@@ -575,13 +575,13 @@ Kaynak: kod incelemesi (lint temiz, 379 birim testi yeşilken bulunanlar). Sıra
   kodu; `-ExportProfile` denetlenemeyen tweak'i uyarır; devam kopyası başarısızsa RunOnce yazılmaz. ✓ `f5adf28`
 
 ### v0.1.3 — test gerçekliği ve temizlik
-- [ ] **4.1 Fake = gerçek** · Efor: medium — `DeleteEmptyKey` kovan altı anahtar, winget kimliği harf duyarlılığı, kısayol
-  `IconLocation` biçimi.
-- [ ] **4.2 Küçük doğruluk** · Efor: low — `Script` Test sonucunda `"False"` / `"0"`; `TimerResolution.cs` `MarshalAs(U1)`;
-  `IsLaptop` UPS'li masaüstü; `Bundle.ps1` `-Version` kaçışı.
-- [ ] **4.3 Veri temizliği** · Efor: low — kullanılmayan profil alanı `exceptions`; iki tweak'te `ShowCopilotButton`; `layout` ile
-  `ui.taskbar` / `ui.desktop-icons` çakışması tek kaynağa.
-- [ ] **4.4 Araçlar** · Efor: low — `Sync-ToWindows.sh` ilerleme + `sed` kaçışı.
+- [x] **4.1 Fake = gerçek** · Efor: medium — `DeleteEmptyKey` kovan altı anahtar, winget kimliği harf duyarlılığı, kısayol
+  `IconLocation` biçimi. ✓ `c011bac`
+- [x] **4.2 Küçük doğruluk** · Efor: low — `Script` Test sonucunda `"False"` / `"0"`; `TimerResolution.cs` `MarshalAs(U1)`;
+  `IsLaptop` UPS'li masaüstü; `Bundle.ps1` `-Version` kaçışı. ✓ `cf2f432`
+- [x] **4.3 Veri temizliği** · Efor: low — kullanılmayan profil alanı `exceptions`; iki tweak'te `ShowCopilotButton`; `layout` ile
+  `ui.taskbar` / `ui.desktop-icons` çakışması tek kaynağa (karar 0100: `layout`). ✓ `7cd000a`
+- [x] **4.4 Araçlar** · Efor: low — `Sync-ToWindows.sh` ilerleme + `sed` kaçışı. ✓ `cf2f432`
 
 ### Sonra bak
 - Bundle imzası (Authenticode) ya da `actions/attest-build-provenance`; `get.ps1`'e gömülü sürüm özeti.
@@ -598,3 +598,6 @@ Kaynak: kod incelemesi (lint temiz, 379 birim testi yeşilken bulunanlar). Sıra
   `-ExportLayout` `[IO.Path]::GetFullPath` ile süreç klasörüne göre çözer, PowerShell konumuna göre değil.
 - v0.1.2 3.3: zaman aşımı + `taskkill /T` yolu ve kaldırıcının artık gizli pencere / `UseShellExecute=false` ile açılması Sandbox'ta doğrulanacak (olası).
   3.4: `Get-AppxPackage -AllUsers` hatası damgayı engellemiyor (yalnız provisioned liste ve kaldırma hataları).
+- v0.1.3 4.2: `IsLaptop` kasa türü öncelikli (masaüstü kasada UPS pili sayılmaz) gerçek donanımda; `NtSetTimerResolution` `U1` hizmette (olası).
+  4.3: kaldırılan `ui.desktop-icons`'ı içeren eski profil o satırda `Failed` ("katalogda yok") verir; istenirse eskimiş kimlik için "layout'a taşındı" uyarısı.
+  4.4: `Sync-ToWindows.sh` `set -e` + `pipefail` altında rsync hatasında açık "HATA" iletisinden önce çıkar (rsync'in kendi iletisi görünür).
