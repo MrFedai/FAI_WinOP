@@ -129,7 +129,10 @@ class RegistryAction : ActionBase {
         $path = [string]$this.Definition['Path']
         $name = [string]$this.Definition['Name']
         if ($Snapshot['Exists'] -and [string]$Snapshot['Kind'] -ceq 'Raw') {
-            $bytes = [byte[]]@(@($Snapshot['Bytes']) | ForEach-Object { [byte][int]$_ })
+            # Boş / null Bytes → 0 baytlık dizi (@($null) 1 baytlık 0 üretmesin).
+            $src = @($Snapshot['Bytes'] | Where-Object { $null -ne $_ })
+            $bytes = New-Object 'byte[]' $src.Count
+            for ($i = 0; $i -lt $src.Count; $i++) { $bytes[$i] = [byte][int]$src[$i] }
             $Ctx.Registry.SetRawValue($path, $name, [int]$Snapshot['RawType'], $bytes)
         }
         elseif ($Snapshot['Exists']) {
@@ -344,7 +347,10 @@ class RegistryEachAction : ActionBase {
             $p = $this.KeyPath([string]$entry['Key'])
             if (-not $Ctx.Registry.KeyExists($p)) { continue }
             if ($entry['Exists'] -and [string]$entry['Kind'] -ceq 'Raw') {
-                $Ctx.Registry.SetRawValue($p, $name, [int]$entry['RawType'], [byte[]]@(@($entry['Bytes']) | ForEach-Object { [byte][int]$_ }))
+                $src = @($entry['Bytes'] | Where-Object { $null -ne $_ })
+                $rb = New-Object 'byte[]' $src.Count
+                for ($i = 0; $i -lt $src.Count; $i++) { $rb[$i] = [byte][int]$src[$i] }
+                $Ctx.Registry.SetRawValue($p, $name, [int]$entry['RawType'], $rb)
             }
             elseif ($entry['Exists']) {
                 $kind = [string]$entry['Kind']

@@ -108,6 +108,27 @@ Describe 'RegistryAction' {
         }
     }
 
+    It 'REG_NONE + boş bayt: Snapshot → JSON gidiş-dönüş → Revert 0 bayt yazar (1 baytlık 0 değil)' {
+        foreach ($viaJson in @($false, $true)) {
+            $ctx = New-Ctx
+            $ctx.Registry.SeedRaw($script:Key, 'E', 0, (New-Object 'byte[]' 0))
+            $a = New-Reg @{ Path = $script:Key; Name = 'E'; Value = 5; Kind = 'DWord' }
+            $snap = $a.Snapshot($ctx)
+            $snap['Kind'] | Should -BeExactly 'Raw'
+            if ($viaJson) { $snap = ConvertFrom-JsonText (ConvertTo-Json $snap -Depth 5) }
+            $a.Apply($ctx)
+            $a.Revert($ctx, $snap)
+            $raw = $ctx.Registry.GetRawValue($script:Key, 'E')
+            $raw['Type'] | Should -Be 0
+            @($raw['Bytes']).Count | Should -Be 0
+        }
+        # Bytes null gelirse de boş dizi
+        $ctx = New-Ctx
+        $a = New-Reg @{ Path = $script:Key; Name = 'E'; Value = 5; Kind = 'DWord' }
+        $a.Revert($ctx, @{ Exists = $true; Kind = 'Raw'; RawType = 0; Bytes = $null })
+        @($ctx.Registry.GetRawValue($script:Key, 'E')['Bytes']).Count | Should -Be 0
+    }
+
     It 'Revert: snapshot''ta olmayan değer yoksa yazma yapmaz' {
         $ctx = New-Ctx
         $a = New-Reg @{ Path = $script:Key; Name = 'V'; Value = 1; Kind = 'DWord' }

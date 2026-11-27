@@ -83,9 +83,14 @@ class WindowsRegistryProvider : IRegistryProvider {
     }
 
     # advapi32 P/Invoke tipi yalnız ilk ham çağrıda yüklenir (dosya yüklenince / Linux'ta değil).
-    hidden static [void] EnsureNative() {
-        if ('FaiWinOP.Native.RegistryRaw' -as [type]) { return }
-        Add-Type -TypeDefinition (Get-FaiNativeSource -Name 'RegistryRaw') -Language CSharp -ErrorAction Stop
+    # Tip literali sınıf gövdesinde yazılamaz (5.1'de bundle ayrıştırılırken tip yok): metin ad + -as [type].
+    hidden static [type] NativeType() {
+        $t = 'FaiWinOP.Native.RegistryRaw' -as [type]
+        if ($null -eq $t) {
+            Add-Type -TypeDefinition (Get-FaiNativeSource -Name 'RegistryRaw') -Language CSharp -ErrorAction Stop
+            $t = 'FaiWinOP.Native.RegistryRaw' -as [type]
+        }
+        return $t
     }
 
     [hashtable] GetRawValue([string] $Path, [string] $Name) {
@@ -93,15 +98,15 @@ class WindowsRegistryProvider : IRegistryProvider {
         if ($null -eq $k) { return $null }
         try {
             if (@($k.GetValueNames()) -notcontains $Name) { return $null }
-            [WindowsRegistryProvider]::EnsureNative()
+            $nt = [WindowsRegistryProvider]::NativeType()
             $type = 0
             $size = 0
-            $rc = [FaiWinOP.Native.RegistryRaw]::QueryValue($k.Handle, $Name, [IntPtr]::Zero, [ref]$type, $null, [ref]$size)
+            $rc = $nt::QueryValue($k.Handle, $Name, [IntPtr]::Zero, [ref]$type, $null, [ref]$size)
             for ($try = 0; $try -lt 5; $try++) {
                 if ($rc -ne 0 -and $rc -ne 234) { throw "RegQueryValueExW hata kodu $rc ($Path\$Name)" }
                 $buf = New-Object 'byte[]' ([Math]::Max($size, 1))
                 $size = $buf.Length
-                $rc = [FaiWinOP.Native.RegistryRaw]::QueryValue($k.Handle, $Name, [IntPtr]::Zero, [ref]$type, $buf, [ref]$size)
+                $rc = $nt::QueryValue($k.Handle, $Name, [IntPtr]::Zero, [ref]$type, $buf, [ref]$size)
                 if ($rc -eq 0) {
                     $out = New-Object 'byte[]' $size
                     [System.Array]::Copy($buf, $out, $size)
@@ -116,9 +121,10 @@ class WindowsRegistryProvider : IRegistryProvider {
     [void] SetRawValue([string] $Path, [string] $Name, [int] $Type, [byte[]] $Bytes) {
         $k = $this.OpenKey($Path, 'Create')
         try {
-            [WindowsRegistryProvider]::EnsureNative()
-            $data = [byte[]]@($Bytes)
-            $rc = [FaiWinOP.Native.RegistryRaw]::SetValue($k.Handle, $Name, 0, $Type, $data, $data.Length)
+            $nt = [WindowsRegistryProvider]::NativeType()
+            $data = $Bytes
+            if ($null -eq $data) { $data = New-Object 'byte[]' 0 }
+            $rc = $nt::SetValue($k.Handle, $Name, 0, $Type, $data, $data.Length)
             if ($rc -ne 0) { throw "RegSetValueExW hata kodu $rc ($Path\$Name)" }
         }
         finally { $k.Dispose() }
