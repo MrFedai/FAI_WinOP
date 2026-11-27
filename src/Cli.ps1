@@ -4,7 +4,9 @@
 # Yönetici gerektirmeyenler: -List, -ExportProfile, -ExportLayout, -Version (indirilen sürüm kendi yükseltir).
 # Diğer her şey yönetici ister: dosyadan çalıştıysa UAC ile kendini aynı parametrelerle yeniden başlatır; irm | iex
 # ile (dosyasız) çalıştıysa yükseltemez, get.ps1 tek satırını önerir.
-# Yükseltme farklı bir yönetici hesabıyla yapılırsa HKCU o hesabınkidir: araç kendi hesabınızda (yönetici) çalışmalı.
+# Yükseltme farklı bir yönetici hesabıyla yapılırsa HKCU o hesabınkidir: yönetici işi durur (3), -AllowOtherUser ile
+# bilerek sürer; masaüstü sahibi bulunamazsa uyarıp sürer (Test-FaiSessionUser). Önizleme (-DryRun) de denetlenir.
+# Yeniden başlatmalarda (UAC, -Version, devam komutu) göreli yol argümanları mutlak yapılır (ConvertTo-FaiAbsoluteBound).
 
 function Get-FaiRepoUrl { return 'https://github.com/MrFedai/FAI_WinOP' }
 
@@ -68,6 +70,114 @@ function Test-FaiIsAdmin {
     <# .SYNOPSIS  Süreç yükseltilmiş yönetici olarak mı çalışıyor. #>
     $id = [Security.Principal.WindowsIdentity]::GetCurrent()
     return ([Security.Principal.WindowsPrincipal]::new($id)).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function Test-FaiSessionUser {
+    <#
+    .SYNOPSIS
+        Süreci çalıştıran hesap = masaüstü oturumunun sahibi mi. SID'ler varsa SID, yoksa ad (büyük / küçük harf
+        duyarsız) karşılaştırılır.
+    .OUTPUTS
+        @{ Status = 'Same' | 'Other' | 'Unknown' (sahip bulunamadı); Process = <süreç hesabı>; Owner = <sahip> }
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param([Parameter(Mandatory = $true)] [ISessionUserProvider] $Provider)
+
+    $proc = $Provider.GetProcessUser()
+    $owner = $Provider.GetSessionOwner()
+    $procName = ''
+    $procSid = ''
+    if ($null -ne $proc) { $procName = [string]$proc['Name']; $procSid = [string]$proc['Sid'] }
+    $ownerName = ''
+    $ownerSid = ''
+    if ($null -ne $owner) { $ownerName = [string]$owner['Name']; $ownerSid = [string]$owner['Sid'] }
+    $result = @{ Status = 'Unknown'; Process = $procName; Owner = $ownerName }
+    if ($procSid -and $ownerSid) { $same = ($procSid -eq $ownerSid) }
+    elseif ($procName -and $ownerName) { $same = ($procName -eq $ownerName) }
+    else { return $result }
+    if ($same) { $result['Status'] = 'Same' } else { $result['Status'] = 'Other' }
+    return $result
+}
+
+function Get-FaiWorkingDir {
+    <# .SYNOPSIS  Geçerli çalışma klasörü (göreli yolların tabanı). #>
+    return (Get-Location).ProviderPath
+}
+
+function ConvertTo-FaiAbsolutePath {
+    <#
+    .SYNOPSIS
+        Windows yolunu BaseDir'e göre mutlak yapar ve '.' / '..' parçalarını çözer (platformdan bağımsız: birim testleri
+        Linux'ta da aynı sonucu verir). Mutlak yol (C:\..., \\sunucu\pay\...) yalnız düzgünleştirilir; '\x' BaseDir'in
+        sürücüsüne göredir. Çözülemeyen biçim olduğu gibi döner.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)] [string] $Path,
+        [Parameter(Mandatory = $true)] [string] $BaseDir
+    )
+
+    $p = $Path.Trim()
+    $base = $BaseDir.Trim()
+    if ($p -match '^[A-Za-z]:[\\/]' -or $p -match '^[\\/]{2}') { $full = $p }
+    elseif ($p -match '^[A-Za-z]:') { return $p }
+    elseif ($p -match '^[\\/]') {
+        if ($base -notmatch '^[A-Za-z]:') { return $p }
+        $full = $base.Substring(0, 2) + $p
+    }
+    else { $full = $base.TrimEnd('\', '/') + '\' + $p }
+
+    if ($full -match '^[\\/]{2}([^\\/]+)[\\/]([^\\/]+)(.*)$') {
+        $prefix = '\\' + $Matches[1] + '\' + $Matches[2]
+        $rest = $Matches[3]
+    }
+    elseif ($full -match '^([A-Za-z]:)(.*)$') {
+        $prefix = $Matches[1]
+        $rest = $Matches[2]
+    }
+    else { return $p }
+
+    $parts = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($seg in ($rest -split '[\\/]')) {
+        if ($seg -eq '' -or $seg -eq '.') { continue }
+        if ($seg -eq '..') {
+            if ($parts.Count -gt 0) { $parts.RemoveAt($parts.Count - 1) }
+            continue
+        }
+        $parts.Add($seg)
+    }
+    return ($prefix + '\' + ($parts -join '\'))
+}
+
+function ConvertTo-FaiAbsoluteBound {
+    <#
+    .SYNOPSIS
+        Yeniden başlatma (UAC, -Version, devam komutu) için parametre kopyası: yol alan değerler mutlak. Yeni süreç
+        farklı çalışma klasöründe başlayabilir (UAC: System32). Yol sayılan: -Profile (URL değil; .json, '\' / '/'
+        içeren ya da var olan dosya) ve -ExportProfile (.json ya da '\' / '/' içeren). Ad (gömülü profil, dışa aktarma
+        adı) ve URL olduğu gibi kalır.
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param(
+        [Parameter(Mandatory = $true)] [System.Collections.IDictionary] $Bound,
+        [string] $BaseDir = ''
+    )
+
+    if (-not $BaseDir) { $BaseDir = Get-FaiWorkingDir }
+    $out = @{}
+    foreach ($k in @($Bound.Keys)) { $out[[string]$k] = $Bound[$k] }
+    foreach ($key in @('Profile', 'FaiProfile', 'ExportProfile')) {
+        if (-not $out.ContainsKey($key)) { continue }
+        $v = [string]$out[$key]
+        if (-not $v -or $v -match '^[a-zA-Z][a-zA-Z0-9+.-]*://') { continue }
+        $isPath = $v -like '*.json' -or $v.Contains('\') -or $v.Contains('/')
+        if (-not $isPath -and $key -ne 'ExportProfile') { $isPath = Test-Path -LiteralPath $v -PathType Leaf }
+        if ($isPath) { $out[$key] = ConvertTo-FaiAbsolutePath -Path $v -BaseDir $BaseDir }
+    }
+    return $out
 }
 
 function Split-FaiList {
@@ -430,7 +540,7 @@ function Get-FaiResumeCommand {
     <#
     .SYNOPSIS
         Yeniden başlatma sonrası devam komutu (HKLM RunOnce): betiği %ProgramData%\FAI_WinOP\shared\install.ps1'e kopyalar,
-        aynı parametrelerle (yerel profil yolu mutlak) çalıştıran powershell.exe satırını döndürür. shared\ yalnız
+        aynı parametrelerle (yol argümanları mutlak: ConvertTo-FaiAbsoluteBound) çalıştıran powershell.exe satırını döndürür. shared\ yalnız
         yöneticinin yazdığı, Users'ın okuyabildiği yer (RunOnce yükseltilmemiş başlarsa betik okunup yükseltme istenir).
     #>
     [CmdletBinding()]
@@ -447,15 +557,15 @@ function Get-FaiResumeCommand {
     if ([System.IO.Path]::GetFullPath($ScriptPath) -ne [System.IO.Path]::GetFullPath($target)) {
         Copy-Item -LiteralPath $ScriptPath -Destination $target -Force
     }
-    $args2 = ConvertTo-FaiArgumentString -Bound $Bound -Exclude @('Version')
+    $args2 = ConvertTo-FaiArgumentString -Bound (ConvertTo-FaiAbsoluteBound -Bound $Bound) -Exclude @('Version')
     return ('powershell.exe -NoProfile -ExecutionPolicy Bypass -File "{0}" {1}' -f $target, $args2).TrimEnd()
 }
 
 function Invoke-FaiElevated {
     <#
     .SYNOPSIS
-        Betiği yönetici olarak (UAC) aynı parametrelerle yeni pencerede başlatır. Pencere açık kalır (-NoExit: rapor
-        okunur); bu süreç beklemez. UAC reddedilirse 3.
+        Betiği yönetici olarak (UAC) aynı parametrelerle yeni pencerede başlatır (yol argümanları mutlak: yükseltilmiş
+        süreç System32'de başlar). Pencere açık kalır (-NoExit: rapor okunur); bu süreç beklemez. UAC reddedilirse 3.
     #>
     [CmdletBinding()]
     param(
@@ -463,7 +573,7 @@ function Invoke-FaiElevated {
         [Parameter(Mandatory = $true)] [System.Collections.IDictionary] $Bound
     )
 
-    $argLine = '-NoProfile -ExecutionPolicy Bypass -NoExit -File "{0}" {1}' -f $ScriptPath, (ConvertTo-FaiArgumentString -Bound $Bound)
+    $argLine = '-NoProfile -ExecutionPolicy Bypass -NoExit -File "{0}" {1}' -f $ScriptPath, (ConvertTo-FaiArgumentString -Bound (ConvertTo-FaiAbsoluteBound -Bound $Bound))
     Write-Host 'Yönetici izni isteniyor (UAC)...' -ForegroundColor Yellow
     try { Start-Process -FilePath 'powershell.exe' -ArgumentList $argLine -Verb RunAs | Out-Null }
     catch {
@@ -480,7 +590,7 @@ function Invoke-FaiCli {
         install.ps1 parametrelerini işler; çıkış kodu döndürür.
     .PARAMETER Bound
         Giriş betiğinin $PSBoundParameters'ı (Profile, DryRun, Unattended, Undo, Session, SkipFailed, Only, Skip, UpdatesOn,
-        UpdatesOff, ExportProfile, ExportLayout, Version, List).
+        UpdatesOff, ExportProfile, ExportLayout, Version, List, AllowOtherUser).
     .PARAMETER ScriptPath
         Betik dosyası (irm | iex ile çalıştıysa boş): yükseltme ve yeniden başlatma sonrası devam için.
     .PARAMETER Context
@@ -489,6 +599,8 @@ function Invoke-FaiCli {
         Testler: tweak kataloğu (boşsa gömülü veri).
     .PARAMETER AppCatalog
         Testler: uygulama kataloğu (Catalog verildiyse bu da kullanılır; boş olabilir).
+    .PARAMETER SessionUser
+        Testler: oturum kullanıcısı sağlayıcısı (Context verilip bu verilmezse oturum sahibi denetimi yapılmaz).
     #>
     [CmdletBinding()]
     param(
@@ -496,7 +608,8 @@ function Invoke-FaiCli {
         [string] $ScriptPath = '',
         [ExecutionContext] $Context,
         [hashtable] $Catalog,
-        [hashtable] $AppCatalog
+        [hashtable] $AppCatalog,
+        [ISessionUserProvider] $SessionUser
     )
 
     # Giriş betiği -Profile'ı FaiProfile adıyla bağlar; içeride (ve yeniden başlatma satırında) 'Profile' kullanılır.
@@ -549,7 +662,7 @@ function Invoke-FaiCli {
             $tag = 'v' + $wanted.TrimStart('v')
             $dest = Join-Path $env:TEMP ('FAI_WinOP\install-{0}.ps1' -f $tag)
             $path = Get-FaiVerifiedScript -BaseUrl ('{0}/releases/download/{1}' -f (Get-FaiRepoUrl), $tag) -Destination $dest
-            $argLine = ConvertTo-FaiArgumentString -Bound $o -Exclude @('Version')
+            $argLine = ConvertTo-FaiArgumentString -Bound (ConvertTo-FaiAbsoluteBound -Bound $o) -Exclude @('Version')
             $p = Start-Process -FilePath 'powershell.exe' -ArgumentList ('-NoProfile -ExecutionPolicy Bypass -File "{0}" {1}' -f $path, $argLine) -NoNewWindow -PassThru -Wait
             return [int]$p.ExitCode
         }
@@ -574,6 +687,28 @@ function Invoke-FaiCli {
             return 3
         }
 
+        # Yükseltilmiş hesap masaüstü oturumunun sahibi değilse HKCU, masaüstü ve sabitlemeler yanlış profile gider.
+        $sessionWarning = ''
+        if ($needsAdmin) {
+            if ($null -eq $SessionUser -and -not $injected) { $SessionUser = [WindowsSessionUserProvider]::new() }
+            if ($null -ne $SessionUser) {
+                $who = Test-FaiSessionUser -Provider $SessionUser
+                if ($who['Status'] -eq 'Other') {
+                    if (-not (& $flag 'AllowOtherUser')) {
+                        Write-Host ("DURDU: araç '{0}' hesabıyla yükseltilmiş çalışıyor, masaüstü oturumunun sahibi '{1}'." -f $who['Process'], $who['Owner']) -ForegroundColor Red
+                        Write-Host ("HKCU ayarları, masaüstü ve görev çubuğu / Başlat sabitlemeleri '{0}' profiline yazılır (önizleme de onun HKCU'sunu okur); '{1}' için uygulanmaz." -f $who['Process'], $who['Owner']) -ForegroundColor Red
+                        Write-Host ("Çözüm: '{0}' hesabını yönetici yapıp onunla çalıştırın. Bilerek '{1}' profiline uygulamak için: -AllowOtherUser" -f $who['Owner'], $who['Process'])
+                        return 3
+                    }
+                    $sessionWarning = "-AllowOtherUser: '{0}' oturumunda '{1}' hesabıyla sürüyor; HKCU, masaüstü ve sabitlemeler '{1}' profiline gider" -f $who['Owner'], $who['Process']
+                }
+                elseif ($who['Status'] -eq 'Unknown') {
+                    $sessionWarning = "masaüstü oturumunun sahibi bulunamadı; '{0}' hesabıyla sürüyor (oturum sahibi bu hesap değilse HKCU, masaüstü ve sabitlemeler yanlış profile gider)" -f $who['Process']
+                }
+                if ($sessionWarning) { Write-Host ('UYARI: ' + $sessionWarning) -ForegroundColor Yellow }
+            }
+        }
+
         if (-not $injected) {
             # Yönetici işi: veri klasörü önce korunur (izin + güvenilmeyen öğeler kenara), günlük ve yedek oraya.
             # -ExportProfile / -ExportLayout (yönetici olarak çalışsa da) ProgramData'ya dokunmaz: kullanıcının klasörü.
@@ -594,6 +729,7 @@ function Invoke-FaiCli {
         }
         $Context.DryRun = (& $flag 'DryRun')
         $Context.Unattended = (& $flag 'Unattended')
+        if ($sessionWarning) { $Context.Logger.Warn('oturum: ' + $sessionWarning) }
 
         $exportName = & $text 'ExportProfile'
         if ($exportName) {
@@ -630,10 +766,8 @@ function Invoke-FaiCli {
             if ($ScriptPath -and -not $Context.DryRun -and -not $injected) {
                 $resume = @{}
                 # -Session'ı motor ekler (açtığı ya da devam ettiği oturumun kimliği).
+                # Yol argümanlarını Get-FaiResumeCommand mutlak yapar.
                 foreach ($k in $o.Keys) { if ($k -ne 'Session') { $resume[$k] = $o[$k] } }
-                if ($profileSpec -and (Test-Path -LiteralPath $profileSpec -PathType Leaf)) {
-                    $resume['Profile'] = (Resolve-Path -LiteralPath $profileSpec).Path
-                }
                 $Context.ResumeCommand = Get-FaiResumeCommand -ScriptPath $ScriptPath -Bound $resume
             }
             $report = Invoke-FaiEngine -FaiProfile $fp -Session (& $text 'Session') -Context $Context -Catalog $Catalog -AppCatalog $AppCatalog -AllowTools:($only.Count -gt 0)

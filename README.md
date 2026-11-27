@@ -20,8 +20,14 @@ yalnız SYSTEM + Administrators'ın yazabildiği klasöre kopyalar, özeti orada
 İmza / attestation sonraki sürümlere bırakıldı. `FAI_WINOP_BASEURL` (yalnız test) yalnız `https://` ya da
 `http://localhost` / `http://127.0.0.1` kabul eder.
 Profil yoksa Türkçe menü açılır. Diğer parametreler: `-Unattended`, `-Undo [-Session <kimlik>] [-SkipFailed]` (geri alınamayan kayıtları atlayıp oturumu kapatır), `-Only` / `-Skip`,
-`-UpdatesOn` / `-UpdatesOff`, `-ExportProfile <ad>`, `-ExportLayout`, `-Version vX.Y.Z`, `-List`
+`-UpdatesOn` / `-UpdatesOff`, `-ExportProfile <ad>`, `-ExportLayout`, `-Version vX.Y.Z`, `-List`, `-AllowOtherUser`
 (`Get-Help .\install.ps1 -Detailed`). Tweak, katalog ve profil verisi `install.ps1`'e gömülüdür.
+
+**Başka hesapla yükseltme:** UAC'de başka bir yönetici hesabının bilgileri girilirse araç o hesapla çalışır; HKCU ayarları,
+masaüstü ve görev çubuğu / Başlat sabitlemeleri oturum sahibinin değil, o hesabın profiline gider. Bu durumda yönetici
+gerektiren her iş (önizleme `-DryRun` dahil) kim yükseltti / oturum sahibi kim yazarak durur (çıkış 3). Bilerek sürdürmek
+için `-AllowOtherUser`. Oturum sahibi bulunamazsa uyarıp sürer. `-List`, `-ExportProfile`, `-ExportLayout` denetlenmez.
+Yeniden başlatmalarda (UAC, `-Version`, yeniden başlatma sonrası devam) `-Profile .\x.json` gibi göreli yollar mutlak yapılır.
 
 ## İlkeler
 - **Ayarlar veri, motor sınıf:** her tweak bir `.psd1` dosyası (açıklama, risk seviyesi, koşullar, eylemler).

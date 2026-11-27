@@ -1,4 +1,4 @@
-﻿# Sahte dosya, kısayol, güç, betik, ses ve zamanlayıcı sağlayıcıları. Yazma çağrıları sayılır ve kaydedilir.
+﻿# Sahte dosya, kısayol, güç, betik, ses, oturum kullanıcısı ve zamanlayıcı sağlayıcıları. Yazma çağrıları sayılır ve kaydedilir.
 
 class FakeFileProvider : IFileProvider {
     # küçük harf yol → @{ Path; Bytes }
@@ -332,6 +332,22 @@ class FakeAudioProvider : IAudioProvider {
         if (-not $this.Device) { throw 'Ses çıkış aygıtı yok' }
         $this.Muted = $Mute
     }
+}
+
+# Sahte oturum kullanıcısı: varsayılan süreç = masaüstü sahibi (aynı hesap). Owner = $null → sahip bulunamadı.
+class FakeSessionUserProvider : ISessionUserProvider {
+    [hashtable] $Process = @{ Name = 'PC\fai'; Sid = 'S-1-5-21-1-2-3-1001' }
+    [hashtable] $Owner = @{ Name = 'PC\fai'; Sid = 'S-1-5-21-1-2-3-1001' }
+
+    FakeSessionUserProvider() { }
+
+    FakeSessionUserProvider([hashtable] $Process, [hashtable] $Owner) {
+        $this.Process = $Process
+        $this.Owner = $Owner
+    }
+
+    [hashtable] GetProcessUser() { return $this.Process }
+    [hashtable] GetSessionOwner() { return $this.Owner }
 }
 
 class FakeTimerResolutionProvider : ITimerResolutionProvider {

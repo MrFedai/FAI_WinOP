@@ -139,6 +139,39 @@ class WindowsMemoryAgentProvider : IMemoryAgentProvider {
     }
 }
 
+# Oturum kullanıcısı: süreç hesabı WindowsIdentity'den; masaüstü sahibi bu sürecin oturumundaki explorer.exe'nin
+# sahibi (CIM Win32_Process GetOwner / GetOwnerSid). UAC yükseltmesi aynı oturumda kalır; RDP oturumu da kendi
+# kabuğuyla eşleşir. Kabuk yoksa (ör. oturum açılırken RunOnce) sahip bulunamaz: $null.
+class WindowsSessionUserProvider : ISessionUserProvider {
+    WindowsSessionUserProvider() { }
+
+    [hashtable] GetProcessUser() {
+        $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+        try {
+            $sidText = ''
+            if ($null -ne $id.User) { $sidText = [string]$id.User.Value }
+            return @{ Name = [string]$id.Name; Sid = $sidText }
+        }
+        finally { $id.Dispose() }
+    }
+
+    [hashtable] GetSessionOwner() {
+        $sessionId = [System.Diagnostics.Process]::GetCurrentProcess().SessionId
+        $filter = "Name='explorer.exe' AND SessionId={0}" -f $sessionId
+        foreach ($p in @(Get-CimInstance -ClassName Win32_Process -Filter $filter -ErrorAction SilentlyContinue)) {
+            $owner = Invoke-CimMethod -InputObject $p -MethodName GetOwner -ErrorAction SilentlyContinue
+            if ($null -eq $owner -or [int]$owner.ReturnValue -ne 0 -or -not [string]$owner.User) { continue }
+            $name = [string]$owner.User
+            if ([string]$owner.Domain) { $name = '{0}\{1}' -f $owner.Domain, $owner.User }
+            $sidText = ''
+            $sidResult = Invoke-CimMethod -InputObject $p -MethodName GetOwnerSid -ErrorAction SilentlyContinue
+            if ($null -ne $sidResult -and [int]$sidResult.ReturnValue -eq 0) { $sidText = [string]$sidResult.Sid }
+            return @{ Name = $name; Sid = $sidText }
+        }
+        return $null
+    }
+}
+
 class WindowsPromptProvider : IPromptProvider {
     WindowsPromptProvider() { }
 

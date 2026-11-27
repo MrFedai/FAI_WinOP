@@ -309,3 +309,13 @@ class IFileSecurityProvider {
         return ([IFileSecurityProvider]::TrustedOwnerSid -contains $this.GetOwnerSid($Path))
     }
 }
+
+# Oturum kullanıcısı (salt okunur): yükseltilmiş süreç başka hesapla çalışıyorsa HKCU, masaüstü ve sabitlemeler o
+# hesabın profiline gider. Kullanıcı = @{ Name = 'MAKINE\ad'; Sid = 'S-1-5-21-...' } (Sid okunamazsa boş metin).
+# Kullanım: src/Cli.ps1 Test-FaiSessionUser.
+class ISessionUserProvider {
+    # Bu süreci çalıştıran hesap (UAC'de yükselten hesap).
+    [hashtable] GetProcessUser() { throw [System.NotImplementedException]::new('ISessionUserProvider.GetProcessUser') }
+    # Bu sürecin oturumundaki etkileşimli masaüstünün (kabuk) sahibi; bulunamazsa $null.
+    [hashtable] GetSessionOwner() { throw [System.NotImplementedException]::new('ISessionUserProvider.GetSessionOwner') }
+}

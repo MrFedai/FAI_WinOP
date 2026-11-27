@@ -251,6 +251,134 @@ Describe 'Invoke-FaiCli' {
     }
 }
 
+Describe 'Oturum sahibi denetimi (3.1)' {
+    BeforeAll {
+        $script:Me = @{ Name = 'PC\fai'; Sid = 'S-1-5-21-1-2-3-1001' }
+        $script:Other = @{ Name = 'PC\yonetici'; Sid = 'S-1-5-21-1-2-3-500' }
+        function New-SessionUser([hashtable] $Process, [AllowNull()] [hashtable] $Owner) {
+            return [FakeSessionUserProvider]::new($Process, $Owner)
+        }
+    }
+
+    It 'Test-FaiSessionUser: SID varsa SID, yoksa ad (harf duyarsız); sahip yoksa Unknown' {
+        (Test-FaiSessionUser -Provider (New-SessionUser $script:Me $script:Me))['Status'] | Should -Be 'Same'
+        $r = Test-FaiSessionUser -Provider (New-SessionUser $script:Other $script:Me)
+        $r['Status'] | Should -Be 'Other'
+        $r['Process'] | Should -Be 'PC\yonetici'
+        $r['Owner'] | Should -Be 'PC\fai'
+        (Test-FaiSessionUser -Provider (New-SessionUser @{ Name = 'PC\FAI'; Sid = '' } @{ Name = 'pc\fai'; Sid = '' }))['Status'] | Should -Be 'Same'
+        (Test-FaiSessionUser -Provider (New-SessionUser $script:Me $null))['Status'] | Should -Be 'Unknown'
+    }
+
+    It 'aynı kullanıcı → sürer' {
+        $ctx = New-Env
+        $path = Write-Profile 'oturum1' @('ui.alpha')
+        $code = Invoke-Quiet { Invoke-FaiCli -Bound @{ Profile = $path } -Context $ctx -Catalog (New-TestCatalog) -SessionUser (New-SessionUser $script:Me $script:Me) }
+        $code | Should -Be 0
+        $ctx.Registry.GetValue($script:Key, 'Alpha') | Should -Be 1
+        $ctx.Logger.Count('WARN') | Should -Be 0
+    }
+
+    It 'farklı kullanıcı → durur (3), hiçbir yazma yok; -DryRun da durur' {
+        $path = Write-Profile 'oturum2' @('ui.alpha')
+        foreach ($b in @(@{ Profile = $path }, @{ Profile = $path; DryRun = $true }, @{ Undo = $true })) {
+            $ctx = New-Env
+            $code = Invoke-Quiet { Invoke-FaiCli -Bound $b -Context $ctx -Catalog (New-TestCatalog) -SessionUser (New-SessionUser $script:Other $script:Me) }
+            $code | Should -Be 3
+            $ctx.Registry.WriteCount | Should -Be 0
+        }
+    }
+
+    It 'farklı kullanıcı + -AllowOtherUser → sürer, günlüğe uyarı' {
+        $ctx = New-Env
+        $path = Write-Profile 'oturum3' @('ui.alpha')
+        $bound = @{ Profile = $path; AllowOtherUser = [System.Management.Automation.SwitchParameter]::new($true) }
+        $code = Invoke-Quiet { Invoke-FaiCli -Bound $bound -Context $ctx -Catalog (New-TestCatalog) -SessionUser (New-SessionUser $script:Other $script:Me) }
+        $code | Should -Be 0
+        $ctx.Registry.GetValue($script:Key, 'Alpha') | Should -Be 1
+        @($ctx.Logger.Entries | Where-Object { $_.Level -eq 'WARN' -and $_.Message -match 'AllowOtherUser' -and $_.Message -match 'yonetici' }).Count | Should -Be 1
+    }
+
+    It 'oturum sahibi bulunamadı → uyarır ve sürer' {
+        $ctx = New-Env
+        $path = Write-Profile 'oturum4' @('ui.alpha')
+        $code = Invoke-Quiet { Invoke-FaiCli -Bound @{ Profile = $path } -Context $ctx -Catalog (New-TestCatalog) -SessionUser (New-SessionUser $script:Me $null) }
+        $code | Should -Be 0
+        $ctx.Registry.GetValue($script:Key, 'Alpha') | Should -Be 1
+        @($ctx.Logger.Entries | Where-Object { $_.Level -eq 'WARN' -and $_.Message -match 'bulunamadı' }).Count | Should -Be 1
+    }
+
+    It 'yönetici gerektirmeyen yollar (-List, -ExportProfile) denetlenmez' {
+        $other = New-SessionUser $script:Other $script:Me
+        Invoke-Quiet { Invoke-FaiCli -Bound @{ List = $true } -Context (New-Env) -Catalog (New-TestCatalog) -SessionUser $other } | Should -Be 0
+        $out = Join-Path $TestDrive 'oturum-disa.json'
+        Invoke-Quiet { Invoke-FaiCli -Bound @{ ExportProfile = $out } -Context (New-Env) -Catalog (New-TestCatalog) -SessionUser $other } | Should -Be 0
+        Test-Path -LiteralPath $out | Should -BeTrue
+    }
+}
+
+Describe 'Yeniden başlatmada mutlak yollar (3.2)' {
+    BeforeAll {
+        $script:Cwd = 'C:\Users\fai\Desktop'
+    }
+
+    It 'ConvertTo-FaiAbsolutePath: göreli, .., kök göreli, mutlak, UNC' {
+        ConvertTo-FaiAbsolutePath -Path '.\x.json' -BaseDir $script:Cwd | Should -Be 'C:\Users\fai\Desktop\x.json'
+        ConvertTo-FaiAbsolutePath -Path 'p/x.json' -BaseDir $script:Cwd | Should -Be 'C:\Users\fai\Desktop\p\x.json'
+        ConvertTo-FaiAbsolutePath -Path '..\..\p\x.json' -BaseDir "$script:Cwd\" | Should -Be 'C:\Users\p\x.json'
+        ConvertTo-FaiAbsolutePath -Path '\p\x.json' -BaseDir $script:Cwd | Should -Be 'C:\p\x.json'
+        ConvertTo-FaiAbsolutePath -Path 'D:\a\.\b\..\x.json' -BaseDir $script:Cwd | Should -Be 'D:\a\x.json'
+        ConvertTo-FaiAbsolutePath -Path '\\srv\pay\x.json' -BaseDir $script:Cwd | Should -Be '\\srv\pay\x.json'
+    }
+
+    It 'ConvertTo-FaiAbsoluteBound: yol alanlar mutlak; ad, URL ve diğer parametreler aynen' {
+        $b = @{ Profile = '.\x.json'; ExportProfile = 'disa\ev.json'; Only = @('a'); Session = 'abc' }
+        $r = ConvertTo-FaiAbsoluteBound -Bound $b -BaseDir $script:Cwd
+        $r['Profile'] | Should -Be 'C:\Users\fai\Desktop\x.json'
+        $r['ExportProfile'] | Should -Be 'C:\Users\fai\Desktop\disa\ev.json'
+        $r['Session'] | Should -Be 'abc'
+        $b['Profile'] | Should -Be '.\x.json'
+        (ConvertTo-FaiAbsoluteBound -Bound @{ Profile = 'fedai'; ExportProfile = 'ev' } -BaseDir $script:Cwd)['Profile'] | Should -Be 'fedai'
+        (ConvertTo-FaiAbsoluteBound -Bound @{ ExportProfile = 'ev' } -BaseDir $script:Cwd)['ExportProfile'] | Should -Be 'ev'
+        (ConvertTo-FaiAbsoluteBound -Bound @{ Profile = 'https://x/y.json' } -BaseDir $script:Cwd)['Profile'] | Should -Be 'https://x/y.json'
+    }
+
+    It 'UAC (Invoke-FaiElevated): göreli -Profile mutlak argüman dizesine girer' {
+        Mock Get-FaiWorkingDir { return 'C:\Users\fai\Desktop' }
+        Mock Start-Process { $script:Started = $ArgumentList }
+        $script:Started = ''
+        $code = Invoke-Quiet { Invoke-FaiElevated -ScriptPath 'C:\t\install.ps1' -Bound @{ Profile = '.\x.json'; DryRun = $true } }
+        $code | Should -Be 0
+        $script:Started | Should -Be '-NoProfile -ExecutionPolicy Bypass -NoExit -File "C:\t\install.ps1" -DryRun -Profile "C:\Users\fai\Desktop\x.json"'
+    }
+
+    It '-Version yeniden başlatması: göreli -Profile / -ExportProfile mutlak, -Version yok' {
+        Mock Get-FaiWorkingDir { return 'C:\Users\fai\Desktop' }
+        Mock Get-FaiVerifiedScript { return 'C:\t\install-v0.0.1.ps1' }
+        Mock Start-Process { $script:Started = $ArgumentList; return [pscustomobject]@{ ExitCode = 0 } }
+        $script:Started = ''
+        $oldTemp = $env:TEMP
+        $env:TEMP = $TestDrive
+        try {
+            $code = Invoke-Quiet { Invoke-FaiCli -Bound @{ Version = 'v0.0.1'; FaiProfile = '..\p\x.json'; DryRun = $true } -Context (New-Env) -Catalog (New-TestCatalog) }
+            $code | Should -Be 0
+            $script:Started | Should -Be '-NoProfile -ExecutionPolicy Bypass -File "C:\t\install-v0.0.1.ps1" -DryRun -Profile "C:\Users\fai\p\x.json"'
+            $code = Invoke-Quiet { Invoke-FaiCli -Bound @{ Version = 'v0.0.1'; ExportProfile = '.\ev.json' } -Context (New-Env) -Catalog (New-TestCatalog) }
+            $code | Should -Be 0
+            $script:Started | Should -BeLike '* -ExportProfile "C:\Users\fai\Desktop\ev.json"'
+        }
+        finally { $env:TEMP = $oldTemp }
+    }
+
+    It 'devam komutu (Get-FaiResumeCommand): göreli -Profile mutlak' {
+        Mock Get-FaiWorkingDir { return 'C:\Users\fai\Desktop' }
+        $src = Join-Path $TestDrive 'resume-rel.ps1'
+        [System.IO.File]::WriteAllText($src, '# betik')
+        $cmd = Get-FaiResumeCommand -ScriptPath $src -Bound @{ Profile = '.\x.json'; Unattended = $true } -DataDir (Join-Path $TestDrive 'resume-rel')
+        $cmd | Should -BeLike '* -Profile "C:\Users\fai\Desktop\x.json" -Unattended'
+    }
+}
+
 Describe 'Menü' {
     It 'ConvertFrom-FaiSelection: tek, liste, aralık; aralık dışı hata' {
         $a = ConvertFrom-FaiSelection -Text '3 1,2' -Count 5

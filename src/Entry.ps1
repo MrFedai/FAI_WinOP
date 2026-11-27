@@ -38,6 +38,9 @@
     Bu sürümü (vX.Y.Z) GitHub sürümünden indirir, SHA-256 doğrular ve onunla çalıştırır.
 .PARAMETER List
     Tweak'leri, uygulamaları ve gömülü profilleri listeler.
+.PARAMETER AllowOtherUser
+    Yükselten yönetici hesabı masaüstü oturumunun sahibi değilse araç durur (HKCU, masaüstü ve sabitlemeler yükselten
+    hesabın profiline gider). Bu anahtarla bilerek o hesabın profiline uygulanır. -DryRun da aynı denetimden geçer.
 
 .EXAMPLE
     .\install.ps1 -Profile fedai -DryRun
@@ -62,7 +65,8 @@ param(
     [string] $ExportProfile = '',
     [switch] $ExportLayout,
     [string] $Version = '',
-    [switch] $List
+    [switch] $List,
+    [switch] $AllowOtherUser
 )
 
 # Nokta-kaynak (birim testleri, Load-Bundle) yalnız tanımları yükler, çalıştırmaz.
