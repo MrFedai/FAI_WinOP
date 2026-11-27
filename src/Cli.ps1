@@ -479,7 +479,7 @@ function Invoke-FaiCli {
     .SYNOPSIS
         install.ps1 parametrelerini işler; çıkış kodu döndürür.
     .PARAMETER Bound
-        Giriş betiğinin $PSBoundParameters'ı (Profile, DryRun, Unattended, Undo, Session, Only, Skip, UpdatesOn,
+        Giriş betiğinin $PSBoundParameters'ı (Profile, DryRun, Unattended, Undo, Session, SkipFailed, Only, Skip, UpdatesOn,
         UpdatesOff, ExportProfile, ExportLayout, Version, List).
     .PARAMETER ScriptPath
         Betik dosyası (irm | iex ile çalıştıysa boş): yükseltme ve yeniden başlatma sonrası devam için.
@@ -527,7 +527,10 @@ function Invoke-FaiCli {
     elseif ($modes.Count -eq 1 -and $modes[0] -ne '-ExportLayout' -and ($profileSpec -or $only.Count -gt 0 -or $skip.Count -gt 0)) {
         $problem = "$($modes[0]) ile -Profile / -Only / -Skip kullanılamaz"
     }
-    elseif ((& $text 'Session') -and -not (& $flag 'Undo')) { $problem = '-Session yalnız -Undo ile' }
+    elseif ((& $text 'Session') -and -not (& $flag 'Undo') -and -not $profileSpec -and $only.Count -eq 0) {
+        $problem = '-Session yalnız -Undo ya da -Profile / -Only (devam) ile'
+    }
+    elseif ((& $flag 'SkipFailed') -and -not (& $flag 'Undo')) { $problem = '-SkipFailed yalnız -Undo ile' }
     elseif ($skip.Count -gt 0 -and -not $profileSpec) { $problem = '-Skip yalnız -Profile ile' }
     elseif ($modes.Count -eq 0 -and -not $profileSpec -and $only.Count -eq 0 -and (& $flag 'Unattended')) {
         $problem = 'Menü -Unattended ile açılamaz: -Profile ya da -Only verin'
@@ -613,7 +616,7 @@ function Invoke-FaiCli {
 
         $report = $null
         if (& $flag 'Undo') {
-            $report = Invoke-FaiEngine -Undo -Session (& $text 'Session') -Context $Context -Catalog $Catalog -AppCatalog $AppCatalog
+            $report = Invoke-FaiEngine -Undo -Session (& $text 'Session') -SkipFailed:(& $flag 'SkipFailed') -Context $Context -Catalog $Catalog -AppCatalog $AppCatalog
         }
         elseif ((& $flag 'UpdatesOn') -or (& $flag 'UpdatesOff')) {
             if (& $flag 'UpdatesOn') { $report = Invoke-FaiUpdatesSwitch -Context $Context -On }
@@ -626,13 +629,14 @@ function Invoke-FaiCli {
             else { $fp = New-FaiSelectionProfile -Ids $only -Catalog $Catalog -AppCatalog $AppCatalog }
             if ($ScriptPath -and -not $Context.DryRun -and -not $injected) {
                 $resume = @{}
-                foreach ($k in $o.Keys) { $resume[$k] = $o[$k] }
+                # -Session'ı motor ekler (açtığı ya da devam ettiği oturumun kimliği).
+                foreach ($k in $o.Keys) { if ($k -ne 'Session') { $resume[$k] = $o[$k] } }
                 if ($profileSpec -and (Test-Path -LiteralPath $profileSpec -PathType Leaf)) {
                     $resume['Profile'] = (Resolve-Path -LiteralPath $profileSpec).Path
                 }
                 $Context.ResumeCommand = Get-FaiResumeCommand -ScriptPath $ScriptPath -Bound $resume
             }
-            $report = Invoke-FaiEngine -FaiProfile $fp -Context $Context -Catalog $Catalog -AppCatalog $AppCatalog -AllowTools:($only.Count -gt 0)
+            $report = Invoke-FaiEngine -FaiProfile $fp -Session (& $text 'Session') -Context $Context -Catalog $Catalog -AppCatalog $AppCatalog -AllowTools:($only.Count -gt 0)
         }
         else {
             return (Invoke-FaiMenu -Context $Context -Catalog $Catalog -AppCatalog $AppCatalog)

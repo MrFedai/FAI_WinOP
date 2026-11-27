@@ -121,11 +121,12 @@ Profile (JSON)  ──►  Engine  ──►  Tweak (psd1 veri)  ──►  Acti
 
 ### 2.4 CLI
 ```
-install.ps1 [-Profile <ad|yol|url>] [-DryRun] [-Unattended] [-Undo [-Session <oturum>]]
+install.ps1 [-Profile <ad|yol|url>] [-DryRun] [-Unattended] [-Undo [-Session <oturum>] [-SkipFailed]]
             [-Only <id,...>] [-Skip <id,...>] [-UpdatesOn] [-UpdatesOff]
             [-ExportProfile <ad|yol>] [-ExportLayout] [-Version <vX.Y.Z>] [-List]
 ```
 - `-Undo [<oturum>]` PowerShell'de hem anahtar hem isteğe bağlı değer olamaz → `-Undo` + `-Session <oturum>` (Faz 8).
+- `-Undo -SkipFailed`: geri alınamayan kayıtlar atlanır, oturum kapanır (v0.1.1); verilmezse yeniden `-Undo` yalnız kalanları dener.
 - `-Profile` yoksa etkileşimli menü (kategori → onay kutulu liste, risk renkleriyle).
 - `-ExportLayout`: mevcut görev çubuğu sabitlemeleri + Başlat düzeni + masaüstü simgeleri profile yazılır.
 

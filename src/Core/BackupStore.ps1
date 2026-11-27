@@ -1,6 +1,10 @@
 ﻿# Snapshot deposu: her uygulama oturumu için bir JSON dosyası (<Root>\<oturum-kimliği>.json).
 # Her kayıt (entry) bir eylemin tanımını ve uygulamadan ÖNCE alınan snapshot'ını tutar; -Undo bunlardan eylemi
 # yeniden kurup ters sırada Revert çağırır. Oturum dosyası her kayıttan sonra diske yazılır (çökmeye dayanıklı).
+# Yazım atomik: aynı klasörde <kimlik>.json.tmp yazılıp diske boşaltılır, sonra File.Replace / Move ile yer değiştirir
+# (yarım yazılmış oturum dosyası kalmaz; Replace hedefin izinlerini korur, yeni dosya klasörün iznini devralır).
+# Geri alma kayıt başına işaretlenir (kayıtta UndoneAt): başarısız kayıt oturumu kilitlemez, yeniden denemede yalnız
+# kalanlar denenir. Atlanan (-SkipFailed) kayıtta UndoSkippedAt; oturum UndoneAt ile kapanır.
 
 class BackupSession {
     [string] $Id
@@ -8,6 +12,8 @@ class BackupSession {
     [string] $ProfileName
     [string] $Created
     [string] $UndoneAt = ''
+    # Bu nesnenin diske kaç kez yazıldığı (testler: eylem başına gereksiz ikinci tam yazım olmasın).
+    [int] $SaveCount = 0
     [System.Collections.ArrayList] $Entries = (New-Object System.Collections.ArrayList)
 
     BackupSession() { }
@@ -43,11 +49,39 @@ class BackupSession {
         $dir = Split-Path -Parent $this.Path
         if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
         $json = $this.ToHashtable() | ConvertTo-Json -Depth 20
-        [System.IO.File]::WriteAllText($this.Path, $json, (New-Object System.Text.UTF8Encoding($false)))
+        $bytes = (New-Object System.Text.UTF8Encoding($false)).GetBytes($json)
+        $tmp = $this.Path + '.tmp'
+        $fs = New-Object System.IO.FileStream($tmp, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+        try {
+            $fs.Write($bytes, 0, $bytes.Length)
+            # Yer değiştirmeden önce diske: güç kesilirse eski ya da yeni tam dosya kalır.
+            $fs.Flush($true)
+        }
+        finally { $fs.Dispose() }
+        # $null .NET string parametresine '' olarak geçer (Replace boş yolu reddeder): yedek dosyası yok = NullString.
+        if ([System.IO.File]::Exists($this.Path)) { [System.IO.File]::Replace($tmp, $this.Path, [NullString]::Value) }
+        else { [System.IO.File]::Move($tmp, $this.Path) }
+        $this.SaveCount++
     }
 
     [void] MarkUndone() {
         $this.UndoneAt = (Get-Date).ToString('s')
+        $this.Save()
+    }
+
+    # Kayıt geri alındı: hemen diske (yeniden denemede atlanır).
+    [void] MarkEntryUndone([int] $Index) {
+        $this.Entries[$Index]['UndoneAt'] = (Get-Date).ToString('s')
+        $this.Save()
+    }
+
+    [bool] IsEntryUndone([int] $Index) { return [bool]$this.Entries[$Index]['UndoneAt'] }
+
+    # Geri alınamayan kayıtlar atlanır ve oturum kapatılır (tek yazım).
+    [void] CloseSkipping([int[]] $Indexes) {
+        $now = (Get-Date).ToString('s')
+        foreach ($i in $Indexes) { $this.Entries[$i]['UndoSkippedAt'] = $now }
+        $this.UndoneAt = $now
         $this.Save()
     }
 
@@ -111,11 +145,15 @@ class BackupStore {
         if ($null -ne $this.Security -and -not $this.Security.IsTrusted($path)) {
             throw "Yedek oturumu güvenilmez (sahibi SYSTEM / Administrators değil ya da bağlantı), kullanılmadı: $path"
         }
-        $data = Read-JsonFile -Path $path
+        $data = $null
+        try { $data = Read-JsonFile -Path $path }
+        catch { throw "Yedek oturumu bozuk (okunamadı): $path — $($_.Exception.Message)" }
+        if ($data -isnot [hashtable] -or -not $data['Id']) { throw "Yedek oturumu bozuk (okunamadı): $path" }
         return [BackupSession]::FromHashtable($data, $path)
     }
 
-    # Geri alınmamış en son oturum; yoksa $null.
+    # Geri alınmamış en son oturum; yoksa $null. Güvenilmeyen ya da bozuk (yarım yazılmış) oturum uyarıyla
+    # (Warnings) atlanır, bir öncekine bakılır.
     [BackupSession] GetLatest() {
         $ids = $this.ListSessionIds()
         for ($i = $ids.Count - 1; $i -ge 0; $i--) {
@@ -126,7 +164,12 @@ class BackupStore {
                     continue
                 }
             }
-            $s = $this.Load($ids[$i])
+            $s = $null
+            try { $s = $this.Load($ids[$i]) }
+            catch {
+                $this.Warnings.Add("bozuk yedek oturumu atlandı: $($_.Exception.Message)")
+                continue
+            }
             if (-not $s.IsUndone()) { return $s }
         }
         return $null

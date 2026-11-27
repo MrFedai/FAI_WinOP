@@ -16,7 +16,11 @@
 .PARAMETER Undo
     Geri alınmamış son oturumu (ya da -Session ile verileni) geri alır.
 .PARAMETER Session
-    -Undo ile: oturum kimliği.
+    -Undo ile: oturum kimliği. -Profile / -Only ile: yarıda kalan bu oturuma devam (yeniden başlatma sonrası devam
+    komutu kendisi ekler; güvenilmez ya da geri alınmış oturuma yazılmaz, yeni oturum açılır).
+.PARAMETER SkipFailed
+    -Undo ile: geri alınamayan kayıtları atlar ve oturumu kapatır (atlananlar raporda). Verilmezse oturum açık kalır,
+    yeniden -Undo yalnız kalanları dener.
 .PARAMETER Only
     Yalnız bu tweak'ler (virgüllü). Profil yoksa yalnız bunlar çalışır; araç tweak'lerine (Tool) izin verir.
 .PARAMETER Skip
@@ -50,6 +54,7 @@ param(
     [switch] $Unattended,
     [switch] $Undo,
     [string] $Session = '',
+    [switch] $SkipFailed,
     [string[]] $Only = @(),
     [string[]] $Skip = @(),
     [switch] $UpdatesOn,

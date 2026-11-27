@@ -4,8 +4,13 @@
 #   -Undo    geri alınmamış son oturumun (ya da verilen oturumun) kayıtlarını TERS sırada Revert eder.
 # Profilin 'apps' listesi tweak'lerden ÖNCE (bildirim istisnaları, görev çubuğu sabitlemesi kurulu uygulama ister),
 # uygulama kataloğundan (apps/catalog.json) üretilen 'app.<id>' tweak'leri
-# olarak aynı yoldan işlenir. Eylem Apply sırasında snapshot'ına günlük ekleyebilir (App): oturum Apply'dan sonra
-# yeniden kaydedilir.
+# olarak aynı yoldan işlenir. Oturum dosyası eylem başına bir kez, snapshot ile uygulamadan ÖNCE yazılır; eylem Apply
+# sırasında snapshot'ına günlük eklediyse (App) Apply'dan sonra (hata verse de) bir kez daha yazılır, eklemediyse yazılmaz.
+# Devam (ResumeSessionId, yeniden başlatma sonrası RunOnce): yarıda kalan oturum BackupStore.Load denetiminden geçer
+# ve geri alınmamışsa ona eklenir; değilse uyarıyla yeni oturum açılır. Açılan oturumun kimliği devam komutuna
+# (-Session) yazılır: tek -Undo hepsini geri alır.
+# -Undo kayıt başına ilerler: geri alınan kayıt hemen işaretlenir, başarısız kayıt oturumu açık bırakır (yeniden
+# -Undo yalnız kalanları dener). SkipFailed ya da (etkileşimli kipte) onay: hatalılar atlanır, oturum kapanır.
 # Görünüm tweak'leri (Refresh: Shell, Desktop, Settings, StartMenu) uygulanınca / geri alınınca kabuk yenilemesi
 # çalıştırmanın SONUNDA, türü başına bir kez yapılır (Gezgin bir kez yeniden başlar). Profilin 'layout' bölümü
 # tweak'lerden SONRA 'layout.profile' tweak'i olarak işlenir (ConvertTo-FaiLayoutTweak).
@@ -27,6 +32,8 @@ class Engine {
     [System.Collections.Generic.List[string]] $PendingRefresh = (New-Object 'System.Collections.Generic.List[string]')
     # Araç tweak'lerine (Tool) izin: menü / -Only (Faz 8). Profil çalıştırmasında $false.
     [bool] $AllowTools = $false
+    # Devam: yarıda kalan bu oturuma eklenir (CLI -Session ile -Profile / -Only). Boşsa yeni oturum.
+    [string] $ResumeSessionId = ''
 
     Engine([ExecutionContext] $Ctx, [hashtable] $Catalog) {
         $this.Ctx = $Ctx
@@ -231,7 +238,7 @@ class Engine {
         }
 
         # 5b) gerçek uygulama: her eylem için snapshot → (diske yaz) → uygula
-        if ($null -eq $this.Session) { $this.Session = $cx.Backup.BeginSession($FaiProfile.Name) }
+        if ($null -eq $this.Session) { $this.Session = $this.OpenSession($FaiProfile.Name, $Report) }
         $lines = New-Object 'System.Collections.Generic.List[string]'
         for ($i = $pending[0]; $i -lt $tweak.Actions.Count; $i++) {
             $action = $tweak.Actions[$i]
@@ -243,16 +250,51 @@ class Engine {
             $this.Session.AddEntry($Id, $i, $action.Definition, $snapshot, $tweak.Refresh)
             # Yarıda kalsa da (hata) değişen görünüm yenilensin.
             $this.AddRefresh($tweak.Refresh)
-            $action.Apply($cx)
-            $this.Session.Save()
+            $before = ConvertTo-Json -InputObject $snapshot -Depth 20 -Compress
+            try { $action.Apply($cx) }
+            finally {
+                # Apply snapshot'a günlük eklediyse (App) yeniden yazılır; çoğu eylemde ikinci tam yazım olmaz.
+                if ((ConvertTo-Json -InputObject $snapshot -Depth 20 -Compress) -ne $before) { $this.Session.Save() }
+            }
             $lines.Add($action.Describe())
         }
         [void]$Report.Add($Id, $tweak.Title, 'Applied', '', $lines.ToArray())
         $cx.Logger.Info("${Id}: uygulandı ($($lines.Count) eylem)")
     }
 
+    # Uygulama oturumu: devam kimliği güvenilir ve geri alınmamış oturumu gösteriyorsa o, yoksa yeni oturum.
+    # Kimlik devam komutuna (ResumeCommand) yazılır: yeniden başlatma sonrası aynı oturuma eklenir.
+    hidden [BackupSession] OpenSession([string] $Name, [Reporter] $Report) {
+        $cx = $this.Ctx
+        $opened = $null
+        if ($this.ResumeSessionId) {
+            $why = ''
+            try {
+                $found = $cx.Backup.Load($this.ResumeSessionId)
+                if ($found.IsUndone()) { $why = 'geri alınmış' }
+                else { $opened = $found }
+            }
+            catch { $why = $_.Exception.Message }
+            if ($null -ne $opened) { $cx.Logger.Info("devam: kayıtlar oturum $($opened.Id) içine ekleniyor") }
+            else {
+                $msg = "devam oturumu $($this.ResumeSessionId) kullanılmadı ($why); yeni oturum açıldı"
+                $cx.Logger.Warn($msg)
+                [void]$Report.Add('(yedek)', 'Devam oturumu kullanılmadı', 'Skipped', $msg, [string[]]@())
+            }
+        }
+        if ($null -eq $opened) { $opened = $cx.Backup.BeginSession($Name) }
+        if ($cx.ResumeCommand) {
+            $cx.ResumeCommand = ($cx.ResumeCommand -replace ' -Session "[^"]*"', '') + (' -Session "{0}"' -f $opened.Id)
+        }
+        return $opened
+    }
+
     # SessionId boşsa geri alınmamış son oturum.
-    [Reporter] Undo([string] $SessionId) {
+    [Reporter] Undo([string] $SessionId) { return $this.Undo($SessionId, $false) }
+
+    # SkipFailed: geri alınamayan kayıtlar atlanır, oturum kapanır. Verilmezse etkileşimli kipte sorulur;
+    # -Unattended'da sorulmaz, oturum açık kalır (yeniden -Undo yalnız kalanları dener).
+    [Reporter] Undo([string] $SessionId, [bool] $SkipFailed) {
         $report = [Reporter]::new()
         $cx = $this.Ctx
         $this.PendingRefresh.Clear()
@@ -261,7 +303,7 @@ class Engine {
         else { $sess = $cx.Backup.GetLatest() }
         foreach ($w in $cx.Backup.Warnings) {
             $cx.Logger.Warn($w)
-            [void]$report.Add('(yedek)', 'Güvenilmeyen yedek oturumu kullanılmadı', 'Skipped', $w, [string[]]@())
+            [void]$report.Add('(yedek)', 'Yedek oturumu kullanılmadı (güvenilmez ya da bozuk)', 'Skipped', $w, [string[]]@())
         }
 
         if ($null -eq $sess) {
@@ -273,8 +315,13 @@ class Engine {
         else { $report.Heading = "Oturum $($sess.Id) — geri alma (ters sırada)" }
         $cx.Logger.Info($report.Heading)
 
+        $doneBefore = 0
+        $failed = New-Object 'System.Collections.Generic.List[int]'
+        $failedRows = New-Object System.Collections.ArrayList
         for ($i = $sess.Entries.Count - 1; $i -ge 0; $i--) {
             $e = $sess.Entries[$i]
+            # Önceki denemede geri alınan kayıt yeniden denenmez.
+            if ($sess.IsEntryUndone($i)) { $doneBefore++; continue }
             $id = [string]$e['TweakId']
             $title = '{0}. eylem' -f ([int]$e['ActionIndex'] + 1)
             try {
@@ -285,18 +332,44 @@ class Engine {
                 else {
                     $this.AddRefresh([string[]]@($e['Refresh'] | Where-Object { $_ }))
                     $action.Revert($cx, [hashtable]$e['Snapshot'])
+                    $sess.MarkEntryUndone($i)
                     [void]$report.Add($id, $title, 'Reverted', '', [string[]]@('önceki duruma döndürüldü: ' + $action.Describe()))
                 }
             }
             catch {
-                [void]$report.Add($id, $title, 'Failed', $_.Exception.Message, [string[]]@())
+                $failed.Add($i)
+                [void]$failedRows.Add($report.Add($id, $title, 'Failed', $_.Exception.Message, [string[]]@()))
                 $cx.Logger.Error("${id}: geri alınamadı: $($_.Exception.Message)")
             }
         }
+        if ($doneBefore -gt 0) {
+            [void]$report.Add('(oturum)', 'Önceki denemede geri alınan kayıtlar atlandı', 'Skipped', ('{0} kayıt' -f $doneBefore), [string[]]@())
+        }
 
         $this.RunRefresh($report)
-        # Başarısız adım varsa oturum geri alınmamış kalır (yeniden denenebilir).
-        if (-not $cx.DryRun -and -not $report.HasFailures()) { $sess.MarkUndone() }
+        if (-not $cx.DryRun) {
+            # Kalan kayıt yoksa oturum kapanır; varsa açık kalır (yeniden -Undo yalnız kalanları dener).
+            if ($failed.Count -eq 0) { $sess.MarkUndone() }
+            else {
+                $skip = $SkipFailed
+                if (-not $skip -and -not $cx.Unattended) {
+                    $names = @($failedRows | ForEach-Object { $_.TweakId } | Select-Object -Unique) -join ', '
+                    $skip = $cx.Prompt.Confirm(('{0} kayıt geri alınamadı ({1}). Hatalıları atla ve oturumu kapat? (Hayır: oturum açık kalır, -Undo yeniden yalnız kalanları dener)' -f $failed.Count, $names))
+                }
+                if ($skip) {
+                    $sess.CloseSkipping($failed.ToArray())
+                    foreach ($row in $failedRows) {
+                        $row.Status = 'Skipped'
+                        $row.Reason = 'geri alınamadı, atlandı: ' + $row.Reason
+                    }
+                    [void]$report.Add('(oturum)', 'Hatalı kayıtlar atlandı, oturum kapatıldı', 'Skipped', ('{0} kayıt geri alınmadan atlandı' -f $failed.Count), [string[]]@())
+                    $cx.Logger.Warn(('oturum {0} kapatıldı: {1} kayıt geri alınmadan atlandı' -f $sess.Id, $failed.Count))
+                }
+                else {
+                    $cx.Logger.Warn(('oturum {0} açık kaldı: {1} kayıt geri alınamadı; yeniden -Undo yalnız onları dener, atlamak için -Undo -SkipFailed' -f $sess.Id, $failed.Count))
+                }
+            }
+        }
         $cx.Logger.Info($report.Summary())
         return $report
     }
@@ -317,7 +390,10 @@ function Invoke-FaiEngine {
     .PARAMETER AllowTools
         Araç tweak'lerini (Tool, ör. refresh.reboot-to-bios) de çalıştırır (menü / -Only; profilde varsayılan atlanır).
     .PARAMETER Session
-        -Undo ile birlikte: geri alınacak oturum kimliği (boşsa geri alınmamış son oturum).
+        -Undo ile birlikte: geri alınacak oturum kimliği (boşsa geri alınmamış son oturum). Profille: yarıda kalan bu
+        oturuma devam edilir (güvenilir ve geri alınmamışsa; değilse uyarıyla yeni oturum).
+    .PARAMETER SkipFailed
+        -Undo ile birlikte: geri alınamayan kayıtlar atlanır, oturum kapatılır (atlananlar raporda).
     #>
     [CmdletBinding()]
     param(
@@ -326,6 +402,7 @@ function Invoke-FaiEngine {
         [Parameter(Mandatory = $true)] [hashtable] $Catalog,
         [switch] $Undo,
         [string] $Session = '',
+        [switch] $SkipFailed,
         [hashtable] $AppCatalog = @{},
         [switch] $AllowTools
     )
@@ -333,7 +410,8 @@ function Invoke-FaiEngine {
     $engine = [Engine]::new($Context, $Catalog)
     $engine.AppCatalog = $AppCatalog
     $engine.AllowTools = $AllowTools.IsPresent
-    if ($Undo.IsPresent) { return $engine.Undo($Session) }
+    if ($Undo.IsPresent) { return $engine.Undo($Session, $SkipFailed.IsPresent) }
+    $engine.ResumeSessionId = $Session
     if ($null -eq $FaiProfile) { throw 'Profil verilmedi.' }
     return $engine.Run($FaiProfile)
 }

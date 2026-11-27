@@ -19,7 +19,7 @@ yalnız SYSTEM + Administrators'ın yazabildiği klasöre kopyalar, özeti orada
 **SHA-256 yalnız bozulmayı (yarım / değişmiş indirme) yakalar, kaynağı kanıtlamaz:** özet de aynı yerden indirilir.
 İmza / attestation sonraki sürümlere bırakıldı. `FAI_WINOP_BASEURL` (yalnız test) yalnız `https://` ya da
 `http://localhost` / `http://127.0.0.1` kabul eder.
-Profil yoksa Türkçe menü açılır. Diğer parametreler: `-Unattended`, `-Undo [-Session <kimlik>]`, `-Only` / `-Skip`,
+Profil yoksa Türkçe menü açılır. Diğer parametreler: `-Unattended`, `-Undo [-Session <kimlik>] [-SkipFailed]` (geri alınamayan kayıtları atlayıp oturumu kapatır), `-Only` / `-Skip`,
 `-UpdatesOn` / `-UpdatesOff`, `-ExportProfile <ad>`, `-ExportLayout`, `-Version vX.Y.Z`, `-List`
 (`Get-Help .\install.ps1 -Detailed`). Tweak, katalog ve profil verisi `install.ps1`'e gömülüdür.
 
