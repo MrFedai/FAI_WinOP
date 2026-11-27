@@ -31,11 +31,20 @@ fi
 
 echo "[2/4] Depo aynalanıyor → $win_dir\\repo"
 mkdir -p "$dest/repo" "$dest/out"
-changes="$(rsync -a --delete --itemize-changes \
+rlog="$(mktemp)"
+trap 'rm -f "$rlog"' EXIT
+# Çıktı: itemize satırları + progress2 (\r ile güncellenen yüzde / hız / tahmini bitiş); yüzde satırı canlı gösterilir.
+rsync -a --delete --itemize-changes --info=progress2 \
   --include='/dist/' --include='/dist/**' \
   --exclude='/.git/' --exclude='/.devops.toml' \
   --filter=':- .gitignore' \
-  "$repo/" "$dest/repo/")"
+  "$repo/" "$dest/repo/" | tr '\r' '\n' | tee "$rlog" \
+  | { grep -a --line-buffered '%' || true; } \
+  | while IFS= read -r pl; do printf '\r      %s   ' "$pl" >&2; done
+rs=("${PIPESTATUS[@]}")
+echo >&2
+[[ "${rs[0]}" -eq 0 ]] || { echo "HATA: rsync başarısız (çıkış ${rs[0]})" >&2; exit 1; }
+changes="$(grep -a -v '%' "$rlog" || true)"
 copied="$(grep -c '^>f' <<<"$changes" || true)"
 deleted="$(grep '^\*deleting' <<<"$changes" || true)"
 echo "      kopyalanan / güncellenen dosya: $copied"
@@ -45,7 +54,9 @@ if [[ -n "$deleted" ]]; then
 fi
 
 echo "[3/4] Sandbox yapılandırması yazılıyor → $win_dir\\FAI_WinOP.wsb"
-esc="${win_dir//\\/\\\\}"
+esc="${win_dir//\\/\\\\}"   # sed yer değiştirme metninde özel: \ & ve sınırlayıcı |
+esc="${esc//&/\\&}"
+esc="${esc//|/\\|}"
 sed -e "s|__TEST_DIR__|${esc}|g" -e 's/\r$//' -e 's/$/\r/' "$repo/tests/Sandbox/FAI_WinOP.wsb" > "$dest/FAI_WinOP.wsb"
 
 echo "[4/4] Hazır. Örnek komutlar:"

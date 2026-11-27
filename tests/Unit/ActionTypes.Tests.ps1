@@ -332,6 +332,23 @@ Describe 'Fake = gerçek sağlayıcı davranışı (4.1)' {
     }
 }
 
+Describe 'WindowsSystemInfoProvider.DecideLaptop' {
+    It 'dizüstü kasa → $true (pil olsun olmasın)' {
+        [WindowsSystemInfoProvider]::DecideLaptop([int[]]@(10), $false) | Should -BeTrue
+        [WindowsSystemInfoProvider]::DecideLaptop([int[]]@(3, 9), $true) | Should -BeTrue
+    }
+    It 'masaüstü kasa + pil (UPS) → $false' {
+        foreach ($c in 3, 4, 5, 6, 7, 13, 15, 16, 35, 36) {
+            [WindowsSystemInfoProvider]::DecideLaptop([int[]]@($c), $true) | Should -BeFalse -Because "kasa $c"
+        }
+    }
+    It 'kasa bilinmiyor / yok → pil karar verir' {
+        [WindowsSystemInfoProvider]::DecideLaptop([int[]]@(), $true) | Should -BeTrue
+        [WindowsSystemInfoProvider]::DecideLaptop([int[]]@(2), $true) | Should -BeTrue
+        [WindowsSystemInfoProvider]::DecideLaptop([int[]]@(), $false) | Should -BeFalse
+    }
+}
+
 Describe 'ScriptAction' {
     BeforeEach { [FakeScriptHost]::State.Clear() }
 
@@ -363,6 +380,25 @@ Describe 'ScriptAction' {
         $a.Snapshot($ctx)['Value'] | Should -BeNullOrEmpty
         [WindowsScriptHost]::Invoke('1; 2', $null) | Should -Be @(1, 2)
         [WindowsScriptHost]::Invoke('param($s) $s', 'a') | Should -Be 'a'
+    }
+
+    It 'IsTruthy: False / 0 metni ve sayısı yanlış; True / 1 / sıfırdan farklı doğru' {
+        foreach ($v in @($false, 0, 0.0, '0', 'False', 'false', ' FALSE ', ' 0 ', '', '  ', $null, '0.0')) {
+            [ScriptAction]::IsTruthy($v) | Should -BeFalse -Because ("[{0}]" -f $v)
+        }
+        foreach ($v in @($true, 1, -1, 2.5, '1', 'True', ' true ', 'evet', '5')) {
+            [ScriptAction]::IsTruthy($v) | Should -BeTrue -Because ("[{0}]" -f $v)
+        }
+    }
+
+    It 'Test: betik "False" / "0" döndürürse uygulanmamış sayılır' {
+        $ctx = New-Ctx
+        foreach ($code in @("'False'", "'0'", '0', '$false', '$null', "''")) {
+            (Act @{ Type = 'Script'; Apply = '1'; Revert = '2'; Test = $code }).Test($ctx) | Should -BeFalse -Because $code
+        }
+        foreach ($code in @("'True'", '1', '$true', "'1'")) {
+            (Act @{ Type = 'Script'; Apply = '1'; Revert = '2'; Test = $code }).Test($ctx) | Should -BeTrue -Because $code
+        }
     }
 
     It 'Test yoksa her zaman uygulanacak sayılır; Test yazma sayılmaz' {

@@ -45,6 +45,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+# Sürüm üretilen betiğe tek tırnaklı metin olarak yazılır: biçimi doğrula (tırnak / enjeksiyon olmasın).
+if ($Version -notmatch '^v?\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') { throw "Geçersiz -Version: '$Version' (beklenen: 0.1.2, v0.1.2 ya da 0.0.0-dev)" }
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $src = Join-Path $repoRoot 'src'
 if (-not $OutFile) {

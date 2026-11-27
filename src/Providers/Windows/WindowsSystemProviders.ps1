@@ -10,12 +10,25 @@ class WindowsSystemInfoProvider : ISystemInfoProvider {
     # Expansion Chassis değil; Convertible, Detachable, Tablet dahil.
     static [int[]] LaptopChassis() { return [int[]]@(8, 9, 10, 11, 12, 14, 30, 31, 32) }
 
+    # Masaüstü kasa türleri (SMBIOS): Desktop, Low Profile, Pizza Box, Mini Tower, Tower, Main Server, All in One, Space-saving, Mini PC, Stick PC.
+    static [int[]] DesktopChassis() { return [int[]]@(3, 4, 5, 6, 7, 13, 15, 16, 35, 36) }
+
+    # Saf karar: kasa türü öncelikli (dizüstü türü → $true; masaüstü türü → $false, UPS pili sayılmaz);
+    # kasa bilinmiyorsa pil var mı diye bakılır.
+    static [bool] DecideLaptop([int[]] $Chassis, [bool] $HasBattery) {
+        $chassisList = @($Chassis)
+        foreach ($c in $chassisList) { if ([WindowsSystemInfoProvider]::LaptopChassis() -contains [int]$c) { return $true } }
+        foreach ($c in $chassisList) { if ([WindowsSystemInfoProvider]::DesktopChassis() -contains [int]$c) { return $false } }
+        return $HasBattery
+    }
+
     [bool] IsLaptop() {
-        if (@(Get-CimInstance -ClassName Win32_Battery -ErrorAction SilentlyContinue).Count -gt 0) { return $true }
+        $chassis = New-Object 'System.Collections.Generic.List[int]'
         foreach ($enc in @(Get-CimInstance -ClassName Win32_SystemEnclosure -ErrorAction SilentlyContinue)) {
-            foreach ($c in @($enc.ChassisTypes)) { if ([WindowsSystemInfoProvider]::LaptopChassis() -contains [int]$c) { return $true } }
+            foreach ($c in @($enc.ChassisTypes)) { $chassis.Add([int]$c) }
         }
-        return $false
+        $hasBattery = (@(Get-CimInstance -ClassName Win32_Battery -ErrorAction SilentlyContinue).Count -gt 0)
+        return [WindowsSystemInfoProvider]::DecideLaptop($chassis.ToArray(), $hasBattery)
     }
 
     hidden [bool] HasGpu([string] $Pattern) {

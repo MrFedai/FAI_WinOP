@@ -86,6 +86,15 @@ Describe 'build/Bundle.ps1' {
         $errors | Should -BeNullOrEmpty
     }
 
+    It 'geçersiz -Version (tırnak / enjeksiyon) reddedilir' {
+        foreach ($bad in @("1.0.0'; calc; '", 'abc', '1.0', '')) {
+            $out = Join-Path $TestDrive 'bad.ps1'
+            $r = Invoke-Child $Bundle @('-OutFile', $out, '-Version', $bad)
+            $r.ExitCode | Should -Not -Be 0 -Because "[$bad]"
+            Test-Path $out | Should -BeFalse
+        }
+    }
+
     It 'üretim bundle''ına Fake sağlayıcılar GİRMEZ' {
         $out = Join-Path $TestDrive 'prod.ps1'
         $r = Invoke-Child $Bundle @('-OutFile', $out)

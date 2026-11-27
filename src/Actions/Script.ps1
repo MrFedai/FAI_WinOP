@@ -26,10 +26,25 @@ class ScriptAction : ActionBase {
         return $e.ToArray()
     }
 
+    # Test betiği çıktısının doğruluk yorumu: PowerShell'de boş olmayan "False" / "0" metni $true sayılır; burada yanlış.
+    static [bool] IsTruthy([object] $Value) {
+        if ($null -eq $Value) { return $false }
+        if ($Value -is [bool]) { return [bool]$Value }
+        if ($Value -is [string]) {
+            $t = ([string]$Value).Trim()
+            if ($t.Length -eq 0) { return $false }
+            $d = 0.0
+            if ([double]::TryParse($t, [System.Globalization.NumberStyles]::Float, [System.Globalization.CultureInfo]::InvariantCulture, [ref]$d)) { return ($d -ne 0) }
+            return ($t -ine 'false')
+        }
+        if ($Value -is [int] -or $Value -is [long] -or $Value -is [double] -or $Value -is [decimal] -or $Value -is [single] -or $Value -is [byte] -or $Value -is [int16] -or $Value -is [uint16] -or $Value -is [uint32] -or $Value -is [uint64] -or $Value -is [sbyte]) { return ([double]$Value -ne 0) }
+        return [bool]$Value
+    }
+
     [bool] Test([ExecutionContext] $Ctx) {
         if (-not $this.Definition.ContainsKey('Test')) { return $false }
         $result = $Ctx.Scripts.Query([string]$this.Definition['Test'], $null)
-        return [bool](@($result) | Select-Object -Last 1)
+        return [ScriptAction]::IsTruthy((@($result) | Select-Object -Last 1))
     }
 
     [hashtable] Snapshot([ExecutionContext] $Ctx) {

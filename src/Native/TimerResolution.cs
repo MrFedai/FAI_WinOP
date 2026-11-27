@@ -16,7 +16,7 @@ namespace FaiWinOP.Native
         public const string DefaultServiceName = "FAI_TimerResolution";
 
         [DllImport("ntdll.dll")]
-        private static extern int NtSetTimerResolution(uint desiredResolution, bool setResolution, out uint currentResolution);
+        private static extern int NtSetTimerResolution(uint desiredResolution, [MarshalAs(UnmanagedType.U1)] bool setResolution, out uint currentResolution);
 
         // Maximum = en kaba (ör. 156250), Minimum = en ince (ör. 5000) çözünürlük.
         [DllImport("ntdll.dll")]
