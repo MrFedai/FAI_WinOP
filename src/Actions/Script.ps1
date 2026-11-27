@@ -16,13 +16,13 @@ class ScriptAction : ActionBase {
     static [string[]] Validate([object] $Def) {
         $e = New-Object 'System.Collections.Generic.List[string]'
         foreach ($m in (Get-FaiUnknownKeyError $Def (@('Type', 'Description') + [ScriptAction]::CodeFields()))) { $e.Add($m) }
-        foreach ($f in @('Apply', 'Revert')) { if (-not $Def.Contains($f)) { $e.Add("${f}: zorunlu alan eksik") } }
+        foreach ($f in @('Apply', 'Revert')) { if (-not $Def.Contains($f)) { $e.Add("${f}: required field missing") } }
         foreach ($f in [ScriptAction]::CodeFields()) {
             if (-not $Def.Contains($f)) { continue }
-            if ($Def[$f] -isnot [string] -or [string]::IsNullOrWhiteSpace($Def[$f])) { $e.Add("${f}: boş olmayan PowerShell kodu (metin) olmalı"); continue }
-            foreach ($pe in (Test-FaiScriptText $Def[$f])) { $e.Add("${f}: ayrıştırma hatası, $pe") }
+            if ($Def[$f] -isnot [string] -or [string]::IsNullOrWhiteSpace($Def[$f])) { $e.Add("${f}: must be non-empty PowerShell code (text)"); continue }
+            foreach ($pe in (Test-FaiScriptText $Def[$f])) { $e.Add("${f}: parse error, $pe") }
         }
-        if ($Def.Contains('Description') -and $Def['Description'] -isnot [string]) { $e.Add('Description: metin olmalı') }
+        if ($Def.Contains('Description') -and $Def['Description'] -isnot [string]) { $e.Add('Description: must be text') }
         return $e.ToArray()
     }
 
@@ -58,8 +58,8 @@ class ScriptAction : ActionBase {
     [void] Revert([ExecutionContext] $Ctx, [hashtable] $Snapshot) { [void]$Ctx.Scripts.Run([string]$this.Definition['Revert'], $Snapshot['Value']) }
 
     [string] Describe() {
-        $text = 'özel işlem'
+        $text = 'custom operation'
         if ($this.Definition.ContainsKey('Description') -and $this.Definition['Description']) { $text = [string]$this.Definition['Description'] }
-        return ('Betik: {0}' -f $text)
+        return ('Script: {0}' -f $text)
     }
 }

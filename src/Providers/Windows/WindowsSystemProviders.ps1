@@ -129,7 +129,7 @@ class WindowsSystemControlProvider : ISystemControlProvider {
     [void] RestartToFirmware([int] $DelaySeconds) {
         $exe = Join-Path $env:SystemRoot 'System32\shutdown.exe'
         $out = & $exe '/r' '/fw' '/t' ([string]$DelaySeconds) 2>&1
-        if ($global:LASTEXITCODE -ne 0) { throw ('shutdown /r /fw başarısız ({0}): {1}' -f $global:LASTEXITCODE, ((@($out) -join ' ').Trim())) }
+        if ($global:LASTEXITCODE -ne 0) { throw ('shutdown /r /fw failed ({0}): {1}' -f $global:LASTEXITCODE, ((@($out) -join ' ').Trim())) }
     }
 }
 
@@ -191,14 +191,14 @@ class WindowsPromptProvider : IPromptProvider {
     [bool] Confirm([string] $Message) {
         Write-Host ''
         Write-Host ('⚠ ' + $Message) -ForegroundColor Yellow
-        $answer = [string](Read-Host 'Uygulansın mı? (E/H)')
-        return (@('e', 'evet', 'y', 'yes') -contains $answer.Trim().ToLowerInvariant())
+        $answer = [string](Read-Host 'Apply? (Y/N)')
+        return (@('y', 'yes') -contains $answer.Trim().ToLowerInvariant())
     }
 
     [bool] ConfirmExact([string] $Message, [string] $Expected) {
         Write-Host ''
         Write-Host ('‼ ' + $Message) -ForegroundColor Red
-        $answer = [string](Read-Host ("Onaylamak için '{0}' yazın (başka her yanıt = hayır)" -f $Expected))
+        $answer = [string](Read-Host ("Type '{0}' to confirm (any other answer = no)" -f $Expected))
         return ($answer.Trim() -ceq $Expected)
     }
 

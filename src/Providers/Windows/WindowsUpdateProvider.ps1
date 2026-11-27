@@ -36,7 +36,7 @@ class WindowsUpdateProvider : IUpdateProvider {
             $u = $updates[$i]
             $eta = ''
             if ($i -gt 0) { $eta = ', tahmini kalan {0:mm\:ss}' -f [TimeSpan]::FromSeconds($clock.Elapsed.TotalSeconds / $i * ($total - $i)) }
-            Write-Host ('[{0}/{1}] %{2} — {3} (geçen {4:mm\:ss}{5})' -f ($i + 1), $total, [int](100 * $i / $total), $u.Title, $clock.Elapsed, $eta)
+            Write-Host ('[{0}/{1}] {2}% — {3} (elapsed {4:mm\:ss}{5})' -f ($i + 1), $total, [int](100 * $i / $total), $u.Title, $clock.Elapsed, $eta)
             try {
                 if (-not $u.EulaAccepted) { $u.AcceptEula() }
                 $coll = New-Object -ComObject 'Microsoft.Update.UpdateColl'
@@ -53,16 +53,16 @@ class WindowsUpdateProvider : IUpdateProvider {
                 if ([int]$r.ResultCode -eq 2 -or [int]$r.ResultCode -eq 3) { $ok++ }
                 else {
                     $failed++
-                    Write-Host ('  kurulamadı (sonuç {0}, HRESULT 0x{1:X8})' -f $r.ResultCode, $r.HResult) -ForegroundColor Yellow
+                    Write-Host ('  failed to install (result {0}, HRESULT 0x{1:X8})' -f $r.ResultCode, $r.HResult) -ForegroundColor Yellow
                 }
                 if ($r.RebootRequired) { $reboot = $true }
             }
             catch {
                 $failed++
-                Write-Host ('  kurulamadı: {0}' -f $_.Exception.Message) -ForegroundColor Yellow
+                Write-Host ('  failed to install: {0}' -f $_.Exception.Message) -ForegroundColor Yellow
             }
         }
-        if ($total -gt 0) { Write-Host ('[{0}/{0}] %100 — {1} kuruldu, {2} başarısız ({3:mm\:ss})' -f $total, $ok, $failed, $clock.Elapsed) }
+        if ($total -gt 0) { Write-Host ('[{0}/{0}] 100% — {1} installed, {2} failed ({3:mm\:ss})' -f $total, $ok, $failed, $clock.Elapsed) }
         return @{ Installed = $ok; Failed = $failed; RebootRequired = ($reboot -or $this.IsRebootPending()) }
     }
 

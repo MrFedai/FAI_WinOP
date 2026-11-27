@@ -6,7 +6,7 @@ class WindowsRegistryProvider : IRegistryProvider {
 
     static [hashtable] SplitPath([string] $Path) {
         $m = [regex]::Match($Path, '^(HKLM|HKCU|HKCR|HKU|HKCC):\\(.+)$', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
-        if (-not $m.Success) { throw "Geçersiz kayıt defteri yolu: $Path" }
+        if (-not $m.Success) { throw "Invalid registry path: $Path" }
         $hives = @{ HKLM = 'LocalMachine'; HKCU = 'CurrentUser'; HKCR = 'ClassesRoot'; HKU = 'Users'; HKCC = 'CurrentConfig' }
         return @{
             Hive   = [Microsoft.Win32.RegistryHive]$hives[$m.Groups[1].Value.ToUpperInvariant()]
@@ -103,7 +103,7 @@ class WindowsRegistryProvider : IRegistryProvider {
             $size = 0
             $rc = $nt::QueryValue($k.Handle, $Name, [IntPtr]::Zero, [ref]$type, $null, [ref]$size)
             for ($try = 0; $try -lt 5; $try++) {
-                if ($rc -ne 0 -and $rc -ne 234) { throw "RegQueryValueExW hata kodu $rc ($Path\$Name)" }
+                if ($rc -ne 0 -and $rc -ne 234) { throw "RegQueryValueExW error code $rc ($Path\$Name)" }
                 $buf = New-Object 'byte[]' ([Math]::Max($size, 1))
                 $size = $buf.Length
                 $rc = $nt::QueryValue($k.Handle, $Name, [IntPtr]::Zero, [ref]$type, $buf, [ref]$size)
@@ -113,7 +113,7 @@ class WindowsRegistryProvider : IRegistryProvider {
                     return @{ Type = [int]$type; Bytes = $out }
                 }
             }
-            throw "RegQueryValueExW tamamlanamadı ($Path\$Name)"
+            throw "RegQueryValueExW failed ($Path\$Name)"
         }
         finally { $k.Dispose() }
     }
@@ -125,7 +125,7 @@ class WindowsRegistryProvider : IRegistryProvider {
             $data = $Bytes
             if ($null -eq $data) { $data = New-Object 'byte[]' 0 }
             $rc = $nt::SetValue($k.Handle, $Name, 0, $Type, $data, $data.Length)
-            if ($rc -ne 0) { throw "RegSetValueExW hata kodu $rc ($Path\$Name)" }
+            if ($rc -ne 0) { throw "RegSetValueExW error code $rc ($Path\$Name)" }
         }
         finally { $k.Dispose() }
     }

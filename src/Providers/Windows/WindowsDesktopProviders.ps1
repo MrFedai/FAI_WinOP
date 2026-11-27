@@ -37,7 +37,7 @@ class WindowsDesktopProvider : IDesktopProvider {
                 if (-not $this.IsShellRunning()) { return }
                 Get-Process -Name 'StartMenuExperienceHost' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
             }
-            default { throw "Bilinmeyen yenileme türü: $Kind" }
+            default { throw "Unknown refresh kind: $Kind" }
         }
     }
 
@@ -129,7 +129,7 @@ class WindowsImageProvider : IImageProvider {
         [WindowsImageProvider]::LoadDrawing()
         $rgb = [WindowsImageProvider]::ParseColor($Color)
         $names = @{ png = 'Png'; jpg = 'Jpeg'; bmp = 'Bmp' }
-        if (-not $names.ContainsKey($Format.ToLowerInvariant())) { throw "Desteklenmeyen görüntü biçimi: $Format" }
+        if (-not $names.ContainsKey($Format.ToLowerInvariant())) { throw "Unsupported image format: $Format" }
         $fmtType = 'System.Drawing.Imaging.ImageFormat' -as [type]
         $fmt = $fmtType::($names[$Format.ToLowerInvariant()])
         $pixel = ('System.Drawing.Imaging.PixelFormat' -as [type])::Format24bppRgb
@@ -168,7 +168,7 @@ class WindowsAppSettingsProvider : IAppSettingsProvider {
         catch {
             $e = $_.Exception
             if ($null -ne $e.InnerException) { $e = $e.InnerException }
-            throw ("settings.dat açılamadı ({0}): {1}" -f $File, $e.Message)
+            throw ("Could not open settings.dat ({0}): {1}" -f $File, $e.Message)
         }
     }
 
@@ -216,7 +216,7 @@ class WindowsAppSettingsProvider : IAppSettingsProvider {
         }
         finally {
             foreach ($f in @($tmp, "$tmp.LOG1", "$tmp.LOG2")) {
-                if ([System.IO.File]::Exists($f)) { try { [System.IO.File]::Delete($f) } catch { Write-Verbose "geçici dosya silinemedi: $f" } }
+                if ([System.IO.File]::Exists($f)) { try { [System.IO.File]::Delete($f) } catch { Write-Verbose "could not delete temporary file: $f" } }
             }
         }
     }
@@ -224,7 +224,7 @@ class WindowsAppSettingsProvider : IAppSettingsProvider {
     # Yazma için açar: @{ Root; Key }. CloseWrite ile kapatılmalı.
     hidden [hashtable] OpenWrite([string] $Package, [string] $Sub) {
         $src = [WindowsAppSettingsProvider]::DatPath($Package)
-        if (-not [System.IO.File]::Exists($src)) { throw "Paket ayar dosyası yok: $src" }
+        if (-not [System.IO.File]::Exists($src)) { throw "Package settings file not found: $src" }
         [WindowsAppSettingsProvider]::StopPackage($Package)
         $root = [WindowsAppSettingsProvider]::Open($src, $true)
         try { $key = $root.CreateSubKey([WindowsAppSettingsProvider]::KeyPath($Sub)) }

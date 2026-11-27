@@ -53,14 +53,14 @@ Confirmation warning: Edge will be removed. Export favorites / passwords to Chro
 
 Changes (8):
 
-- `Microsoft Edge kaldırılır (WebView2 Runtime ve güncellemesi kalır)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate\Install{56EB18F8-B008-4CBD-B6D2-8C97FE7E9062} = 0 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate\Install{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5} = 1 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate\Update{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5} = 1 (DWord)`
-- `Dosya: %ProgramData%\FAI_WinOP\EdgeRedirect.ps1 yazılır (570 karakter, UTF8BOM)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Classes\microsoft-edge\ = URL:microsoft-edge (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Classes\microsoft-edge\URL Protocol =  (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Classes\microsoft-edge\shell\open\command\ = "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "%ProgramData%\FAI_WinOP\EdgeRedirect.ps1" "%1" (ExpandString)`
+- `Microsoft Edge is removed (WebView2 Runtime and its updater stay)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate\Install{56EB18F8-B008-4CBD-B6D2-8C97FE7E9062} = 0 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate\Install{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5} = 1 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate\Update{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5} = 1 (DWord)`
+- `File: %ProgramData%\FAI_WinOP\EdgeRedirect.ps1 is written (570 characters, UTF8BOM)`
+- `Registry: HKLM:\SOFTWARE\Classes\microsoft-edge\ = URL:microsoft-edge (String)`
+- `Registry: HKLM:\SOFTWARE\Classes\microsoft-edge\URL Protocol =  (String)`
+- `Registry: HKLM:\SOFTWARE\Classes\microsoft-edge\shell\open\command\ = "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "%ProgramData%\FAI_WinOP\EdgeRedirect.ps1" "%1" (ExpandString)`
 
 ### bloat.persistence
 
@@ -72,16 +72,16 @@ Confirmation warning: Removing provisioned packages cannot be undone (reinstall 
 
 Changes (10):
 
-- `Bloatware kalıcılığı: 44 paketin provisioned kopyası kaldırılır, açılış görevi \FAI_WinOP\BloatCleanup güncelleme sonrası yineler`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SilentInstalledAppsEnabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\PreInstalledAppsEnabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\PreInstalledAppsEverEnabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\OemPreInstalledAppsEnabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SubscribedContentEnabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\FeatureManagementEnabled = 0 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent\DisableWindowsConsumerFeatures = 1 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent\DisableConsumerAccountStateContent = 1 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent\DisableCloudOptimizedContent = 1 (DWord)`
+- `Bloatware persistence: the provisioned copy of 44 packages is removed, startup task \FAI_WinOP\BloatCleanup repeats it after updates`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SilentInstalledAppsEnabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\PreInstalledAppsEnabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\PreInstalledAppsEverEnabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\OemPreInstalledAppsEnabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SubscribedContentEnabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\FeatureManagementEnabled = 0 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent\DisableWindowsConsumerFeatures = 1 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent\DisableConsumerAccountStateContent = 1 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent\DisableCloudOptimizedContent = 1 (DWord)`
 
 ### bloat.remove
 
@@ -93,50 +93,50 @@ Confirmation warning: The apps above will be removed (they can be reinstalled fr
 
 Changes (44):
 
-- `Appx: Clipchamp.Clipchamp kaldırılır (kullanıcı)`
-- `Appx: Microsoft.549981C3F5F10 kaldırılır (kullanıcı)`
-- `Appx: Microsoft.BingFinance kaldırılır (kullanıcı)`
-- `Appx: Microsoft.BingNews kaldırılır (kullanıcı)`
-- `Appx: Microsoft.BingSearch kaldırılır (kullanıcı)`
-- `Appx: Microsoft.BingSports kaldırılır (kullanıcı)`
-- `Appx: Microsoft.BingWeather kaldırılır (kullanıcı)`
-- `Appx: Microsoft.Copilot kaldırılır (kullanıcı)`
-- `Appx: Microsoft.GamingApp kaldırılır (kullanıcı)`
-- `Appx: Microsoft.GetHelp kaldırılır (kullanıcı)`
-- `Appx: Microsoft.Getstarted kaldırılır (kullanıcı)`
-- `Appx: Microsoft.Messaging kaldırılır (kullanıcı)`
-- `Appx: Microsoft.Microsoft3DViewer kaldırılır (kullanıcı)`
-- `Appx: Microsoft.MicrosoftOfficeHub kaldırılır (kullanıcı)`
-- `Appx: Microsoft.MicrosoftSolitaireCollection kaldırılır (kullanıcı)`
-- `Appx: Microsoft.MicrosoftStickyNotes kaldırılır (kullanıcı)`
-- `Appx: Microsoft.MixedReality.Portal kaldırılır (kullanıcı)`
-- `Appx: Microsoft.MSPaint kaldırılır (kullanıcı)`
-- `Appx: Microsoft.Office.OneNote kaldırılır (kullanıcı)`
-- `Appx: Microsoft.OneConnect kaldırılır (kullanıcı)`
-- `Appx: Microsoft.OutlookForWindows kaldırılır (kullanıcı)`
-- `Appx: Microsoft.People kaldırılır (kullanıcı)`
-- `Appx: Microsoft.PowerAutomateDesktop kaldırılır (kullanıcı)`
-- `Appx: Microsoft.Print3D kaldırılır (kullanıcı)`
-- `Appx: Microsoft.SkypeApp kaldırılır (kullanıcı)`
-- `Appx: Microsoft.Todos kaldırılır (kullanıcı)`
-- `Appx: Microsoft.Wallet kaldırılır (kullanıcı)`
-- `Appx: Microsoft.Windows.DevHome kaldırılır (kullanıcı)`
-- `Appx: Microsoft.WindowsAlarms kaldırılır (kullanıcı)`
-- `Appx: Microsoft.WindowsFeedbackHub kaldırılır (kullanıcı)`
-- `Appx: Microsoft.WindowsMaps kaldırılır (kullanıcı)`
-- `Appx: Microsoft.WindowsSoundRecorder kaldırılır (kullanıcı)`
-- `Appx: Microsoft.XboxApp kaldırılır (kullanıcı)`
-- `Appx: Microsoft.YourPhone kaldırılır (kullanıcı)`
-- `Appx: Microsoft.ZuneVideo kaldırılır (kullanıcı)`
-- `Appx: MicrosoftCorporationII.QuickAssist kaldırılır (kullanıcı)`
-- `Appx: MicrosoftTeams kaldırılır (kullanıcı)`
-- `Appx: MSTeams kaldırılır (kullanıcı)`
-- `Appx: 5A894077.McAfeeSecurity kaldırılır (kullanıcı)`
-- `Appx: AmazonVideo.PrimeVideo kaldırılır (kullanıcı)`
-- `Appx: BytedancePte.Ltd.TikTok kaldırılır (kullanıcı)`
-- `Appx: Disney.37853FC22B2CE kaldırılır (kullanıcı)`
-- `Appx: king.com.CandyCrushSaga kaldırılır (kullanıcı)`
-- `Appx: king.com.CandyCrushSodaSaga kaldırılır (kullanıcı)`
+- `Appx: Clipchamp.Clipchamp is removed (user)`
+- `Appx: Microsoft.549981C3F5F10 is removed (user)`
+- `Appx: Microsoft.BingFinance is removed (user)`
+- `Appx: Microsoft.BingNews is removed (user)`
+- `Appx: Microsoft.BingSearch is removed (user)`
+- `Appx: Microsoft.BingSports is removed (user)`
+- `Appx: Microsoft.BingWeather is removed (user)`
+- `Appx: Microsoft.Copilot is removed (user)`
+- `Appx: Microsoft.GamingApp is removed (user)`
+- `Appx: Microsoft.GetHelp is removed (user)`
+- `Appx: Microsoft.Getstarted is removed (user)`
+- `Appx: Microsoft.Messaging is removed (user)`
+- `Appx: Microsoft.Microsoft3DViewer is removed (user)`
+- `Appx: Microsoft.MicrosoftOfficeHub is removed (user)`
+- `Appx: Microsoft.MicrosoftSolitaireCollection is removed (user)`
+- `Appx: Microsoft.MicrosoftStickyNotes is removed (user)`
+- `Appx: Microsoft.MixedReality.Portal is removed (user)`
+- `Appx: Microsoft.MSPaint is removed (user)`
+- `Appx: Microsoft.Office.OneNote is removed (user)`
+- `Appx: Microsoft.OneConnect is removed (user)`
+- `Appx: Microsoft.OutlookForWindows is removed (user)`
+- `Appx: Microsoft.People is removed (user)`
+- `Appx: Microsoft.PowerAutomateDesktop is removed (user)`
+- `Appx: Microsoft.Print3D is removed (user)`
+- `Appx: Microsoft.SkypeApp is removed (user)`
+- `Appx: Microsoft.Todos is removed (user)`
+- `Appx: Microsoft.Wallet is removed (user)`
+- `Appx: Microsoft.Windows.DevHome is removed (user)`
+- `Appx: Microsoft.WindowsAlarms is removed (user)`
+- `Appx: Microsoft.WindowsFeedbackHub is removed (user)`
+- `Appx: Microsoft.WindowsMaps is removed (user)`
+- `Appx: Microsoft.WindowsSoundRecorder is removed (user)`
+- `Appx: Microsoft.XboxApp is removed (user)`
+- `Appx: Microsoft.YourPhone is removed (user)`
+- `Appx: Microsoft.ZuneVideo is removed (user)`
+- `Appx: MicrosoftCorporationII.QuickAssist is removed (user)`
+- `Appx: MicrosoftTeams is removed (user)`
+- `Appx: MSTeams is removed (user)`
+- `Appx: 5A894077.McAfeeSecurity is removed (user)`
+- `Appx: AmazonVideo.PrimeVideo is removed (user)`
+- `Appx: BytedancePte.Ltd.TikTok is removed (user)`
+- `Appx: Disney.37853FC22B2CE is removed (user)`
+- `Appx: king.com.CandyCrushSaga is removed (user)`
+- `Appx: king.com.CandyCrushSodaSaga is removed (user)`
 
 ## graphics
 
@@ -150,18 +150,18 @@ Condition: HasAmdGpu
 
 Changes (12):
 
-- `Kayıt defteri: HKCU:\Software\AMD\CN\AutoUpdate = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\AMD\CN\SystemTray = false (String)`
-- `Kayıt defteri: HKCU:\Software\AMD\CN\AllowWebContent = false (String)`
-- `Kayıt defteri: HKCU:\Software\AMD\CN\AnimationEffect = false (String)`
-- `Kayıt defteri: HKCU:\Software\AMD\CN\CN_Hide_Toast_Notification = true (String)`
-- `Kayıt defteri: HKCU:\Software\AMD\DVR\ShowRSOverlay = false (String)`
-- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\KMD_DeLagEnabled = 1 (DWord) — yalnız: [0-9][0-9][0-9][0-9] — ProviderName: Advanced Micro Devices* / AMD* / ATI*`
-- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\UMD\VSyncControl = 48,0 (Binary) — yalnız: [0-9][0-9][0-9][0-9] — ProviderName: Advanced Micro Devices* / AMD* / ATI*`
-- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\UMD\TFQ = 50,0 (Binary) — yalnız: [0-9][0-9][0-9][0-9] — ProviderName: Advanced Micro Devices* / AMD* / ATI*`
-- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\UMD\Tessellation = 49,0 (Binary) — yalnız: [0-9][0-9][0-9][0-9] — ProviderName: Advanced Micro Devices* / AMD* / ATI*`
-- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\UMD\Tessellation_OPTION = 50,0 (Binary) — yalnız: [0-9][0-9][0-9][0-9] — ProviderName: Advanced Micro Devices* / AMD* / ATI*`
-- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\power_v1\abmlevel = 0,0,0,0 (Binary) — yalnız: [0-9][0-9][0-9][0-9] — ProviderName: Advanced Micro Devices* / AMD* / ATI*`
+- `Registry: HKCU:\Software\AMD\CN\AutoUpdate = 0 (DWord)`
+- `Registry: HKCU:\Software\AMD\CN\SystemTray = false (String)`
+- `Registry: HKCU:\Software\AMD\CN\AllowWebContent = false (String)`
+- `Registry: HKCU:\Software\AMD\CN\AnimationEffect = false (String)`
+- `Registry: HKCU:\Software\AMD\CN\CN_Hide_Toast_Notification = true (String)`
+- `Registry: HKCU:\Software\AMD\DVR\ShowRSOverlay = false (String)`
+- `Registry: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\KMD_DeLagEnabled = 1 (DWord) — only: [0-9][0-9][0-9][0-9] — ProviderName: Advanced Micro Devices* / AMD* / ATI*`
+- `Registry: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\UMD\VSyncControl = 48,0 (Binary) — only: [0-9][0-9][0-9][0-9] — ProviderName: Advanced Micro Devices* / AMD* / ATI*`
+- `Registry: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\UMD\TFQ = 50,0 (Binary) — only: [0-9][0-9][0-9][0-9] — ProviderName: Advanced Micro Devices* / AMD* / ATI*`
+- `Registry: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\UMD\Tessellation = 49,0 (Binary) — only: [0-9][0-9][0-9][0-9] — ProviderName: Advanced Micro Devices* / AMD* / ATI*`
+- `Registry: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\UMD\Tessellation_OPTION = 50,0 (Binary) — only: [0-9][0-9][0-9][0-9] — ProviderName: Advanced Micro Devices* / AMD* / ATI*`
+- `Registry: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\power_v1\abmlevel = 0,0,0,0 (Binary) — only: [0-9][0-9][0-9][0-9] — ProviderName: Advanced Micro Devices* / AMD* / ATI*`
 
 ### graphics.nvidia-settings
 
@@ -173,9 +173,9 @@ Condition: HasNvidia
 
 Changes (3):
 
-- `Kayıt defteri: HKCU:\Software\NVIDIA Corporation\NvTray\StartOnLogin = 0 (DWord)`
-- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Services\nvlddmkm\*\EnableGR535 = 0 (DWord) — yalnız: FTS`
-- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Services\nvlddmkm\*\FTS\EnableGR535 = 0 (DWord) — yalnız: Parameters`
+- `Registry: HKCU:\Software\NVIDIA Corporation\NvTray\StartOnLogin = 0 (DWord)`
+- `Registry: HKLM:\SYSTEM\CurrentControlSet\Services\nvlddmkm\*\EnableGR535 = 0 (DWord) — only: FTS`
+- `Registry: HKLM:\SYSTEM\CurrentControlSet\Services\nvlddmkm\*\FTS\EnableGR535 = 0 (DWord) — only: Parameters`
 
 ### graphics.p0-state
 
@@ -191,7 +191,7 @@ Condition: HasNvidia
 
 Changes (1):
 
-- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\DisableDynamicPstate = 1 (DWord) — yalnız: [0-9][0-9][0-9][0-9] — ProviderName: NVIDIA*`
+- `Registry: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\DisableDynamicPstate = 1 (DWord) — only: [0-9][0-9][0-9][0-9] — ProviderName: NVIDIA*`
 
 ## power
 
@@ -205,18 +205,18 @@ Parameters (default): `hibernateOnBatterySec` = `10800` · `sleepOnBatterySec` =
 
 Changes (12):
 
-- `Güç planı 'FAI_WinOP' (46414900-5769-4e4f-9000-000000000001): yoksa 381b4222-f694-41f0-9685-ff5bb260df2e kopyası olarak kurulur, etkin olur`
-- `Güç: 46414900-5769-4e4f-9000-000000000001 / SUB_PROCESSOR / PROCTHROTTLEMIN → prizde = 100`
-- `Güç: 46414900-5769-4e4f-9000-000000000001 / SUB_PROCESSOR / PROCTHROTTLEMAX → prizde = 100`
-- `Güç: 46414900-5769-4e4f-9000-000000000001 / SUB_PROCESSOR / CPMINCORES → prizde = 100`
-- `Güç: 46414900-5769-4e4f-9000-000000000001 / SUB_PROCESSOR / SYSCOOLPOL → prizde = 1`
-- `Güç: 46414900-5769-4e4f-9000-000000000001 / 2a737441-1930-4402-8d77-b2bebba308a3 / 48e6b7a6-50f5-4782-a5d4-53bb8f07e226 → prizde = 0`
-- `Güç: 46414900-5769-4e4f-9000-000000000001 / SUB_PCIEXPRESS / ASPM → prizde = 0`
-- `Güç: 46414900-5769-4e4f-9000-000000000001 / SUB_DISK / DISKIDLE → prizde = 0`
-- `Güç: 46414900-5769-4e4f-9000-000000000001 / 19cbb8fa-5279-450e-9fac-8a3d5fedd0c1 / 12bbebe6-58d6-4636-95bb-3217ef867c1a → prizde = 0`
-- `Güç: 46414900-5769-4e4f-9000-000000000001 / SUB_SLEEP / STANDBYIDLE → prizde = 0, pilde = 900`
-- `Güç: 46414900-5769-4e4f-9000-000000000001 / SUB_SLEEP / HIBERNATEIDLE → prizde = 0, pilde = 10800`
-- `Hazırda bekletme açılır`
+- `Power plan 'FAI_WinOP' (46414900-5769-4e4f-9000-000000000001): if missing, created as a copy of 381b4222-f694-41f0-9685-ff5bb260df2e and activated`
+- `Power: 46414900-5769-4e4f-9000-000000000001 / SUB_PROCESSOR / PROCTHROTTLEMIN → on AC = 100`
+- `Power: 46414900-5769-4e4f-9000-000000000001 / SUB_PROCESSOR / PROCTHROTTLEMAX → on AC = 100`
+- `Power: 46414900-5769-4e4f-9000-000000000001 / SUB_PROCESSOR / CPMINCORES → on AC = 100`
+- `Power: 46414900-5769-4e4f-9000-000000000001 / SUB_PROCESSOR / SYSCOOLPOL → on AC = 1`
+- `Power: 46414900-5769-4e4f-9000-000000000001 / 2a737441-1930-4402-8d77-b2bebba308a3 / 48e6b7a6-50f5-4782-a5d4-53bb8f07e226 → on AC = 0`
+- `Power: 46414900-5769-4e4f-9000-000000000001 / SUB_PCIEXPRESS / ASPM → on AC = 0`
+- `Power: 46414900-5769-4e4f-9000-000000000001 / SUB_DISK / DISKIDLE → on AC = 0`
+- `Power: 46414900-5769-4e4f-9000-000000000001 / 19cbb8fa-5279-450e-9fac-8a3d5fedd0c1 / 12bbebe6-58d6-4636-95bb-3217ef867c1a → on AC = 0`
+- `Power: 46414900-5769-4e4f-9000-000000000001 / SUB_SLEEP / STANDBYIDLE → on AC = 0, on battery = 900`
+- `Power: 46414900-5769-4e4f-9000-000000000001 / SUB_SLEEP / HIBERNATEIDLE → on AC = 0, on battery = 10800`
+- `Hibernate is turned on`
 
 ## privacy
 
@@ -228,30 +228,30 @@ Turns off, at the device level, the permissions under Settings \> Privacy & secu
 
 Changes (24):
 
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam\Value = Allow (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone\Value = Allow (String)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam\Value = Allow (String)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone\Value = Allow (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location\Value = Deny (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\userNotificationListener\Value = Deny (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\userAccountInformation\Value = Deny (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\contacts\Value = Deny (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\appointments\Value = Deny (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\phoneCall\Value = Deny (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\phoneCallHistory\Value = Deny (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\email\Value = Deny (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\userDataTasks\Value = Deny (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\chat\Value = Deny (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\radios\Value = Deny (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\bluetoothSync\Value = Deny (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\appDiagnostics\Value = Deny (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\documentsLibrary\Value = Deny (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\picturesLibrary\Value = Deny (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\videosLibrary\Value = Deny (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\broadFileSystemAccess\Value = Deny (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\passkeysEnumeration\Value = Deny (String)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\musicLibrary\Value = Deny (String)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\systemAIModels\Value = Deny (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam\Value = Allow (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone\Value = Allow (String)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam\Value = Allow (String)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone\Value = Allow (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location\Value = Deny (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\userNotificationListener\Value = Deny (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\userAccountInformation\Value = Deny (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\contacts\Value = Deny (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\appointments\Value = Deny (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\phoneCall\Value = Deny (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\phoneCallHistory\Value = Deny (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\email\Value = Deny (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\userDataTasks\Value = Deny (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\chat\Value = Deny (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\radios\Value = Deny (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\bluetoothSync\Value = Deny (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\appDiagnostics\Value = Deny (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\documentsLibrary\Value = Deny (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\picturesLibrary\Value = Deny (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\videosLibrary\Value = Deny (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\broadFileSystemAccess\Value = Deny (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\passkeysEnumeration\Value = Deny (String)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\musicLibrary\Value = Deny (String)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\systemAIModels\Value = Deny (String)`
 
 ### privacy.search-ads
 
@@ -261,21 +261,21 @@ Turns off web (Bing) results and suggestions in Start search, search highlights 
 
 Changes (15):
 
-- `Kayıt defteri: HKCU:\Software\Policies\Microsoft\Windows\Explorer\DisableSearchBoxSuggestions = 1 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Search\BingSearchEnabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\SearchSettings\IsDynamicSearchBoxEnabled = 0 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search\EnableDynamicContentInWSB = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\SearchSettings\IsMSACloudSearchEnabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\SearchSettings\IsAADCloudSearchEnabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\SearchSettings\IsDeviceSearchHistoryEnabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SubscribedContent-338388Enabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SystemPaneSuggestionsEnabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\Start_IrisRecommendations = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\Start_AccountNotifications = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SubscribedContent-338393Enabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SubscribedContent-353694Enabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SubscribedContent-353696Enabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ShowSyncProviderNotifications = 0 (DWord)`
+- `Registry: HKCU:\Software\Policies\Microsoft\Windows\Explorer\DisableSearchBoxSuggestions = 1 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Search\BingSearchEnabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\SearchSettings\IsDynamicSearchBoxEnabled = 0 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search\EnableDynamicContentInWSB = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\SearchSettings\IsMSACloudSearchEnabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\SearchSettings\IsAADCloudSearchEnabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\SearchSettings\IsDeviceSearchHistoryEnabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SubscribedContent-338388Enabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SystemPaneSuggestionsEnabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\Start_IrisRecommendations = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\Start_AccountNotifications = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SubscribedContent-338393Enabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SubscribedContent-353694Enabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SubscribedContent-353696Enabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ShowSyncProviderNotifications = 0 (DWord)`
 
 ### privacy.telemetry
 
@@ -285,36 +285,36 @@ Lowers diagnostic data to the lowest level the edition allows: telemetry policy,
 
 Changes (30):
 
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection\AllowTelemetry = 0 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection\DoNotShowFeedbackNotifications = 1 (DWord)`
-- `Servis: DiagTrack → başlangıç = Disabled, durum = Stopped`
-- `Servis: dmwappushservice → başlangıç = Disabled, durum = Stopped`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\SQMClient\Windows\CEIPEnable = 0 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppCompat\AITEnable = 0 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppCompat\DisableInventory = 1 (DWord)`
-- `Zamanlanmış görev: \Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser → devre dışı`
-- `Zamanlanmış görev: \Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser Exp → devre dışı`
-- `Zamanlanmış görev: \Microsoft\Windows\Application Experience\ProgramDataUpdater → devre dışı`
-- `Zamanlanmış görev: \Microsoft\Windows\Application Experience\MareBackup → devre dışı`
-- `Zamanlanmış görev: \Microsoft\Windows\Customer Experience Improvement Program\Consolidator → devre dışı`
-- `Zamanlanmış görev: \Microsoft\Windows\Customer Experience Improvement Program\UsbCeip → devre dışı`
-- `Zamanlanmış görev: \Microsoft\Windows\Autochk\Proxy → devre dışı`
-- `Zamanlanmış görev: \Microsoft\Windows\DiskDiagnostic\Microsoft-Windows-DiskDiagnosticDataCollector → devre dışı`
-- `Zamanlanmış görev: \Microsoft\Windows\Feedback\Siuf\DmClient → devre dışı`
-- `Zamanlanmış görev: \Microsoft\Windows\Feedback\Siuf\DmClientOnScenarioDownload → devre dışı`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo\Enabled = 0 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo\DisabledByGroupPolicy = 1 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Privacy\TailoredExperiencesWithDiagnosticDataEnabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\CPSS\Store\TailoredExperiencesWithDiagnosticDataEnabled\Value = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Policies\Microsoft\Windows\CloudContent\DisableTailoredExperiencesWithDiagnosticData = 1 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Siuf\Rules\NumberOfSIUFInPeriod = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Siuf\Rules\PeriodInNanoSeconds silinir`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting\Disabled = 1 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\Disabled = 1 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\System\EnableActivityFeed = 0 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\System\PublishUserActivities = 0 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\System\UploadUserActivities = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Input\TIPC\Enabled = 0 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection\AllowTelemetry = 0 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection\DoNotShowFeedbackNotifications = 1 (DWord)`
+- `Service: DiagTrack → start = Disabled, status = Stopped`
+- `Service: dmwappushservice → start = Disabled, status = Stopped`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\SQMClient\Windows\CEIPEnable = 0 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppCompat\AITEnable = 0 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppCompat\DisableInventory = 1 (DWord)`
+- `Scheduled task: \Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser → disabled`
+- `Scheduled task: \Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser Exp → disabled`
+- `Scheduled task: \Microsoft\Windows\Application Experience\ProgramDataUpdater → disabled`
+- `Scheduled task: \Microsoft\Windows\Application Experience\MareBackup → disabled`
+- `Scheduled task: \Microsoft\Windows\Customer Experience Improvement Program\Consolidator → disabled`
+- `Scheduled task: \Microsoft\Windows\Customer Experience Improvement Program\UsbCeip → disabled`
+- `Scheduled task: \Microsoft\Windows\Autochk\Proxy → disabled`
+- `Scheduled task: \Microsoft\Windows\DiskDiagnostic\Microsoft-Windows-DiskDiagnosticDataCollector → disabled`
+- `Scheduled task: \Microsoft\Windows\Feedback\Siuf\DmClient → disabled`
+- `Scheduled task: \Microsoft\Windows\Feedback\Siuf\DmClientOnScenarioDownload → disabled`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo\Enabled = 0 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo\DisabledByGroupPolicy = 1 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Privacy\TailoredExperiencesWithDiagnosticDataEnabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\CPSS\Store\TailoredExperiencesWithDiagnosticDataEnabled\Value = 0 (DWord)`
+- `Registry: HKCU:\Software\Policies\Microsoft\Windows\CloudContent\DisableTailoredExperiencesWithDiagnosticData = 1 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Siuf\Rules\NumberOfSIUFInPeriod = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Siuf\Rules\PeriodInNanoSeconds is deleted`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting\Disabled = 1 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\Disabled = 1 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\Windows\System\EnableActivityFeed = 0 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\Windows\System\PublishUserActivities = 0 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\Windows\System\UploadUserActivities = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Input\TIPC\Enabled = 0 (DWord)`
 
 ## refresh
 
@@ -332,7 +332,7 @@ Parameters (default): `delay` = `10`
 
 Changes (1):
 
-- `10 sn sonra UEFI (BIOS) ayarlarına yeniden başlat`
+- `Reboot to UEFI (BIOS) settings after 10 s`
 
 ## setup
 
@@ -346,8 +346,8 @@ Parameters (default): `exceptions` = `5319275A.WhatsAppDesktop_cv1g1gvanyjgm`
 
 Changes (2):
 
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy\LetAppsRunInBackground = 2 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy\LetAppsRunInBackground_ForceAllowTheseApps = 5319275A.WhatsAppDesktop_cv1g1gvanyjgm (MultiString)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy\LetAppsRunInBackground = 2 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy\LetAppsRunInBackground_ForceAllowTheseApps = 5319275A.WhatsAppDesktop_cv1g1gvanyjgm (MultiString)`
 
 ### setup.default-browser
 
@@ -361,7 +361,7 @@ Parameters (default): `appName` = `Google Chrome` · `progId` = `ChromeHTML` · 
 
 Changes (1):
 
-- `Varsayılan tarayıcı: Google Chrome (ChromeHTML) — Ayarlar'da tek tıkla, elle`
+- `Default browser: Google Chrome (ChromeHTML) — one click in Settings, manual`
 
 ### setup.edition-pro
 
@@ -375,7 +375,7 @@ Condition: Edition Core
 
 Changes (1):
 
-- `Ayarlar açılır (ms-settings:activation): Activation page opened: enter your own Pro key with "Change product key", or get the Pro upgrade from the Store. Windows restarts after the upgrade.`
+- `Settings opens (ms-settings:activation): Activation page opened: enter your own Pro key with "Change product key", or get the Pro upgrade from the Store. Windows restarts after the upgrade.`
 
 ### setup.mmagent-off
 
@@ -387,10 +387,10 @@ Condition: MinRamGB 16
 
 Changes (4):
 
-- `Bellek yöneticisi: MemoryCompression → kapalı`
-- `Bellek yöneticisi: ApplicationLaunchPrefetching → kapalı`
-- `Bellek yöneticisi: ApplicationPreLaunch → kapalı`
-- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters\EnablePrefetcher = 0 (DWord)`
+- `Memory manager: MemoryCompression → off`
+- `Memory manager: ApplicationLaunchPrefetching → off`
+- `Memory manager: ApplicationPreLaunch → off`
+- `Registry: HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters\EnablePrefetcher = 0 (DWord)`
 
 ### setup.store-optimize
 
@@ -400,10 +400,10 @@ Automatic download and update of Store apps is turned off (WindowsStore\\Windows
 
 Changes (4):
 
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsStore\WindowsUpdate\AutoDownload = 2 (DWord)`
-- `Uygulama ayarı: Microsoft.WindowsStore VideoAutoplay = False (Bool)`
-- `Uygulama ayarı: Microsoft.WindowsStore EnableAppInstallNotifications = False (Bool)`
-- `Uygulama ayarı: Microsoft.WindowsStore PersistentSettings\PersonalizationEnabled = False (Bool)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsStore\WindowsUpdate\AutoDownload = 2 (DWord)`
+- `App setting: Microsoft.WindowsStore VideoAutoplay = False (Bool)`
+- `App setting: Microsoft.WindowsStore EnableAppInstallNotifications = False (Bool)`
+- `App setting: Microsoft.WindowsStore PersistentSettings\PersonalizationEnabled = False (Bool)`
 
 ### setup.updates-staged
 
@@ -419,8 +419,8 @@ Parameters (default): `pauseDays` = `365`
 
 Changes (2):
 
-- `Windows Update: bekleyen bütün güncellemeler kurulur`
-- `Windows Update: 365 gün duraklatılır`
+- `Windows Update: all pending updates are installed`
+- `Windows Update: paused for 365 days`
 
 ## sound
 
@@ -432,8 +432,8 @@ Turns off the Windows sign-in (startup) sound. Equivalent of the Settings \> Per
 
 Changes (2):
 
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI\BootAnimation\DisableStartupSound = 1 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\EditionOverrides\UserSetting_DisableStartupSound = 1 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI\BootAnimation\DisableStartupSound = 1 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\EditionOverrides\UserSetting_DisableStartupSound = 1 (DWord)`
 
 ### sound.volume
 
@@ -445,7 +445,7 @@ Parameters (default): `level` = `15`
 
 Changes (1):
 
-- `Ses: varsayılan çıkış → seviye = %15`
+- `Audio: default output → level = 15%`
 
 ## system
 
@@ -461,7 +461,7 @@ Parameters (default): `description` = `FAI_WinOP`
 
 Changes (1):
 
-- `Sistem Geri Yükleme noktası: 'FAI_WinOP'`
+- `System Restore point: 'FAI_WinOP'`
 
 ### system.timer-resolution
 
@@ -473,8 +473,8 @@ Parameters (default): `resolution` = `5000`
 
 Changes (2):
 
-- `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\kernel\GlobalTimerResolutionRequests = 1 (DWord)`
-- `Zamanlayıcı çözünürlüğü servisi: 0.5 ms`
+- `Registry: HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\kernel\GlobalTimerResolutionRequests = 1 (DWord)`
+- `Timer resolution service: 0.5 ms`
 
 ## ui
 
@@ -486,7 +486,7 @@ Windows' default user and guest pictures (the .png / .bmp files in %ProgramData%
 
 Changes (1):
 
-- `Görüntü: %ProgramData%\Microsoft\User Account Pictures\*.png,*.bmp tek renk #000000 (boyut korunur)`
+- `Image: %ProgramData%\Microsoft\User Account Pictures\*.png,*.bmp solid color #000000 (size is kept)`
 
 ### ui.copilot-off
 
@@ -496,9 +496,9 @@ Windows Copilot is turned off by policy ("Turn off Windows Copilot", user and ma
 
 Changes (3):
 
-- `Kayıt defteri: HKCU:\Software\Policies\Microsoft\Windows\WindowsCopilot\TurnOffWindowsCopilot = 1 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot\TurnOffWindowsCopilot = 1 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ShowCopilotButton = 0 (DWord)`
+- `Registry: HKCU:\Software\Policies\Microsoft\Windows\WindowsCopilot\TurnOffWindowsCopilot = 1 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot\TurnOffWindowsCopilot = 1 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ShowCopilotButton = 0 (DWord)`
 
 ### ui.explorer
 
@@ -508,12 +508,12 @@ File Explorer opens to This PC, file extensions are shown, and the title bar sho
 
 Changes (6):
 
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\LaunchTo = 1 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\HideFileExt = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\CabinetState\FullPath = 1 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Classes\CLSID\{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}\System.IsPinnedToNameSpaceTree = 0 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\HubMode = 1 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FolderDescriptions\{31C0DD25-9439-4F12-BF41-7FF4EDA38722}\PropertyBag\ThisPCPolicy = Hide (String)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\LaunchTo = 1 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\HideFileExt = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\CabinetState\FullPath = 1 (DWord)`
+- `Registry: HKCU:\Software\Classes\CLSID\{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}\System.IsPinnedToNameSpaceTree = 0 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\HubMode = 1 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FolderDescriptions\{31C0DD25-9439-4F12-BF41-7FF4EDA38722}\PropertyBag\ThisPCPolicy = Hide (String)`
 
 ### ui.lockscreen-black
 
@@ -523,11 +523,11 @@ A plain black image (C:\\ProgramData\\FAI\_WinOP\\Black.png, 1920x1080) is gener
 
 Changes (5):
 
-- `Görüntü: C:\ProgramData\FAI_WinOP\Black.png tek renk #000000 (1920x1080, varsa boyutu korunur)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP\LockScreenImagePath = C:\ProgramData\FAI_WinOP\Black.png (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP\LockScreenImageUrl = C:\ProgramData\FAI_WinOP\Black.png (String)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP\LockScreenImageStatus = 1 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\System\DisableAcrylicBackgroundOnLogon = 1 (DWord)`
+- `Image: C:\ProgramData\FAI_WinOP\Black.png solid color #000000 (1920x1080, existing size is kept)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP\LockScreenImagePath = C:\ProgramData\FAI_WinOP\Black.png (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP\LockScreenImageUrl = C:\ProgramData\FAI_WinOP\Black.png (String)`
+- `Registry: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP\LockScreenImageStatus = 1 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\Windows\System\DisableAcrylicBackgroundOnLogon = 1 (DWord)`
 
 ### ui.notepad-settings
 
@@ -539,9 +539,9 @@ Parameters (default): `aiRewrite` = `False` · `openInNewWindow` = `1` · `resto
 
 Changes (3):
 
-- `Uygulama ayarı: Microsoft.WindowsNotepad OpenFile = 1 (Int32)`
-- `Uygulama ayarı: Microsoft.WindowsNotepad GhostFile = False (Bool)`
-- `Uygulama ayarı: Microsoft.WindowsNotepad RewriteEnabled = False (Bool)`
+- `App setting: Microsoft.WindowsNotepad OpenFile = 1 (Int32)`
+- `App setting: Microsoft.WindowsNotepad GhostFile = False (Bool)`
+- `App setting: Microsoft.WindowsNotepad RewriteEnabled = False (Bool)`
 
 ### ui.notifications
 
@@ -553,16 +553,16 @@ Parameters (default): `exceptions` = `*WhatsApp*, *Telegram*`
 
 Changes (10):
 
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\PushNotifications\ToastEnabled = 1 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.Suggested\Enabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.StartupApp\Enabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Microsoft.SkyDrive.Desktop\Enabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\windows.immersivecontrolpanel_cw5n1h2txyewy!microsoft.windows.immersivecontrolpanel\Enabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\*\Enabled = 0 (DWord) — hariç: Windows.Defender*, *SecHealthUI*, Windows.SystemToast.SecurityAndMaintenance, *WhatsApp*, *Telegram*`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SubscribedContent-310093Enabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SubscribedContent-338389Enabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SoftLandingEnabled = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\UserProfileEngagement\ScoobeSystemSettingEnabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\PushNotifications\ToastEnabled = 1 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.Suggested\Enabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.StartupApp\Enabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Microsoft.SkyDrive.Desktop\Enabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\windows.immersivecontrolpanel_cw5n1h2txyewy!microsoft.windows.immersivecontrolpanel\Enabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\*\Enabled = 0 (DWord) — excluding: Windows.Defender*, *SecHealthUI*, Windows.SystemToast.SecurityAndMaintenance, *WhatsApp*, *Telegram*`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SubscribedContent-310093Enabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SubscribedContent-338389Enabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SoftLandingEnabled = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\UserProfileEngagement\ScoobeSystemSettingEnabled = 0 (DWord)`
 
 ### ui.taskbar
 
@@ -572,11 +572,11 @@ The Search box, Task View and Chat buttons are removed (the Widgets button by ui
 
 Changes (5):
 
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Search\SearchboxTaskbarMode = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ShowTaskViewButton = 0 (DWord)`
-- `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Chat\ChatIcon = 3 (DWord)`
-- `Kayıt defteri: HKCU:\Control Panel\NotifyIconSettings\*\IsPromoted = 0 (DWord)`
-- `Görev çubuğu sabitlemeleri yalnız: Microsoft.Windows.Explorer, Google Chrome.lnk`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Search\SearchboxTaskbarMode = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ShowTaskViewButton = 0 (DWord)`
+- `Registry: HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Chat\ChatIcon = 3 (DWord)`
+- `Registry: HKCU:\Control Panel\NotifyIconSettings\*\IsPromoted = 0 (DWord)`
+- `Taskbar pins only: Microsoft.Windows.Explorer, Google Chrome.lnk`
 
 ### ui.theme-black
 
@@ -586,15 +586,15 @@ Apps and Windows switch to dark mode and transparency effects are turned off. Th
 
 Changes (9):
 
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\SystemUsesLightTheme = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\EnableTransparency = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Control Panel\Desktop\AutoColorization = 1 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\ColorPrevalence = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\DWM\ColorPrevalence = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Control Panel\Desktop\WallPaper =  (String)`
-- `Kayıt defteri: HKCU:\Control Panel\Colors\Background = 0 0 0 (String)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Wallpapers\BackgroundType = 1 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\SystemUsesLightTheme = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\EnableTransparency = 0 (DWord)`
+- `Registry: HKCU:\Control Panel\Desktop\AutoColorization = 1 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\ColorPrevalence = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\DWM\ColorPrevalence = 0 (DWord)`
+- `Registry: HKCU:\Control Panel\Desktop\WallPaper =  (String)`
+- `Registry: HKCU:\Control Panel\Colors\Background = 0 0 0 (String)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Wallpapers\BackgroundType = 1 (DWord)`
 
 ### ui.visual-effects
 
@@ -604,14 +604,14 @@ System \> Advanced system settings \> Performance Options is set to "Custom": me
 
 Changes (8):
 
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects\VisualFXSetting = 3 (DWord)`
-- `Kayıt defteri: HKCU:\Control Panel\Desktop\UserPreferencesMask = 144,18,3,128,16,0,0,0 (Binary)`
-- `Kayıt defteri: HKCU:\Control Panel\Desktop\WindowMetrics\MinAnimate = 0 (String)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarAnimations = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ListviewAlphaSelect = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ListviewShadow = 0 (DWord)`
-- `Kayıt defteri: HKCU:\Control Panel\Desktop\FontSmoothing = 2 (String)`
-- `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\IconsOnly = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects\VisualFXSetting = 3 (DWord)`
+- `Registry: HKCU:\Control Panel\Desktop\UserPreferencesMask = 144,18,3,128,16,0,0,0 (Binary)`
+- `Registry: HKCU:\Control Panel\Desktop\WindowMetrics\MinAnimate = 0 (String)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarAnimations = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ListviewAlphaSelect = 0 (DWord)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ListviewShadow = 0 (DWord)`
+- `Registry: HKCU:\Control Panel\Desktop\FontSmoothing = 2 (String)`
+- `Registry: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\IconsOnly = 0 (DWord)`
 
 ### ui.widgets-off
 
@@ -621,4 +621,4 @@ The Widgets app (MicrosoftWindows.Client.WebExperience) is removed for this user
 
 Changes (1):
 
-- `Appx: MicrosoftWindows.Client.WebExperience kaldırılır (kullanıcı)`
+- `Appx: MicrosoftWindows.Client.WebExperience is removed (user)`

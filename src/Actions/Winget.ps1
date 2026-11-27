@@ -14,15 +14,15 @@ class WingetAction : ActionBase {
     static [string[]] Validate([object] $Def) {
         $e = New-Object 'System.Collections.Generic.List[string]'
         foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Id', 'Source', 'Ensure'))) { $e.Add($m) }
-        if (-not $Def.Contains('Id')) { $e.Add('Id: zorunlu alan eksik') }
+        if (-not $Def.Contains('Id')) { $e.Add('Id: required field missing') }
         elseif ($Def['Id'] -isnot [string] -or $Def['Id'] -notmatch '^[A-Za-z0-9][A-Za-z0-9.\-_+]*$') {
-            $e.Add('Id: paket kimliği olmalı (harf, rakam, . - _ +; boşluk yok)')
+            $e.Add('Id: must be a package id (letters, digits, . - _ +; no spaces)')
         }
         if ($Def.Contains('Source') -and ($Def['Source'] -isnot [string] -or [WingetAction]::Sources() -cnotcontains $Def['Source'])) {
-            $e.Add('Source: ' + ([WingetAction]::Sources() -join ', ') + ' değerlerinden biri olmalı')
+            $e.Add('Source: must be one of ' + ([WingetAction]::Sources() -join ', '))
         }
         if ($Def.Contains('Ensure') -and ($Def['Ensure'] -isnot [string] -or @('Present', 'Absent') -cnotcontains $Def['Ensure'])) {
-            $e.Add('Ensure: Present ya da Absent olmalı')
+            $e.Add('Ensure: must be Present or Absent')
         }
         return $e.ToArray()
     }
@@ -58,14 +58,14 @@ class WingetAction : ActionBase {
     }
 
     [string] Describe() {
-        $verb = 'kurulur'
-        if (-not $this.WantInstalled()) { $verb = 'kaldırılır' }
-        return ('Paket ({0}): {1} {2}' -f $this.SourceName(), $this.PackageId(), $verb)
+        $verb = 'is installed'
+        if (-not $this.WantInstalled()) { $verb = 'is removed' }
+        return ('Package ({0}): {1} {2}' -f $this.SourceName(), $this.PackageId(), $verb)
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
-        $now = 'kurulu değil'
-        if ($Ctx.Packages.IsInstalled($this.PackageId(), $this.SourceName())) { $now = 'kurulu' }
-        return ('{0} [şu an: {1}]' -f $this.Describe(), $now)
+        $now = 'not installed'
+        if ($Ctx.Packages.IsInstalled($this.PackageId(), $this.SourceName())) { $now = 'installed' }
+        return ('{0} [current: {1}]' -f $this.Describe(), $now)
     }
 }

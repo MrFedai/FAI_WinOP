@@ -35,26 +35,26 @@ class TaskbarPinsAction : ActionBase {
     static [string[]] Validate([object] $Def) {
         $e = New-Object 'System.Collections.Generic.List[string]'
         foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Pins'))) { $e.Add($m) }
-        if (-not $Def.Contains('Pins')) { $e.Add('Pins: zorunlu alan eksik'); return $e.ToArray() }
+        if (-not $Def.Contains('Pins')) { $e.Add('Pins: required field missing'); return $e.ToArray() }
         if (Test-FaiHasPlaceholder $Def['Pins']) { return $e.ToArray() }
-        if (-not (Test-FaiIsList $Def['Pins'])) { $e.Add('Pins: dizi olmalı (boş dizi = hiç sabitleme yok)'); return $e.ToArray() }
+        if (-not (Test-FaiIsList $Def['Pins'])) { $e.Add('Pins: must be a list (empty list = no pins)'); return $e.ToArray() }
         $i = 0
         foreach ($p in $Def['Pins']) {
             $path = "Pins[$i]"
             $i++
-            if ($p -isnot [System.Collections.IDictionary]) { $e.Add("${path}: @{ AppId | Link | Aumid = '...' } olmalı"); continue }
+            if ($p -isnot [System.Collections.IDictionary]) { $e.Add("${path}: must be @{ AppId | Link | Aumid = '...' }"); continue }
             $keys = @($p.Keys | ForEach-Object { [string]$_ })
-            if ($keys.Count -ne 1 -or @('AppId', 'Link', 'Aumid') -cnotcontains $keys[0]) { $e.Add("${path}: tam olarak bir alan olmalı: AppId, Link ya da Aumid"); continue }
+            if ($keys.Count -ne 1 -or @('AppId', 'Link', 'Aumid') -cnotcontains $keys[0]) { $e.Add("${path}: must have exactly one field: AppId, Link or Aumid"); continue }
             $v = $p[$keys[0]]
-            if ($v -isnot [string] -or [string]::IsNullOrWhiteSpace($v)) { $e.Add("${path}.$($keys[0]): boş olmayan metin olmalı"); continue }
+            if ($v -isnot [string] -or [string]::IsNullOrWhiteSpace($v)) { $e.Add("${path}.$($keys[0]): must be non-empty text"); continue }
             switch ($keys[0]) {
                 'AppId' {
                     if (-not [TaskbarPinsAction]::KnownAppIds().ContainsKey($v)) {
-                        $e.Add("${path}.AppId: bilinmeyen kimlik '$v' (bilinenler: " + (@([TaskbarPinsAction]::KnownAppIds().Keys) -join ', ') + '; diğerleri için Link)')
+                        $e.Add("${path}.AppId: unknown id '$v' (known: " + (@([TaskbarPinsAction]::KnownAppIds().Keys) -join ', ') + '; use Link for others)')
                     }
                 }
-                'Link' { if (-not (Test-FaiWindowsPath $v) -or $v -notlike '*.lnk') { $e.Add("${path}.Link: .lnk dosyasının mutlak yolu olmalı (%ProgramData%\...)") } }
-                'Aumid' { if ($v -cnotmatch ('^' + [TaskbarPinsAction]::AumidPattern() + '$')) { $e.Add("${path}.Aumid: '<paket ailesi>!<uygulama>' biçiminde olmalı") } }
+                'Link' { if (-not (Test-FaiWindowsPath $v) -or $v -notlike '*.lnk') { $e.Add("${path}.Link: must be the absolute path of a .lnk file (%ProgramData%\...)") } }
+                'Aumid' { if ($v -cnotmatch ('^' + [TaskbarPinsAction]::AumidPattern() + '$')) { $e.Add("${path}.Aumid: must be in the form '<package family>!<app>'") } }
             }
         }
         return $e.ToArray()
@@ -230,7 +230,7 @@ class TaskbarPinsAction : ActionBase {
     }
 
     [void] Apply([ExecutionContext] $Ctx) {
-        if (-not $Ctx.Desktop.IsShellRunning()) { throw 'Etkileşimli kabuk (explorer.exe) çalışmıyor: görev çubuğu sabitlemeleri oturum açıkken uygulanır' }
+        if (-not $Ctx.Desktop.IsShellRunning()) { throw 'Interactive shell (explorer.exe) is not running: taskbar pins are applied while signed in' }
         $before = $this.Snapshot($Ctx)
         $xmlFull = Expand-FaiPath ([TaskbarPinsAction]::XmlPath)
         [TaskbarPinsAction]::ClearPins($Ctx)
@@ -249,7 +249,7 @@ class TaskbarPinsAction : ActionBase {
         }
         if (-not $this.Test($Ctx)) {
             $have = @([TaskbarPinsAction]::Current($Ctx) | ForEach-Object { [string]$_['Label'] }) -join ', '
-            throw ('Gezgin sabitleme düzenini uygulamadı (şu an: {0})' -f $have)
+            throw ('Explorer did not apply the pin layout (current: {0})' -f $have)
         }
     }
 
@@ -281,17 +281,17 @@ class TaskbarPinsAction : ActionBase {
             else { $labels.Add([string]$p['Aumid']) }
         }
         $shown = $labels -join ', '
-        if (-not $shown) { $shown = '(yok)' }
-        return ('Görev çubuğu sabitlemeleri yalnız: {0}' -f $shown)
+        if (-not $shown) { $shown = '(none)' }
+        return ('Taskbar pins only: {0}' -f $shown)
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
         $have = @([TaskbarPinsAction]::Current($Ctx) | ForEach-Object { [string]$_['Label'] }) -join ', '
-        if (-not $have) { $have = 'yok' }
+        if (-not $have) { $have = 'none' }
         $wantKeys = @($this.Wanted($Ctx) | ForEach-Object { [string]$_['Label'] })
         $missing = @($this.Definition['Pins']).Count - $wantKeys.Count
-        $text = '{0} [şu an: {1}]' -f $this.Describe(), $have
-        if ($missing -gt 0) { $text += (' — {0} kısayol yok, atlanır' -f $missing) }
+        $text = '{0} [current: {1}]' -f $this.Describe(), $have
+        if ($missing -gt 0) { $text += (' — {0} shortcuts not found, will be skipped' -f $missing) }
         return $text
     }
 }

@@ -17,23 +17,23 @@ class AppSettingAction : ActionBase {
     static [string[]] Validate([object] $Def) {
         $e = New-Object 'System.Collections.Generic.List[string]'
         foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Package', 'Key', 'Name', 'Kind', 'Value'))) { $e.Add($m) }
-        if (-not $Def.Contains('Package')) { $e.Add('Package: zorunlu alan eksik') }
-        elseif ($Def['Package'] -isnot [string] -or $Def['Package'] -notmatch '^[A-Za-z0-9][A-Za-z0-9.\-]*_[a-z0-9]{13}$') { $e.Add('Package: paket ailesi adı olmalı (ör. Microsoft.WindowsNotepad_8wekyb3d8bbwe)') }
-        if (-not $Def.Contains('Name')) { $e.Add('Name: zorunlu alan eksik') }
-        elseif ($Def['Name'] -isnot [string] -or [string]::IsNullOrWhiteSpace($Def['Name']) -or $Def['Name'].Contains('\')) { $e.Add('Name: boş olmayan, ters bölüsüz metin olmalı') }
+        if (-not $Def.Contains('Package')) { $e.Add('Package: required field missing') }
+        elseif ($Def['Package'] -isnot [string] -or $Def['Package'] -notmatch '^[A-Za-z0-9][A-Za-z0-9.\-]*_[a-z0-9]{13}$') { $e.Add('Package: must be a package family name (e.g. Microsoft.WindowsNotepad_8wekyb3d8bbwe)') }
+        if (-not $Def.Contains('Name')) { $e.Add('Name: required field missing') }
+        elseif ($Def['Name'] -isnot [string] -or [string]::IsNullOrWhiteSpace($Def['Name']) -or $Def['Name'].Contains('\')) { $e.Add('Name: must be non-empty text without backslashes') }
         if ($Def.Contains('Key')) {
             $k = $Def['Key']
-            if ($k -isnot [string] -or [string]::IsNullOrWhiteSpace($k) -or $k.StartsWith('\') -or $k.EndsWith('\')) { $e.Add('Key: LocalState''e göreli anahtar yolu olmalı (ör. PersistentSettings)') }
+            if ($k -isnot [string] -or [string]::IsNullOrWhiteSpace($k) -or $k.StartsWith('\') -or $k.EndsWith('\')) { $e.Add('Key: must be a key path relative to LocalState (e.g. PersistentSettings)') }
         }
         $kind = $null
-        if (-not $Def.Contains('Kind')) { $e.Add('Kind: zorunlu alan eksik') }
-        elseif ($Def['Kind'] -isnot [string] -or -not [AppSettingAction]::Kinds().ContainsKey($Def['Kind'])) { $e.Add('Kind: Bool ya da Int32 olmalı') }
+        if (-not $Def.Contains('Kind')) { $e.Add('Kind: required field missing') }
+        elseif ($Def['Kind'] -isnot [string] -or -not [AppSettingAction]::Kinds().ContainsKey($Def['Kind'])) { $e.Add('Kind: must be Bool or Int32') }
         else { $kind = $Def['Kind'] }
-        if (-not $Def.Contains('Value')) { $e.Add('Value: zorunlu alan eksik') }
+        if (-not $Def.Contains('Value')) { $e.Add('Value: required field missing') }
         elseif ($null -ne $kind -and -not (Test-FaiHasPlaceholder $Def['Value'])) {
             $v = $Def['Value']
-            if ($kind -eq 'Bool' -and $v -isnot [bool]) { $e.Add('Value: Bool için $true / $false olmalı') }
-            if ($kind -eq 'Int32' -and (-not (Test-FaiIsInteger $v) -or $v -lt [int]::MinValue -or $v -gt [int]::MaxValue)) { $e.Add('Value: Int32 için 32 bit tamsayı olmalı') }
+            if ($kind -eq 'Bool' -and $v -isnot [bool]) { $e.Add('Value: must be $true / $false for Bool') }
+            if ($kind -eq 'Int32' -and (-not (Test-FaiIsInteger $v) -or $v -lt [int]::MinValue -or $v -gt [int]::MaxValue)) { $e.Add('Value: must be a 32-bit integer for Int32') }
         }
         return $e.ToArray()
     }
@@ -64,7 +64,7 @@ class AppSettingAction : ActionBase {
 
     [bool] Test([ExecutionContext] $Ctx) {
         if (-not $Ctx.AppSettings.HasSettings($this.Package())) {
-            $Ctx.Logger.Info(('{0}: ayar dosyası yok (uygulama kurulu değil ya da hiç açılmadı), atlanır' -f $this.Package()))
+            $Ctx.Logger.Info(('{0}: settings file not found (app not installed or never opened), skipped' -f $this.Package()))
             return $true
         }
         $cur = $Ctx.AppSettings.GetValue($this.Package(), $this.ValueName())
@@ -96,13 +96,13 @@ class AppSettingAction : ActionBase {
     }
 
     [string] Describe() {
-        return ('Uygulama ayarı: {0} {1} = {2} ({3})' -f $this.Package().Split('_')[0], $this.ValueName(), $this.Definition['Value'], $this.Definition['Kind'])
+        return ('App setting: {0} {1} = {2} ({3})' -f $this.Package().Split('_')[0], $this.ValueName(), $this.Definition['Value'], $this.Definition['Kind'])
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
-        $now = 'yok'
+        $now = 'none'
         $cur = $Ctx.AppSettings.GetValue($this.Package(), $this.ValueName())
         if ($null -ne $cur) { $now = ([System.BitConverter]::ToString([byte[]]$cur['Data'])) }
-        return ('{0} [şu an: {1}]' -f $this.Describe(), $now)
+        return ('{0} [current: {1}]' -f $this.Describe(), $now)
     }
 }

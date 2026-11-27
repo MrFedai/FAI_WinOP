@@ -17,12 +17,12 @@ class VolumeAction : ActionBase {
     static [string[]] Validate([object] $Def) {
         $e = New-Object 'System.Collections.Generic.List[string]'
         foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Level', 'Mute'))) { $e.Add($m) }
-        if (-not $Def.Contains('Level') -and -not $Def.Contains('Mute')) { $e.Add('Level / Mute: en az biri gerekir') }
+        if (-not $Def.Contains('Level') -and -not $Def.Contains('Mute')) { $e.Add('Level / Mute: at least one is required') }
         if ($Def.Contains('Level') -and -not (Test-FaiHasPlaceholder $Def['Level'])) {
             $v = $Def['Level']
-            if (-not (Test-FaiIsInteger $v) -or $v -lt 0 -or $v -gt 100) { $e.Add('Level: 0 ile 100 arası tamsayı olmalı') }
+            if (-not (Test-FaiIsInteger $v) -or $v -lt 0 -or $v -gt 100) { $e.Add('Level: must be an integer from 0 to 100') }
         }
-        if ($Def.Contains('Mute') -and -not (Test-FaiHasPlaceholder $Def['Mute']) -and $Def['Mute'] -isnot [bool]) { $e.Add('Mute: $true ya da $false olmalı') }
+        if ($Def.Contains('Mute') -and -not (Test-FaiHasPlaceholder $Def['Mute']) -and $Def['Mute'] -isnot [bool]) { $e.Add('Mute: must be $true or $false') }
         return $e.ToArray()
     }
 
@@ -40,7 +40,7 @@ class VolumeAction : ActionBase {
 
     [void] Apply([ExecutionContext] $Ctx) {
         if (-not $Ctx.Audio.HasDevice()) {
-            $Ctx.Logger.Warn('Ses çıkış aygıtı yok, atlandı')
+            $Ctx.Logger.Warn('No audio output device, skipped')
             return
         }
         if ($this.Definition.ContainsKey('Level') -and $Ctx.Audio.GetVolume() -ne [int]$this.Definition['Level']) { $Ctx.Audio.SetVolume([int]$this.Definition['Level']) }
@@ -55,16 +55,16 @@ class VolumeAction : ActionBase {
 
     [string] Describe() {
         $parts = New-Object 'System.Collections.Generic.List[string]'
-        if ($this.Definition.ContainsKey('Level')) { $parts.Add('seviye = %' + $this.Definition['Level']) }
+        if ($this.Definition.ContainsKey('Level')) { $parts.Add('level = ' + $this.Definition['Level'] + '%') }
         if ($this.Definition.ContainsKey('Mute')) {
-            if ([bool]$this.Definition['Mute']) { $parts.Add('sessiz') } else { $parts.Add('sesli') }
+            if ([bool]$this.Definition['Mute']) { $parts.Add('muted') } else { $parts.Add('unmuted') }
         }
-        return ('Ses: varsayılan çıkış → {0}' -f ($parts -join ', '))
+        return ('Audio: default output → {0}' -f ($parts -join ', '))
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
-        if (-not $Ctx.Audio.HasDevice()) { return ('{0} [çıkış aygıtı yok, atlanır]' -f $this.Describe()) }
-        return ('{0} [şu an: %{1}, sessiz = {2}]' -f $this.Describe(), $Ctx.Audio.GetVolume(), $Ctx.Audio.GetMute())
+        if (-not $Ctx.Audio.HasDevice()) { return ('{0} [no output device, will be skipped]' -f $this.Describe()) }
+        return ('{0} [current: {1}%, mute = {2}]' -f $this.Describe(), $Ctx.Audio.GetVolume(), $Ctx.Audio.GetMute())
     }
 }
 
@@ -76,17 +76,17 @@ class TimerResolutionAction : ActionBase {
         foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Resolution', 'Ensure'))) { $e.Add($m) }
         $ensure = 'Present'
         if ($Def.Contains('Ensure')) {
-            if ($Def['Ensure'] -isnot [string] -or @('Present', 'Absent') -cnotcontains $Def['Ensure']) { $e.Add('Ensure: Present ya da Absent olmalı') }
+            if ($Def['Ensure'] -isnot [string] -or @('Present', 'Absent') -cnotcontains $Def['Ensure']) { $e.Add('Ensure: must be Present or Absent') }
             else { $ensure = $Def['Ensure'] }
         }
         if ($ensure -eq 'Absent') {
-            if ($Def.Contains('Resolution')) { $e.Add('Resolution: Ensure=Absent iken verilmez') }
+            if ($Def.Contains('Resolution')) { $e.Add('Resolution: not allowed when Ensure=Absent') }
             return $e.ToArray()
         }
-        if (-not $Def.Contains('Resolution')) { $e.Add('Resolution: zorunlu alan eksik') }
+        if (-not $Def.Contains('Resolution')) { $e.Add('Resolution: required field missing') }
         elseif (-not (Test-FaiHasPlaceholder $Def['Resolution'])) {
             $v = $Def['Resolution']
-            if (-not (Test-FaiIsInteger $v) -or $v -lt 5000 -or $v -gt 156250) { $e.Add('Resolution: 5000 (0,5 ms) ile 156250 (15,6 ms) arası tamsayı olmalı (100 ns)') }
+            if (-not (Test-FaiIsInteger $v) -or $v -lt 5000 -or $v -gt 156250) { $e.Add('Resolution: must be an integer from 5000 (0.5 ms) to 156250 (15.6 ms) (100 ns units)') }
         }
         return $e.ToArray()
     }
@@ -122,12 +122,12 @@ class TimerResolutionAction : ActionBase {
     }
 
     [string] Describe() {
-        if ($this.IsAbsent()) { return 'Zamanlayıcı çözünürlüğü servisi kaldırılır' }
-        return ('Zamanlayıcı çözünürlüğü servisi: {0} ms' -f ([double]$this.Definition['Resolution'] / 10000).ToString([System.Globalization.CultureInfo]::InvariantCulture))
+        if ($this.IsAbsent()) { return 'Timer resolution service is removed' }
+        return ('Timer resolution service: {0} ms' -f ([double]$this.Definition['Resolution'] / 10000).ToString([System.Globalization.CultureInfo]::InvariantCulture))
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
-        if (-not $Ctx.TimerResolution.IsInstalled()) { return ('{0} [şu an: kurulu değil]' -f $this.Describe()) }
-        return ('{0} [şu an: kurulu, {1} × 100 ns]' -f $this.Describe(), $Ctx.TimerResolution.GetResolution())
+        if (-not $Ctx.TimerResolution.IsInstalled()) { return ('{0} [current: not installed]' -f $this.Describe()) }
+        return ('{0} [current: installed, {1} × 100 ns]' -f $this.Describe(), $Ctx.TimerResolution.GetResolution())
     }
 }

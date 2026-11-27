@@ -34,10 +34,10 @@ Describe 'UpdatePause eylemi' {
         Errs @{ Type = 'UpdatePause'; Days = 365 } | Should -BeNullOrEmpty
         Errs @{ Type = 'UpdatePause'; Ensure = 'Absent' } | Should -BeNullOrEmpty
         Errs @{ Type = 'UpdatePause'; Days = '{{pauseDays}}' } | Should -BeNullOrEmpty
-        (Errs @{ Type = 'UpdatePause' }) | Should -Match 'Days: zorunlu'
-        (Errs @{ Type = 'UpdatePause'; Days = 0 }) | Should -Match '1 ile 3650'
+        (Errs @{ Type = 'UpdatePause' }) | Should -Match 'Days: required'
+        (Errs @{ Type = 'UpdatePause'; Days = 0 }) | Should -Match '1 to 3650'
         (Errs @{ Type = 'UpdatePause'; Days = 5; Ensure = 'Absent' }) | Should -Match 'Ensure=Absent'
-        (Errs @{ Type = 'WindowsUpdate'; Days = 1 }) | Should -Match 'bilinmeyen alan'
+        (Errs @{ Type = 'WindowsUpdate'; Days = 1 }) | Should -Match 'unknown field'
     }
 
     It '365 gün: 6 değer UTC biçiminde yazılır, Test sağlanır, geri alma birebir (anahtar zinciri dahil)' {
@@ -52,7 +52,7 @@ Describe 'UpdatePause eylemi' {
         $ctx.Registry.GetValue($script:UX, 'PauseUpdatesExpiryTime') | Should -Be '2027-11-24T10:30:00Z'
         $ctx.Registry.GetValue($script:UX, 'PauseQualityUpdatesEndTime') | Should -Be '2027-11-24T10:30:00Z'
         $ctx.Registry.GetValueKind($script:UX, 'PauseFeatureUpdatesStartTime') | Should -Be 'String'
-        $a.Preview($ctx) | Should -Match 'bitiş 2027-11-24'
+        $a.Preview($ctx) | Should -Match 'expires 2027-11-24'
         $a.Revert($ctx, $snap)
         Get-State $ctx | Should -Be $before
     }
@@ -84,7 +84,7 @@ Describe 'WindowsUpdate eylemi ve setup.updates-staged' {
     It 'bekleyenler kurulur, sonra 365 gün duraklatılır; ikinci çalıştırma ZATEN UYGUN; -Undo yalnız duraklatmayı kaldırır' {
         $ctx = New-Ctx
         $ctx.Updates.Seed([string[]]@('KB1', 'KB2'))
-        $ctx.Prompt.Enqueue([string[]]@('E', 'E'))   # AlwaysConfirm: her çalıştırmada sorulur
+        $ctx.Prompt.Enqueue([string[]]@('Y', 'Y'))   # AlwaysConfirm: her çalıştırmada sorulur
         $before = Get-State $ctx
         $p = [Profile]::FromHashtable(@{ name = 'g'; tweaks = @('setup.updates-staged') }, 'test')
         $dry = Invoke-FaiEngine -Profile $p -Context (New-Ctx -DryRun) -Catalog $script:Catalog
@@ -106,14 +106,14 @@ Describe 'WindowsUpdate eylemi ve setup.updates-staged' {
     It 'yeniden başlatma gerekirse duraklatma uygulanmaz; ResumeCommand doluysa RunOnce yazılır' {
         $ctx = New-Ctx
         $ctx.Updates.Seed([string[]]@('KB1'))
-        $ctx.Prompt.Enqueue([string[]]@('E', 'E'))   # AlwaysConfirm: her çalıştırmada sorulur
+        $ctx.Prompt.Enqueue([string[]]@('Y', 'Y'))   # AlwaysConfirm: her çalıştırmada sorulur
         $ctx.Updates.RebootAfterInstall = $true
         $ctx.ResumeCommand = 'powershell.exe -File C:\FAI\install.ps1 -Profile fedai'
         $p = [Profile]::FromHashtable(@{ name = 'g'; tweaks = @('setup.updates-staged') }, 'test')
         $r = Invoke-FaiEngine -Profile $p -Context $ctx -Catalog $script:Catalog
         $item = $r.Find('setup.updates-staged')
         $item.Status | Should -Be 'Failed'
-        $item.Reason | Should -Match 'yeniden başlatma gerekiyor'
+        $item.Reason | Should -Match 'a restart is required'
         $item.Reason | Should -Match 'RunOnce'
         $ctx.Registry.ValueExists($script:UX, 'PauseUpdatesExpiryTime') | Should -BeFalse
         $ctx.Registry.GetValue('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce', 'FAI_WinOP') | Should -Be $ctx.ResumeCommand
@@ -130,8 +130,8 @@ Describe 'WindowsUpdate eylemi ve setup.updates-staged' {
         $ctx.Updates.RebootPending = $true
         $a = Act @{ Type = 'WindowsUpdate' }
         $a.Test($ctx) | Should -BeFalse
-        $a.Preview($ctx) | Should -Match 'yeniden başlatma bekliyor'
-        { $a.Apply($ctx) } | Should -Throw '*profili tekrar çalıştırın*'
+        $a.Preview($ctx) | Should -Match 'restart pending'
+        { $a.Apply($ctx) } | Should -Throw '*run the profile again*'
         $ctx.Registry.ValueExists('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce', 'FAI_WinOP') | Should -BeFalse
     }
 
@@ -140,8 +140,8 @@ Describe 'WindowsUpdate eylemi ve setup.updates-staged' {
         $ctx.Updates.Seed([string[]]@('A', 'B', 'C', 'D'))
         $ctx.Updates.FailTitles = @('D')
         $a = Act @{ Type = 'WindowsUpdate' }
-        $a.Preview($ctx) | Should -Match '4 bekleyen: A; B; C; …'
-        { $a.Apply($ctx) } | Should -Throw '*1 güncelleme kurulamadı*'
+        $a.Preview($ctx) | Should -Match '4 pending: A; B; C; …'
+        { $a.Apply($ctx) } | Should -Throw '*1 updates failed to install*'
     }
 }
 
@@ -235,8 +235,8 @@ Describe 'gaming.per-game (motor + GameAffinity)' {
     It 'GameAffinity şeması' {
         Errs @{ Type = 'GameAffinity'; Games = @(@{ Exe = 'a.exe'; Mask = 3 }); TaskPath = '\FAI_WinOP\GameAffinity'; ScriptPath = '%ProgramData%\FAI_WinOP\GameAffinity.ps1' } | Should -BeNullOrEmpty
         $e = Errs @{ Type = 'GameAffinity'; Games = @(@{ Exe = 'C:\a.exe'; Mask = 0 }); TaskPath = 'x'; ScriptPath = 'rel.ps1' }
-        ($e -join "`n") | Should -Match 'Exe: yalnız dosya adı'
-        ($e -join "`n") | Should -Match 'Mask: sıfırdan farklı'
+        ($e -join "`n") | Should -Match 'Exe: must be a file name only'
+        ($e -join "`n") | Should -Match 'Mask: must be a non-zero integer'
         ($e -join "`n") | Should -Match 'TaskPath'
         ($e -join "`n") | Should -Match 'ScriptPath'
     }

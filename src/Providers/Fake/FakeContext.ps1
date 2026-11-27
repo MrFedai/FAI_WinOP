@@ -7,7 +7,7 @@ function New-FakeContext {
     .PARAMETER BackupRoot
         BackupStore kökü (testte TestDrive altında).
     .PARAMETER Answers
-        FakePromptProvider'a sırayla verilecek yanıtlar (örn. 'E', 'EVET', 'H').
+        FakePromptProvider'a sırayla verilecek yanıtlar (örn. 'Y', 'YES', 'N').
     #>
     [CmdletBinding()]
     param(
@@ -128,7 +128,7 @@ function Initialize-FakeShellState {
     $pics = Expand-FaiPath '%ProgramData%\Microsoft\User Account Pictures'
     $Ctx.Files.Seed(($pics.TrimEnd('\') + '\' + 'user.png'), [FakeImageProvider]::Encode(448, 448, '0078D4'))
     $Ctx.Files.Seed(($pics.TrimEnd('\') + '\' + 'guest.bmp'), [FakeImageProvider]::Encode(448, 448, '0078D4'))
-    $Ctx.Files.SeedText(($pics.TrimEnd('\') + '\' + 'readme.txt'), 'görüntü değil')
+    $Ctx.Files.SeedText(($pics.TrimEnd('\') + '\' + 'readme.txt'), 'not an image')
     $now = [System.BitConverter]::GetBytes([long]133000000000000000)
     $Ctx.AppSettings.Seed('Microsoft.WindowsNotepad_8wekyb3d8bbwe', 'OpenFile', 100000004, [byte[]](@([byte]0, [byte]0, [byte]0, [byte]0) + $now))
     $Ctx.AppSettings.Seed('Microsoft.WindowsNotepad_8wekyb3d8bbwe', 'GhostFile', 100000011, [byte[]](@([byte]1) + $now))

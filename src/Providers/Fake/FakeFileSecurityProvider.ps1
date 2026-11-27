@@ -85,7 +85,7 @@ class FakeFileSecurityProvider : IFileSecurityProvider {
     [hashtable] GetAcl([string] $Path) {
         $this.Log("GetAcl $Path")
         $i = $this.Item($Path)
-        if ($null -eq $i) { throw "Öğe yok: $Path" }
+        if ($null -eq $i) { throw "Item not found: $Path" }
         return [hashtable]$i['Acl']
     }
 
@@ -98,7 +98,7 @@ class FakeFileSecurityProvider : IFileSecurityProvider {
     [void] MoveItem([string] $Path, [string] $Destination) {
         $this.LogWrite("MoveItem $Path -> $Destination")
         $from = [FakeFileSecurityProvider]::Norm($Path)
-        if (-not $this.Items.ContainsKey($from)) { throw "Taşınacak öğe yok: $Path" }
+        if (-not $this.Items.ContainsKey($from)) { throw "Item to move not found: $Path" }
         $to = $Destination.Replace('/', '\').TrimEnd('\')
         foreach ($k in @($this.Items.Keys)) {
             if ($k -ne $from -and -not $k.StartsWith($from + '\')) { continue }
@@ -112,7 +112,7 @@ class FakeFileSecurityProvider : IFileSecurityProvider {
     [void] SetRestrictedAcl([string] $Path, [string[]] $ReaderSid) {
         $this.LogWrite("SetRestrictedAcl $Path")
         $i = $this.Item($Path)
-        if ($null -eq $i) { throw "Öğe yok: $Path" }
+        if ($null -eq $i) { throw "Item not found: $Path" }
         $rules = New-Object System.Collections.ArrayList
         foreach ($sid in @('S-1-5-18', 'S-1-5-32-544')) {
             [void]$rules.Add(@{ Sid = $sid; Access = 'Full'; Deny = $false; Inherited = $false; Inherits = $true })

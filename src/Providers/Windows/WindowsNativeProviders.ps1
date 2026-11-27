@@ -95,12 +95,12 @@ class WindowsTimerResolutionProvider : ITimerResolutionProvider {
             $cmd = "Add-Type -Path '{0}' -OutputAssembly '{1}' -OutputType ConsoleApplication -ReferencedAssemblies System.ServiceProcess -ErrorAction Stop" -f $cs.Replace("'", "''"), $exe.Replace("'", "''")
             $out = & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command $cmd 2>&1
             if ($global:LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $exe)) {
-                throw ('TimerResolution derlenemedi: {0}' -f ((@($out) | ForEach-Object { [string]$_ }) -join ' ').Trim())
+                throw ('TimerResolution could not be compiled: {0}' -f ((@($out) | ForEach-Object { [string]$_ }) -join ' ').Trim())
             }
         }
         finally { Remove-Item -LiteralPath $cs -Force -ErrorAction SilentlyContinue }
         New-Service -Name $this.ServiceName -BinaryPathName ('"{0}" {1}' -f $exe, $Resolution) -DisplayName 'FAI_WinOP Timer Resolution' `
-            -Description 'FAI_WinOP: zamanlayıcı çözünürlüğü isteği (src/Native/TimerResolution.cs).' -StartupType Automatic -ErrorAction Stop | Out-Null
+            -Description 'FAI_WinOP: timer resolution request (src/Native/TimerResolution.cs).' -StartupType Automatic -ErrorAction Stop | Out-Null
         Start-Service -Name $this.ServiceName -ErrorAction Stop
     }
 
@@ -108,7 +108,7 @@ class WindowsTimerResolutionProvider : ITimerResolutionProvider {
         if ($this.IsInstalled()) {
             Stop-Service -Name $this.ServiceName -ErrorAction SilentlyContinue
             $out = & sc.exe delete $this.ServiceName 2>&1
-            if ($global:LASTEXITCODE -ne 0) { throw ('Servis silinemedi: {0}' -f ((@($out) | ForEach-Object { [string]$_ }) -join ' ').Trim()) }
+            if ($global:LASTEXITCODE -ne 0) { throw ('Could not delete service: {0}' -f ((@($out) | ForEach-Object { [string]$_ }) -join ' ').Trim()) }
             for ($i = 0; $i -lt 20 -and $this.IsInstalled(); $i++) { Start-Sleep -Milliseconds 250 }
         }
         $exe = $this.ExePath()

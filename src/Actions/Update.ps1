@@ -32,31 +32,31 @@ class WindowsUpdateAction : ActionBase {
 
     [void] Apply([ExecutionContext] $Ctx) {
         $r = $Ctx.Updates.InstallPending()
-        $Ctx.Logger.Info(('Windows Update: {0} kuruldu, {1} başarısız' -f [int]$r['Installed'], [int]$r['Failed']))
+        $Ctx.Logger.Info(('Windows Update: {0} installed, {1} failed' -f [int]$r['Installed'], [int]$r['Failed']))
         if ([bool]$r['RebootRequired'] -or $Ctx.Updates.IsRebootPending()) {
-            $tail = 'yeniden başlatıp profili tekrar çalıştırın (kalan güncellemeler ve duraklatma o zaman).'
+            $tail = 'restart and run the profile again (remaining updates and the pause happen then).'
             if ($Ctx.ResumeCommand) {
                 $Ctx.Registry.SetValue([WindowsUpdateAction]::RunOnceKey(), 'FAI_WinOP', $Ctx.ResumeCommand, 'String')
-                $tail = 'yeniden başlatın: oturum açınca araç kaldığı yerden sürer (RunOnce).'
+                $tail = 'restart: the tool resumes after sign-in (RunOnce).'
             }
-            throw ('Güncellemeler kuruldu ({0}), yeniden başlatma gerekiyor; {1}' -f [int]$r['Installed'], $tail)
+            throw ('Updates installed ({0}), a restart is required; {1}' -f [int]$r['Installed'], $tail)
         }
-        if ([int]$r['Failed'] -gt 0) { throw ('{0} güncelleme kurulamadı; profili yeniden çalıştırın' -f [int]$r['Failed']) }
+        if ([int]$r['Failed'] -gt 0) { throw ('{0} updates failed to install; run the profile again' -f [int]$r['Failed']) }
     }
 
     [void] Revert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
-        $Ctx.Logger.Warn('Kurulan Windows güncellemeleri geri alınmaz (Ayarlar > Windows Update > Güncelleştirme geçmişi).')
+        $Ctx.Logger.Warn('Installed Windows updates are not reverted (Settings > Windows Update > Update history).')
     }
 
-    [string] Describe() { return 'Windows Update: bekleyen bütün güncellemeler kurulur' }
+    [string] Describe() { return 'Windows Update: all pending updates are installed' }
 
     [string] Preview([ExecutionContext] $Ctx) {
         $pending = @($Ctx.Updates.GetPending())
         $show = @($pending | Select-Object -First 3)
-        $text = '{0} [şu an: {1} bekleyen' -f $this.Describe(), $pending.Count
+        $text = '{0} [current: {1} pending' -f $this.Describe(), $pending.Count
         if ($show.Count -gt 0) { $text += ': ' + ($show -join '; ') }
         if ($pending.Count -gt $show.Count) { $text += '; …' }
-        if ($Ctx.Updates.IsRebootPending()) { $text += '; yeniden başlatma bekliyor' }
+        if ($Ctx.Updates.IsRebootPending()) { $text += '; restart pending' }
         return ($text + ']')
     }
 }
@@ -69,17 +69,17 @@ class UpdatePauseAction : ActionBase {
         foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Days', 'Ensure'))) { $e.Add($m) }
         $ensure = 'Present'
         if ($Def.Contains('Ensure')) {
-            if ($Def['Ensure'] -isnot [string] -or @('Present', 'Absent') -cnotcontains $Def['Ensure']) { $e.Add('Ensure: Present ya da Absent olmalı') }
+            if ($Def['Ensure'] -isnot [string] -or @('Present', 'Absent') -cnotcontains $Def['Ensure']) { $e.Add('Ensure: must be Present or Absent') }
             else { $ensure = $Def['Ensure'] }
         }
         if ($ensure -eq 'Absent') {
-            if ($Def.Contains('Days')) { $e.Add('Days: Ensure=Absent iken verilmez') }
+            if ($Def.Contains('Days')) { $e.Add('Days: not allowed when Ensure=Absent') }
             return $e.ToArray()
         }
-        if (-not $Def.Contains('Days')) { $e.Add('Days: zorunlu alan eksik') }
+        if (-not $Def.Contains('Days')) { $e.Add('Days: required field missing') }
         elseif (-not (Test-FaiHasPlaceholder $Def['Days'])) {
             $v = $Def['Days']
-            if (-not (Test-FaiIsInteger $v) -or $v -lt 1 -or $v -gt 3650) { $e.Add('Days: 1 ile 3650 arası tamsayı olmalı') }
+            if (-not (Test-FaiIsInteger $v) -or $v -lt 1 -or $v -gt 3650) { $e.Add('Days: must be an integer from 1 to 3650') }
         }
         return $e.ToArray()
     }
@@ -155,14 +155,14 @@ class UpdatePauseAction : ActionBase {
     }
 
     [string] Describe() {
-        if ($this.IsAbsent()) { return 'Windows Update: duraklatma kaldırılır' }
-        return ('Windows Update: {0} gün duraklatılır' -f $this.Definition['Days'])
+        if ($this.IsAbsent()) { return 'Windows Update: pause is removed' }
+        return ('Windows Update: paused for {0} days' -f $this.Definition['Days'])
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
         $key = Get-FaiUpdatePauseKey
-        $now = 'duraklatılmamış'
-        if ($Ctx.Registry.ValueExists($key, 'PauseUpdatesExpiryTime')) { $now = 'duraklatılmış, bitiş ' + [string]$Ctx.Registry.GetValue($key, 'PauseUpdatesExpiryTime') }
-        return ('{0} [şu an: {1}]' -f $this.Describe(), $now)
+        $now = 'not paused'
+        if ($Ctx.Registry.ValueExists($key, 'PauseUpdatesExpiryTime')) { $now = 'paused, expires ' + [string]$Ctx.Registry.GetValue($key, 'PauseUpdatesExpiryTime') }
+        return ('{0} [current: {1}]' -f $this.Describe(), $now)
     }
 }

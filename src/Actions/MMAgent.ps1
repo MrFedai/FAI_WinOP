@@ -14,10 +14,10 @@ class MMAgentAction : ActionBase {
     static [string[]] Validate([object] $Def) {
         $e = New-Object 'System.Collections.Generic.List[string]'
         foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Feature', 'Enabled'))) { $e.Add($m) }
-        if (-not $Def.Contains('Feature')) { $e.Add('Feature: zorunlu alan eksik') }
-        elseif ($Def['Feature'] -isnot [string] -or [MMAgentAction]::Features() -cnotcontains $Def['Feature']) { $e.Add('Feature: ' + ([MMAgentAction]::Features() -join ', ') + ' değerlerinden biri olmalı') }
-        if (-not $Def.Contains('Enabled')) { $e.Add('Enabled: zorunlu alan eksik') }
-        elseif ($Def['Enabled'] -isnot [bool] -and -not (Test-FaiHasPlaceholder $Def['Enabled'])) { $e.Add('Enabled: $true / $false olmalı') }
+        if (-not $Def.Contains('Feature')) { $e.Add('Feature: required field missing') }
+        elseif ($Def['Feature'] -isnot [string] -or [MMAgentAction]::Features() -cnotcontains $Def['Feature']) { $e.Add('Feature: must be one of ' + ([MMAgentAction]::Features() -join ', ')) }
+        if (-not $Def.Contains('Enabled')) { $e.Add('Enabled: required field missing') }
+        elseif ($Def['Enabled'] -isnot [bool] -and -not (Test-FaiHasPlaceholder $Def['Enabled'])) { $e.Add('Enabled: must be $true / $false') }
         return $e.ToArray()
     }
 
@@ -26,7 +26,7 @@ class MMAgentAction : ActionBase {
     # Özelliğin şu anki durumu; okunamazsa hata.
     [bool] Current([ExecutionContext] $Ctx) {
         $state = $Ctx.MemoryAgent.GetState()
-        if (-not $state.ContainsKey($this.Feature())) { throw ('MMAgent özelliği okunamadı: ' + $this.Feature()) }
+        if (-not $state.ContainsKey($this.Feature())) { throw ('Could not read MMAgent feature: ' + $this.Feature()) }
         return [bool]$state[$this.Feature()]
     }
 
@@ -49,19 +49,19 @@ class MMAgentAction : ActionBase {
         catch {
             $err = $_.Exception
             if ($this.Current($Ctx) -ne $Value) { throw $err }
-            $Ctx.Logger.Warn(('MMAgent {0}: komut hata verdi ama ayar kaydedildi, yeniden başlatınca etkinleşir ({1})' -f $this.Feature(), $err.Message.Trim()))
+            $Ctx.Logger.Warn(('MMAgent {0}: command reported an error but the setting was saved; it takes effect after a restart ({1})' -f $this.Feature(), $err.Message.Trim()))
         }
     }
 
     [string] Describe() {
-        $state = 'kapalı'
-        if ([bool]$this.Definition['Enabled']) { $state = 'açık' }
-        return ('Bellek yöneticisi: {0} → {1}' -f $this.Feature(), $state)
+        $state = 'off'
+        if ([bool]$this.Definition['Enabled']) { $state = 'on' }
+        return ('Memory manager: {0} → {1}' -f $this.Feature(), $state)
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
-        $now = 'kapalı'
-        if ($this.Current($Ctx)) { $now = 'açık' }
-        return ('{0} [şu an: {1}]' -f $this.Describe(), $now)
+        $now = 'off'
+        if ($this.Current($Ctx)) { $now = 'on' }
+        return ('{0} [current: {1}]' -f $this.Describe(), $now)
     }
 }

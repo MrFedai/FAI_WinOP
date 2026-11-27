@@ -37,34 +37,34 @@ class AppAction : ActionBase {
     static [string[]] Validate([object] $Def) {
         $e = New-Object 'System.Collections.Generic.List[string]'
         foreach ($m in (Get-FaiUnknownKeyError $Def (@('Type', 'Id', 'Source', 'CleanNewShortcuts', 'UninstallPath', 'UninstallArgs') + [AppAction]::ListFields()))) { $e.Add($m) }
-        if (-not $Def.Contains('Id')) { $e.Add('Id: zorunlu alan eksik') }
+        if (-not $Def.Contains('Id')) { $e.Add('Id: required field missing') }
         elseif ($Def['Id'] -isnot [string] -or $Def['Id'] -notmatch '^[A-Za-z0-9][A-Za-z0-9.\-_+]*$') {
-            $e.Add('Id: paket kimliği olmalı (harf, rakam, . - _ +; boşluk yok)')
+            $e.Add('Id: must be a package id (letters, digits, . - _ +; no spaces)')
         }
         if ($Def.Contains('Source') -and ($Def['Source'] -isnot [string] -or @('winget', 'msstore') -cnotcontains $Def['Source'])) {
-            $e.Add('Source: winget ya da msstore olmalı')
+            $e.Add('Source: must be winget or msstore')
         }
-        if ($Def.Contains('UninstallPath') -and -not (Test-FaiWindowsPath $Def['UninstallPath'])) { $e.Add('UninstallPath: mutlak yol olmalı (C:\..., %DEĞİŞKEN%\...)') }
+        if ($Def.Contains('UninstallPath') -and -not (Test-FaiWindowsPath $Def['UninstallPath'])) { $e.Add('UninstallPath: must be an absolute path (C:\..., %VARIABLE%\...)') }
         if ($Def.Contains('UninstallArgs')) {
-            if ($Def['UninstallArgs'] -isnot [string]) { $e.Add('UninstallArgs: metin olmalı') }
-            if (-not $Def.Contains('UninstallPath')) { $e.Add('UninstallArgs: UninstallPath olmadan verilmez') }
+            if ($Def['UninstallArgs'] -isnot [string]) { $e.Add('UninstallArgs: must be text') }
+            if (-not $Def.Contains('UninstallPath')) { $e.Add('UninstallArgs: not allowed without UninstallPath') }
         }
-        if ($Def.Contains('CleanNewShortcuts') -and $Def['CleanNewShortcuts'] -isnot [bool]) { $e.Add('CleanNewShortcuts: $true ya da $false olmalı') }
+        if ($Def.Contains('CleanNewShortcuts') -and $Def['CleanNewShortcuts'] -isnot [bool]) { $e.Add('CleanNewShortcuts: must be $true or $false') }
         foreach ($f in [AppAction]::ListFields()) {
             if (-not $Def.Contains($f)) { continue }
             $i = 0
             foreach ($item in @($Def[$f])) {
                 $at = "${f}[$i]"
                 $i++
-                if ($item -isnot [string] -or [string]::IsNullOrWhiteSpace($item)) { $e.Add("${at}: boş olmayan metin olmalı"); continue }
+                if ($item -isnot [string] -or [string]::IsNullOrWhiteSpace($item)) { $e.Add("${at}: must be non-empty text"); continue }
                 switch ($f) {
-                    'DisableStartup' { if ($item.Contains('\')) { $e.Add("${at}: ad olmalı, yol değil ('\' yok)") } }
-                    'DisableTasks' { if (-not $item.StartsWith('\')) { $e.Add("${at}: görev yolu '\' ile başlamalı") } }
+                    'DisableStartup' { if ($item.Contains('\')) { $e.Add("${at}: must be a name, not a path (no '\')") } }
+                    'DisableTasks' { if (-not $item.StartsWith('\')) { $e.Add("${at}: task path must start with '\'") } }
                     'RemoveShortcuts' {
-                        if ($item -notlike '*.lnk' -or $item -match '[\\/*?\[\]]') { $e.Add("${at}: joker ve yol içermeyen .lnk dosya adı olmalı") }
+                        if ($item -notlike '*.lnk' -or $item -match '[\\/*?\[\]]') { $e.Add("${at}: must be a .lnk file name without wildcards or path") }
                     }
                     'FlattenFolders' {
-                        if ($item -match '[\\/*?\[\]]' -or $item.Trim('.') -eq '') { $e.Add("${at}: joker ve yol içermeyen klasör adı olmalı") }
+                        if ($item -match '[\\/*?\[\]]' -or $item.Trim('.') -eq '') { $e.Add("${at}: must be a folder name without wildcards or path") }
                     }
                 }
             }
@@ -101,7 +101,7 @@ class AppAction : ActionBase {
 
     # Düzleştirmede köke taşınacak mı (kaldırma kısayolu ve .lnk olmayanlar silinir).
     static [bool] KeepOnFlatten([string] $Leaf) {
-        return ($Leaf -like '*.lnk' -and $Leaf -notmatch 'uninstall|kaldır')
+        return ($Leaf -like '*.lnk' -and $Leaf -notmatch 'uninstall|kald.r')
     }
 
     # Run kaynakları ve StartupApproved karşılıkları.
@@ -147,7 +147,7 @@ class AppAction : ActionBase {
             if (-not $dir) { continue }
             foreach ($file in $Ctx.Files.ListFiles($dir)) {
                 $leaf = [AppAction]::Leaf($file)
-                if ([AppAction]::MatchesAny($leaf, $lnkPatterns)) { $this.AddTarget($list, $seen, [string]$sf['Approved'], $leaf, "Başlangıç klasörü '$leaf'") }
+                if ([AppAction]::MatchesAny($leaf, $lnkPatterns)) { $this.AddTarget($list, $seen, [string]$sf['Approved'], $leaf, "Startup folder '$leaf'") }
             }
         }
         # Önceden kapatma (yalnız jokersiz adlar, HKCU).
@@ -155,7 +155,7 @@ class AppAction : ActionBase {
         $folderApproved = [string]([AppAction]::StartupFolders()[0]['Approved'])
         foreach ($p in $patterns) {
             if ([AppAction]::HasWildcard($p)) { continue }
-            if ($p -like '*.lnk') { $this.AddTarget($list, $seen, $folderApproved, $p, "Başlangıç klasörü '$p'") }
+            if ($p -like '*.lnk') { $this.AddTarget($list, $seen, $folderApproved, $p, "Startup folder '$p'") }
             else { $this.AddTarget($list, $seen, $runApproved, $p, "Run '$p'") }
         }
         return $list.ToArray()
@@ -229,7 +229,7 @@ class AppAction : ActionBase {
         $entry = @{ Kind = 'File'; Path = $Path; Existed = $false; Data = $null; AfterInstall = $AfterInstall }
         $size = $Ctx.Files.GetSize($Path)
         if ($size -ge 0) {
-            if ($size -gt [AppAction]::MaxBackupBytes) { throw ("Dosya yedeklenemeyecek kadar büyük ({0} bayt): {1}" -f $size, $Path) }
+            if ($size -gt [AppAction]::MaxBackupBytes) { throw ("File is too large to back up ({0} bytes): {1}" -f $size, $Path) }
             $entry['Existed'] = $true
             $entry['Data'] = [Convert]::ToBase64String($Ctx.Files.ReadBytes($Path))
         }
@@ -352,23 +352,23 @@ class AppAction : ActionBase {
 
     [string] Describe() {
         $parts = New-Object 'System.Collections.Generic.List[string]'
-        $parts.Add(('Uygulama ({0}): {1} kurulu' -f $this.SourceName(), $this.PackageId()))
+        $parts.Add(('App ({0}): {1} is installed' -f $this.SourceName(), $this.PackageId()))
         $startup = @($this.List('DisableStartup')) + @($this.List('DisableTasks'))
-        if ($startup.Count -gt 0) { $parts.Add('otomatik başlatma kapalı (' + ($startup -join ', ') + ')') }
-        if ($this.List('RemoveShortcuts').Count -gt 0 -or $this.CleanNew()) { $parts.Add('masaüstü kısayolu yok') }
-        if ($this.List('FlattenFolders').Count -gt 0) { $parts.Add('Başlat klasörü düzleştirilir (' + ($this.List('FlattenFolders') -join ', ') + ')') }
+        if ($startup.Count -gt 0) { $parts.Add('autostart off (' + ($startup -join ', ') + ')') }
+        if ($this.List('RemoveShortcuts').Count -gt 0 -or $this.CleanNew()) { $parts.Add('no desktop shortcut') }
+        if ($this.List('FlattenFolders').Count -gt 0) { $parts.Add('Start folder is flattened (' + ($this.List('FlattenFolders') -join ', ') + ')') }
         return ($parts -join '; ')
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
-        if (-not $this.IsInstalled($Ctx)) { return ('{0} [şu an: kurulu değil → kurulur, ardından düzen uygulanır]' -f $this.Describe()) }
+        if (-not $this.IsInstalled($Ctx)) { return ('{0} [current: not installed → will be installed, then the layout is applied]' -f $this.Describe()) }
         $todo = New-Object 'System.Collections.Generic.List[string]'
         foreach ($t in $this.StartupTargets($Ctx)) {
-            if (-not $this.IsDisabled($Ctx, [string]$t['Path'], [string]$t['Name'])) { $todo.Add('başlangıçta kapatılır: ' + $t['Label']) }
+            if (-not $this.IsDisabled($Ctx, [string]$t['Path'], [string]$t['Name'])) { $todo.Add('disabled at startup: ' + $t['Label']) }
         }
-        foreach ($task in $this.EnabledTasks($Ctx)) { $todo.Add('görev kapatılır: ' + $task) }
-        foreach ($f in $this.KnownShortcuts($Ctx)) { $todo.Add('silinir: ' + $f) }
-        foreach ($target in $this.FlattenTargets($Ctx)) { $todo.Add(('düzleştirilir: {0} ({1} dosya)' -f $target['Dir'], @($target['Files']).Count)) }
-        return ('Uygulama ({0}): {1} [şu an: kurulu] → {2}' -f $this.SourceName(), $this.PackageId(), ($todo -join '; '))
+        foreach ($task in $this.EnabledTasks($Ctx)) { $todo.Add('task is disabled: ' + $task) }
+        foreach ($f in $this.KnownShortcuts($Ctx)) { $todo.Add('is deleted: ' + $f) }
+        foreach ($target in $this.FlattenTargets($Ctx)) { $todo.Add(('flattened: {0} ({1} files)' -f $target['Dir'], @($target['Files']).Count)) }
+        return ('App ({0}): {1} [current: installed] → {2}' -f $this.SourceName(), $this.PackageId(), ($todo -join '; '))
     }
 }

@@ -19,7 +19,7 @@ class WindowsServiceManager : IServiceManager {
 
     [string] GetStartType([string] $Name) {
         $k = $this.OpenServiceKey($Name, $false)
-        if ($null -eq $k) { throw "Servis kaydı yok: $Name" }
+        if ($null -eq $k) { throw "Service registration not found: $Name" }
         $start = 3
         $delayed = 0
         try {
@@ -42,7 +42,7 @@ class WindowsServiceManager : IServiceManager {
 
     [void] SetStartType([string] $Name, [string] $StartType) {
         $scArgs = @{ Automatic = 'auto'; AutomaticDelayedStart = 'delayed-auto'; Manual = 'demand'; Disabled = 'disabled'; Boot = 'boot'; System = 'system' }
-        if (-not $scArgs.ContainsKey($StartType)) { throw "Bilinmeyen başlangıç türü: $StartType" }
+        if (-not $scArgs.ContainsKey($StartType)) { throw "Unknown start type: $StartType" }
         $out = & sc.exe config $Name start= $scArgs[$StartType] 2>&1
         $code = $global:LASTEXITCODE
         if ($code -eq 0 -and $this.GetStartType($Name) -eq $StartType) { return }
@@ -51,8 +51,8 @@ class WindowsServiceManager : IServiceManager {
         $codes = @{ Boot = 0; System = 1; Automatic = 2; AutomaticDelayedStart = 2; Manual = 3; Disabled = 4 }
         $k = $null
         try { $k = $this.OpenServiceKey($Name, $true) }
-        catch { throw ("Servis başlangıç türü yazılamadı: {0} (sc.exe {1}: {2}; kayıt defteri: {3})" -f $Name, $code, (($out | Out-String).Trim()), $_.Exception.Message) }
-        if ($null -eq $k) { throw "Servis kaydı yok: $Name" }
+        catch { throw ("Could not write service start type: {0} (sc.exe {1}: {2}; registry: {3})" -f $Name, $code, (($out | Out-String).Trim()), $_.Exception.Message) }
+        if ($null -eq $k) { throw "Service registration not found: $Name" }
         try {
             $k.SetValue('Start', [int]$codes[$StartType], [Microsoft.Win32.RegistryValueKind]::DWord)
             if ($StartType -eq 'AutomaticDelayedStart') { $k.SetValue('DelayedAutostart', 1, [Microsoft.Win32.RegistryValueKind]::DWord) }

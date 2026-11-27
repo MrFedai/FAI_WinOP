@@ -15,20 +15,20 @@ class ShortcutAction : ActionBase {
         $e = New-Object 'System.Collections.Generic.List[string]'
         $allowed = @('Type', 'Path', 'Ensure') + [ShortcutAction]::PropertyNames()
         foreach ($m in (Get-FaiUnknownKeyError $Def $allowed)) { $e.Add($m) }
-        if (-not $Def.Contains('Path')) { $e.Add('Path: zorunlu alan eksik') }
-        elseif (-not (Test-FaiWindowsPath $Def['Path']) -or $Def['Path'] -notmatch '\.lnk$') { $e.Add('Path: .lnk ile biten mutlak yol olmalı') }
+        if (-not $Def.Contains('Path')) { $e.Add('Path: required field missing') }
+        elseif (-not (Test-FaiWindowsPath $Def['Path']) -or $Def['Path'] -notmatch '\.lnk$') { $e.Add('Path: must be an absolute path ending in .lnk') }
         $ensure = 'Present'
         if ($Def.Contains('Ensure')) {
-            if ($Def['Ensure'] -isnot [string] -or @('Present', 'Absent') -cnotcontains $Def['Ensure']) { $e.Add('Ensure: Present ya da Absent olmalı') }
+            if ($Def['Ensure'] -isnot [string] -or @('Present', 'Absent') -cnotcontains $Def['Ensure']) { $e.Add('Ensure: must be Present or Absent') }
             else { $ensure = $Def['Ensure'] }
         }
         if ($ensure -eq 'Absent') {
             foreach ($p in [ShortcutAction]::PropertyNames()) { if ($Def.Contains($p)) { $e.Add("${p}: Ensure=Absent iken verilmez") } }
             return $e.ToArray()
         }
-        if (-not $Def.Contains('TargetPath')) { $e.Add('TargetPath: zorunlu alan eksik') }
+        if (-not $Def.Contains('TargetPath')) { $e.Add('TargetPath: required field missing') }
         foreach ($p in [ShortcutAction]::PropertyNames()) {
-            if ($Def.Contains($p) -and $Def[$p] -isnot [string]) { $e.Add("${p}: metin olmalı") }
+            if ($Def.Contains($p) -and $Def[$p] -isnot [string]) { $e.Add("${p}: must be text") }
         }
         return $e.ToArray()
     }
@@ -75,15 +75,15 @@ class ShortcutAction : ActionBase {
     [void] Revert([ExecutionContext] $Ctx, [hashtable] $Snapshot) { [FileAction]::RestoreFile($Ctx, $this.FullPath(), $Snapshot) }
 
     [string] Describe() {
-        if ($this.IsAbsent()) { return ('Kısayol: {0} silinir' -f $this.Definition['Path']) }
+        if ($this.IsAbsent()) { return ('Shortcut: {0} is deleted' -f $this.Definition['Path']) }
         $tail = ''
         if ($this.Definition.ContainsKey('Arguments') -and $this.Definition['Arguments']) { $tail = ' ' + $this.Definition['Arguments'] }
-        return ('Kısayol: {0} → {1}{2}' -f $this.Definition['Path'], $this.Definition['TargetPath'], $tail)
+        return ('Shortcut: {0} → {1}{2}' -f $this.Definition['Path'], $this.Definition['TargetPath'], $tail)
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
         $now = $Ctx.Shortcuts.ReadShortcut($this.FullPath())
-        if ($null -eq $now) { return ('{0} [şu an: yok]' -f $this.Describe()) }
-        return ('{0} [şu an: → {1}]' -f $this.Describe(), $now['TargetPath'])
+        if ($null -eq $now) { return ('{0} [current: none]' -f $this.Describe()) }
+        return ('{0} [current: → {1}]' -f $this.Describe(), $now['TargetPath'])
     }
 }

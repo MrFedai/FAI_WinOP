@@ -11,13 +11,13 @@ class ScheduledTaskAction : ActionBase {
     static [string[]] Validate([object] $Def) {
         $e = New-Object 'System.Collections.Generic.List[string]'
         foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Path', 'State'))) { $e.Add($m) }
-        if (-not $Def.Contains('Path')) { $e.Add('Path: zorunlu alan eksik') }
+        if (-not $Def.Contains('Path')) { $e.Add('Path: required field missing') }
         elseif ($Def['Path'] -isnot [string] -or $Def['Path'] -notmatch '^\\(.+\\)?[^\\]+$') {
-            $e.Add('Path: ''\Klasör\Görev'' biçiminde olmalı (\ ile başlar, \ ile bitmez)')
+            $e.Add('Path: must be in the form ''\Folder\Task'' (starts with \, does not end with \)')
         }
-        if (-not $Def.Contains('State')) { $e.Add('State: zorunlu alan eksik') }
+        if (-not $Def.Contains('State')) { $e.Add('State: required field missing') }
         elseif ($Def['State'] -isnot [string] -or [ScheduledTaskAction]::States() -cnotcontains $Def['State']) {
-            $e.Add('State: ' + ([ScheduledTaskAction]::States() -join ', ') + ' değerlerinden biri olmalı')
+            $e.Add('State: must be one of ' + ([ScheduledTaskAction]::States() -join ', '))
         }
         return $e.ToArray()
     }
@@ -39,7 +39,7 @@ class ScheduledTaskAction : ActionBase {
     [void] Apply([ExecutionContext] $Ctx) {
         $now = $Ctx.Tasks.GetTaskState($this.TaskPath())
         if (-not $now) {
-            $Ctx.Logger.Warn('Zamanlanmış görev yok, atlandı: ' + $this.TaskPath())
+            $Ctx.Logger.Warn('Scheduled task not found, skipped: ' + $this.TaskPath())
             return
         }
         $want = [string]$this.Definition['State']
@@ -55,21 +55,21 @@ class ScheduledTaskAction : ActionBase {
     }
 
     [string] Describe() {
-        $word = 'devre dışı'
-        if ([string]$this.Definition['State'] -eq 'Enabled') { $word = 'etkin' }
-        return ('Zamanlanmış görev: {0} → {1}' -f $this.TaskPath(), $word)
+        $word = 'disabled'
+        if ([string]$this.Definition['State'] -eq 'Enabled') { $word = 'enabled' }
+        return ('Scheduled task: {0} → {1}' -f $this.TaskPath(), $word)
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
         $now = $Ctx.Tasks.GetTaskState($this.TaskPath())
-        if (-not $now) { return ('{0} [görev yok, atlanır]' -f $this.Describe()) }
-        return ('{0} [şu an: {1}]' -f $this.Describe(), $now)
+        if (-not $now) { return ('{0} [task not found, will be skipped]' -f $this.Describe()) }
+        return ('{0} [current: {1}]' -f $this.Describe(), $now)
     }
 
     [string] PreviewRevert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
-        if (-not $Snapshot['Exists']) { return ('Zamanlanmış görev {0}: kayıtta yoktu, geri alınca dokunulmaz' -f $this.TaskPath()) }
+        if (-not $Snapshot['Exists']) { return ('Scheduled task {0}: was not in the backup, left untouched on revert' -f $this.TaskPath()) }
         $now = $Ctx.Tasks.GetTaskState($this.TaskPath())
-        if (-not $now) { return ('Zamanlanmış görev {0}: şu an yok, geri alma atlanır' -f $this.TaskPath()) }
-        return ('Zamanlanmış görev {0}: şu an {1} → geri alınca {2}' -f $this.TaskPath(), $now, $Snapshot['State'])
+        if (-not $now) { return ('Scheduled task {0}: current: none, revert will be skipped' -f $this.TaskPath()) }
+        return ('Scheduled task {0}: currently {1} → will revert to {2}' -f $this.TaskPath(), $now, $Snapshot['State'])
     }
 }

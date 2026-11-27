@@ -29,7 +29,7 @@ class ExternalProcess {
     # Zaman aşımı iletisi: "<ne> <n> dk içinde bitmedi, süreç ağacı sonlandırıldı".
     static [string] TimeoutMessage([string] $What, [int] $Seconds) {
         $min = ([double]$Seconds / 60.0).ToString('0.##', [System.Globalization.CultureInfo]::InvariantCulture)
-        return ('{0} {1} dk içinde bitmedi, süreç ağacı sonlandırıldı' -f $What, $min)
+        return ('{0} did not finish within {1} min, process tree terminated' -f $What, $min)
     }
 
     static [ExternalProcessResult] Run([string] $FilePath, [string] $ArgumentLine, [int] $TimeoutSeconds, [string] $What, [bool] $Capture) {
@@ -78,9 +78,9 @@ class ExternalProcess {
             [void]$tp.WaitForExit(30000)
             $tp.Dispose()
         }
-        catch { Write-Verbose ('taskkill başlatılamadı: ' + $_.Exception.Message) }
-        try { if (-not $P.HasExited) { $P.Kill() } } catch { Write-Verbose ('süreç sonlandırılamadı: ' + $_.Exception.Message) }
-        try { [void]$P.WaitForExit(10000) } catch { Write-Verbose ('süreç beklenemedi: ' + $_.Exception.Message) }
+        catch { Write-Verbose ('taskkill could not start: ' + $_.Exception.Message) }
+        try { if (-not $P.HasExited) { $P.Kill() } } catch { Write-Verbose ('process could not be terminated: ' + $_.Exception.Message) }
+        try { [void]$P.WaitForExit(10000) } catch { Write-Verbose ('could not wait for process: ' + $_.Exception.Message) }
     }
 }
 
@@ -105,7 +105,7 @@ class WindowsPackageProvider : IPackageProvider {
         $pattern = Join-Path $env:ProgramFiles 'WindowsApps\Microsoft.DesktopAppInstaller_*_8wekyb3d8bbwe\winget.exe'
         $found = Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1
         if ($found) { $this.WingetPath = $found.FullName; return $this.WingetPath }
-        throw 'winget bulunamadı (App Installer kurulu değil)'
+        throw 'winget not found (App Installer is not installed)'
     }
 
     hidden [int] Invoke([string[]] $Arguments, [int] $TimeoutSeconds) {
@@ -127,29 +127,29 @@ class WindowsPackageProvider : IPackageProvider {
                 '--accept-source-agreements', '--disable-interactivity'), [ExternalProcess]::WingetListTimeoutSeconds)
         if ($code -eq 0) { return $true }
         if ($code -eq [WindowsPackageProvider]::NoPackageFound) { return $false }
-        throw ('winget list başarısız ({0}): {1}' -f $code, $this.Tail())
+        throw ('winget list failed ({0}): {1}' -f $code, $this.Tail())
     }
 
     [void] Install([string] $PackageId, [string] $Source) {
         $code = $this.Invoke([string[]]@('install', '--id', $PackageId, '--exact', '--source', $Source, '--silent',
                 '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity'), [ExternalProcess]::WingetChangeTimeoutSeconds)
         if ($code -eq 0 -or $code -eq [WindowsPackageProvider]::UpdateNotApplicable) { return }
-        throw ('winget install {0} başarısız ({1}): {2}' -f $PackageId, $code, $this.Tail())
+        throw ('winget install {0} failed ({1}): {2}' -f $PackageId, $code, $this.Tail())
     }
 
     [void] Uninstall([string] $PackageId, [string] $Source) {
         $code = $this.Invoke([string[]]@('uninstall', '--id', $PackageId, '--exact', '--source', $Source, '--silent',
                 '--accept-source-agreements', '--disable-interactivity'), [ExternalProcess]::WingetChangeTimeoutSeconds)
         if ($code -ne 0 -and $code -ne [WindowsPackageProvider]::NoPackageFound) {
-            throw ('winget uninstall {0} başarısız ({1}): {2}' -f $PackageId, $code, $this.Tail())
+            throw ('winget uninstall {0} failed ({1}): {2}' -f $PackageId, $code, $this.Tail())
         }
         $this.WaitUntilGone($PackageId, $Source, $this.Tail())
     }
 
     [void] RunUninstaller([string] $PackageId, [string] $Source, [string] $FilePath, [string] $Arguments) {
-        if (-not [System.IO.File]::Exists($FilePath)) { throw ('{0}: kaldırıcı yok: {1}' -f $PackageId, $FilePath) }
-        $r = [ExternalProcess]::Run($FilePath, $Arguments, [ExternalProcess]::UninstallerTimeoutSeconds, ('{0}: kaldırıcı {1}' -f $PackageId, $FilePath), $false)
-        if (-not [WindowsPackageProvider]::IsUninstallerSuccess($r.ExitCode)) { throw ('{0}: kaldırıcı {1} çıkış kodu {2}' -f $PackageId, $FilePath, $r.ExitCode) }
+        if (-not [System.IO.File]::Exists($FilePath)) { throw ('{0}: uninstaller not found: {1}' -f $PackageId, $FilePath) }
+        $r = [ExternalProcess]::Run($FilePath, $Arguments, [ExternalProcess]::UninstallerTimeoutSeconds, ('{0}: uninstaller {1}' -f $PackageId, $FilePath), $false)
+        if (-not [WindowsPackageProvider]::IsUninstallerSuccess($r.ExitCode)) { throw ('{0}: uninstaller {1} exit code {2}' -f $PackageId, $FilePath, $r.ExitCode) }
         $this.WaitUntilGone($PackageId, $Source, ('{0} {1}' -f $FilePath, $Arguments))
     }
 
@@ -164,7 +164,7 @@ class WindowsPackageProvider : IPackageProvider {
         $deadline = [DateTime]::UtcNow.AddSeconds([WindowsPackageProvider]::UninstallWaitSeconds)
         while ($this.IsInstalled($PackageId, $Source)) {
             if ([DateTime]::UtcNow -gt $deadline) {
-                throw ('{0}: kaldırıcı {1} sn içinde bitmedi, paket hâlâ kurulu (etkileşimli açılmış olabilir: katalogda quietUninstall); {2}' -f $PackageId, [WindowsPackageProvider]::UninstallWaitSeconds, $Detail)
+                throw ('{0}: uninstaller did not finish within {1} s, package is still installed (it may have opened interactively: see quietUninstall in the catalog); {2}' -f $PackageId, [WindowsPackageProvider]::UninstallWaitSeconds, $Detail)
             }
             Start-Sleep -Seconds 3
         }

@@ -92,7 +92,7 @@ class FakeAppxProvider : IAppxProvider {
     [void] RestoreInstalled([string] $Name) {
         $this.WriteCount++
         [void]$this.WriteLog.Add("RestoreInstalled $Name")
-        if (-not $this.Provisioned.Contains($Name)) { throw "Paketin makinede kopyası yok: $Name" }
+        if (-not $this.Provisioned.Contains($Name)) { throw "Package has no copy on the machine: $Name" }
         if (-not $this.Installed.Contains($Name)) { [void]$this.Installed.Add($Name) }
     }
 }
@@ -183,7 +183,7 @@ class FakeSystemControlProvider : ISystemControlProvider {
 
     [void] CreateRestorePoint([string] $Description) {
         $this.WriteCount++
-        if (-not $this.RestoreEnabled) { throw 'Sistem Koruması kapalı' }
+        if (-not $this.RestoreEnabled) { throw 'System Protection is off' }
         [void]$this.RestorePoints.Add($Description)
     }
 
@@ -210,7 +210,7 @@ class FakeMemoryAgentProvider : IMemoryAgentProvider {
 
     [void] SetFeature([string] $Feature, [bool] $Enabled) {
         $this.WriteCount++
-        if (-not $this.Features.ContainsKey($Feature)) { throw "Bilinmeyen MMAgent özelliği: $Feature" }
+        if (-not $this.Features.ContainsKey($Feature)) { throw "Unknown MMAgent feature: $Feature" }
         $mode = [string]$this.Throw[$Feature]
         if ($mode -eq 'fail') { throw 'The request is not supported.' }
         $this.Features[$Feature] = $Enabled
@@ -257,7 +257,7 @@ class FakeUpdateProvider : IUpdateProvider {
 }
 
 # Önceden verilmiş yanıt listesiyle çalışır. Liste biterse güvenli varsayılan: reddet.
-# Confirm: 'E' / 'Evet' / 'Y' / 'Yes' → evet. ConfirmExact: yanıt Expected ile birebir (büyük/küçük harf duyarlı) eşit olmalı.
+# Confirm: 'Y' / 'Yes' → evet. ConfirmExact: yanıt Expected ile birebir (büyük/küçük harf duyarlı) eşit olmalı.
 class FakePromptProvider : IPromptProvider {
     [System.Collections.Queue] $Answers = (New-Object System.Collections.Queue)
     # Sorulan her soru: @{ Kind; Message; Answer }
@@ -277,7 +277,7 @@ class FakePromptProvider : IPromptProvider {
     [bool] Confirm([string] $Message) {
         $answer = $this.Next()
         [void]$this.Asked.Add(@{ Kind = 'Confirm'; Message = $Message; Answer = $answer })
-        return (@('e', 'evet', 'y', 'yes') -contains $answer.Trim().ToLowerInvariant())
+        return (@('y', 'yes') -contains $answer.Trim().ToLowerInvariant())
     }
 
     [bool] ConfirmExact([string] $Message, [string] $Expected) {
@@ -387,7 +387,7 @@ class FakeAppSettingsProvider : IAppSettingsProvider {
     [void] SetValue([string] $Package, [string] $Name, [int] $Type, [byte[]] $Data) {
         $this.WriteCount++
         [void]$this.WriteLog.Add("SetValue $Package $Name")
-        if (-not $this.HasSettings($Package)) { throw "Paket ayar dosyası yok: $Package" }
+        if (-not $this.HasSettings($Package)) { throw "Package settings file not found: $Package" }
         $this.Packages[$Package.ToLowerInvariant()][$Name.ToLowerInvariant()] = @{ Name = $Name; Type = $Type; Data = $Data }
     }
 

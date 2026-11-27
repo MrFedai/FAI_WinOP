@@ -33,7 +33,7 @@ class WindowsAppxProvider : IAppxProvider {
                 if ($manifest -notmatch '\.xml$') { $manifest = Join-Path $manifest 'AppxManifest.xml' }
             }
         }
-        if (-not $manifest -or -not (Test-Path -LiteralPath $manifest)) { throw "Paketin makinede kopyası yok: $Name" }
+        if (-not $manifest -or -not (Test-Path -LiteralPath $manifest)) { throw "Package has no copy on the machine: $Name" }
         Add-AppxPackage -Register $manifest -DisableDevelopmentMode -ErrorAction Stop
     }
 }

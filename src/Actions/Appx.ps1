@@ -16,12 +16,12 @@ class AppxAction : ActionBase {
     static [string[]] Validate([object] $Def) {
         $e = New-Object 'System.Collections.Generic.List[string]'
         foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Name', 'Scope'))) { $e.Add($m) }
-        if (-not $Def.Contains('Name')) { $e.Add('Name: zorunlu alan eksik') }
+        if (-not $Def.Contains('Name')) { $e.Add('Name: required field missing') }
         elseif ($Def['Name'] -isnot [string] -or $Def['Name'] -notmatch '^[A-Za-z0-9][A-Za-z0-9.\-]*$') {
-            $e.Add('Name: paket adı birebir olmalı (harf, rakam, nokta, tire; joker yok)')
+            $e.Add('Name: must be an exact package name (letters, digits, dot, hyphen; no wildcards)')
         }
         if ($Def.Contains('Scope') -and ($Def['Scope'] -isnot [string] -or [AppxAction]::Scopes() -cnotcontains $Def['Scope'])) {
-            $e.Add('Scope: ' + ([AppxAction]::Scopes() -join ', ') + ' değerlerinden biri olmalı')
+            $e.Add('Scope: must be one of ' + ([AppxAction]::Scopes() -join ', '))
         }
         return $e.ToArray()
     }
@@ -55,7 +55,7 @@ class AppxAction : ActionBase {
     # Önce kullanıcı paketi: provisioned kopya yerinde durduğu sürece kullanıcı paketi geri kaydedilebilir.
     [void] Apply([ExecutionContext] $Ctx) {
         if ($this.IsProtected($Ctx)) {
-            $Ctx.Logger.Warn('Korunan paket kaldırılmadı: ' + $this.PackageName())
+            $Ctx.Logger.Warn('Protected package was not removed: ' + $this.PackageName())
             return
         }
         if ($this.CoversUser() -and $this.IsInstalled($Ctx)) { $Ctx.Appx.RemoveInstalled($this.PackageName()) }
@@ -65,38 +65,38 @@ class AppxAction : ActionBase {
     [void] Revert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
         $name = $this.PackageName()
         if ($Snapshot['Provisioned'] -and -not $this.IsProvisioned($Ctx)) {
-            $Ctx.Logger.Warn("Appx provisioned paket geri getirilemez (Store'dan yeniden kurulmalı): $name")
+            $Ctx.Logger.Warn("Appx provisioned package cannot be restored (reinstall from the Store): $name")
         }
         if ($Snapshot['Installed'] -and -not $this.IsInstalled($Ctx)) {
             try { $Ctx.Appx.RestoreInstalled($name) }
-            catch { $Ctx.Logger.Warn("Appx paketi geri kaydedilemedi (Store'dan yeniden kurulmalı): ${name}: $($_.Exception.Message)") }
+            catch { $Ctx.Logger.Warn("Appx package could not be re-registered (reinstall from the Store): ${name}: $($_.Exception.Message)") }
         }
     }
 
     [string] Describe() {
-        $where = 'kullanıcı + provisioned'
-        if ($this.ScopeName() -eq 'User') { $where = 'kullanıcı' }
+        $where = 'user + provisioned'
+        if ($this.ScopeName() -eq 'User') { $where = 'user' }
         if ($this.ScopeName() -eq 'Provisioned') { $where = 'provisioned' }
-        return ('Appx: {0} kaldırılır ({1})' -f $this.PackageName(), $where)
+        return ('Appx: {0} is removed ({1})' -f $this.PackageName(), $where)
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
         if ($this.IsProtected($Ctx)) { return ('{0} [korunuyor, dokunulmaz]' -f $this.Describe()) }
         $state = New-Object 'System.Collections.Generic.List[string]'
-        if ($this.IsInstalled($Ctx)) { $state.Add('kullanıcıda kurulu') }
+        if ($this.IsInstalled($Ctx)) { $state.Add('installed for user') }
         if ($this.IsProvisioned($Ctx)) { $state.Add('provisioned') }
-        if ($state.Count -eq 0) { $state.Add('yok') }
-        return ('{0} [şu an: {1}]' -f $this.Describe(), ($state -join ', '))
+        if ($state.Count -eq 0) { $state.Add('none') }
+        return ('{0} [current: {1}]' -f $this.Describe(), ($state -join ', '))
     }
 
     [string] PreviewRevert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
         $state = New-Object 'System.Collections.Generic.List[string]'
-        if ($this.IsInstalled($Ctx)) { $state.Add('kullanıcıda kurulu') }
+        if ($this.IsInstalled($Ctx)) { $state.Add('installed for user') }
         if ($this.IsProvisioned($Ctx)) { $state.Add('provisioned') }
-        if ($state.Count -eq 0) { $state.Add('yok') }
-        $will = 'dokunulmaz'
-        if ($Snapshot['Installed'] -and -not $this.IsInstalled($Ctx)) { $will = 'kullanıcı paketi geri kaydedilecek' }
-        if ($Snapshot['Provisioned'] -and -not $this.IsProvisioned($Ctx)) { $will += ' (provisioned kopya geri gelmez, Store gerekir)' }
-        return ('Appx {0}: şu an {1} → geri alınca {2}' -f $this.PackageName(), ($state -join ', '), $will)
+        if ($state.Count -eq 0) { $state.Add('none') }
+        $will = 'left untouched'
+        if ($Snapshot['Installed'] -and -not $this.IsInstalled($Ctx)) { $will = 'user package re-registered' }
+        if ($Snapshot['Provisioned'] -and -not $this.IsProvisioned($Ctx)) { $will += ' (the provisioned copy does not come back; the Store is needed)' }
+        return ('Appx {0}: currently {1} → will revert to {2}' -f $this.PackageName(), ($state -join ', '), $will)
     }
 }

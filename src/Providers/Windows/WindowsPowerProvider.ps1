@@ -18,13 +18,13 @@ class WindowsPowerProvider : IPowerProvider {
     hidden [string] Invoke([string[]] $Arguments) {
         $out = & powercfg.exe @Arguments 2>&1
         $text = (@($out) | ForEach-Object { [string]$_ }) -join "`n"
-        if ($global:LASTEXITCODE -ne 0) { throw ('powercfg {0} başarısız ({1}): {2}' -f ($Arguments -join ' '), $global:LASTEXITCODE, $text.Trim()) }
+        if ($global:LASTEXITCODE -ne 0) { throw ('powercfg {0} failed ({1}): {2}' -f ($Arguments -join ' '), $global:LASTEXITCODE, $text.Trim()) }
         return $text
     }
 
     [string] GetActiveScheme() {
         $m = [regex]::Match($this.Invoke([string[]]@('/getactivescheme')), [WindowsPowerProvider]::GuidPattern())
-        if (-not $m.Success) { throw 'Etkin güç planı okunamadı' }
+        if (-not $m.Success) { throw 'Could not read the active power plan' }
         return $m.Value.ToLowerInvariant()
     }
 
@@ -45,7 +45,7 @@ class WindowsPowerProvider : IPowerProvider {
     [long] GetValue([string] $Scheme, [string] $Subgroup, [string] $Setting, [bool] $OnAC) {
         $text = $this.Invoke([string[]]@('/qh', $Scheme, $Subgroup, $Setting))
         $values = @([regex]::Matches($text, ':\s*0x([0-9a-fA-F]+)\s*(\r?\n|$)') | ForEach-Object { [Convert]::ToInt64($_.Groups[1].Value, 16) })
-        if ($values.Count -lt 2) { throw ('Güç ayarı okunamadı: {0} {1} {2}' -f $Scheme, $Subgroup, $Setting) }
+        if ($values.Count -lt 2) { throw ('Could not read power setting: {0} {1} {2}' -f $Scheme, $Subgroup, $Setting) }
         if ($OnAC) { return [long]$values[$values.Count - 2] }
         return [long]$values[$values.Count - 1]
     }
@@ -72,9 +72,9 @@ class WindowsPowerProvider : IPowerProvider {
     [void] CreateScheme([string] $Source, [string] $Guid, [string] $Name) {
         [void]$this.Invoke([string[]]@('/duplicatescheme', $this.SourceGuid($Source), $Guid.ToLowerInvariant()))
         if (-not $this.ResolveScheme($Guid)) {
-            throw (('Güç planı kopyalanamadı: {0} → {1}. Varsayılan planlar silinmiş olabilir (Modern Standby makinede ' +
-                'silinen plan kopyalanamaz): yönetici olarak "powercfg -restoredefaultschemes" (özel planları siler), ' +
-                'sonra yeniden deneyin') -f $Source, $Guid)
+            throw (('Power plan could not be copied: {0} → {1}. The default plans may have been deleted (on Modern Standby machines ' +
+                'a deleted plan cannot be copied): as administrator run "powercfg -restoredefaultschemes" (deletes custom plans), ' +
+                'then try again') -f $Source, $Guid)
         }
         [void]$this.Invoke([string[]]@('/changename', $Guid.ToLowerInvariant(), $Name))
     }

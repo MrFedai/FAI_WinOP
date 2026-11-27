@@ -74,7 +74,7 @@ Describe 'AppxAction korumasi' {
         $a.Preview($ctx) | Should -Match 'korunuyor'
         $a.Apply($ctx)
         $ctx.Appx.WriteCount | Should -Be 0
-        @($ctx.Logger.Entries | Where-Object { $_.Message -match 'Korunan paket' }).Count | Should -Be 1
+        @($ctx.Logger.Entries | Where-Object { $_.Message -match 'Protected package' }).Count | Should -Be 1
     }
 }
 
@@ -122,7 +122,7 @@ Describe 'Motor: bloat.remove' {
     }
 
     It 'onaylanınca yalnız listedekiler kalkar; geri alma provisioned kopyadan kaydeder' {
-        $ctx = New-BloatContext -Answers @('E')
+        $ctx = New-BloatContext -Answers @('Y')
         $ctx.Appx.Seed([string[]]@('Microsoft.BingNews', 'Microsoft.WindowsStore'), [string[]]@('Microsoft.BingNews', 'Microsoft.WindowsStore'))
         $report = Invoke-FaiEngine (New-BloatProfile -Tweaks @('bloat.remove')) -Context $ctx -Catalog $script:Catalog
         $report.HasFailures() | Should -BeFalse
@@ -162,8 +162,8 @@ Describe 'AppxCleanupAction (bloat.persistence)' {
     }
 
     It 'şema: joker, boş liste, göreli yol reddedilir' {
-        @(Get-FaiActionError @{ Type = 'AppxCleanup'; Names = @('Microsoft.Bing*'); TaskPath = '\A\B'; ScriptPath = 'C:\x.ps1' }) | Should -Match 'birebir'
-        @(Get-FaiActionError @{ Type = 'AppxCleanup'; Names = @(); TaskPath = '\A\B'; ScriptPath = 'C:\x.ps1' }) | Should -Match 'boş olmayan'
+        @(Get-FaiActionError @{ Type = 'AppxCleanup'; Names = @('Microsoft.Bing*'); TaskPath = '\A\B'; ScriptPath = 'C:\x.ps1' }) | Should -Match 'exact package name'
+        @(Get-FaiActionError @{ Type = 'AppxCleanup'; Names = @(); TaskPath = '\A\B'; ScriptPath = 'C:\x.ps1' }) | Should -Match 'non-empty'
         @(Get-FaiActionError @{ Type = 'AppxCleanup'; Names = @('A'); TaskPath = 'A'; ScriptPath = 'x.ps1' }).Count | Should -Be 2
         @(Get-FaiActionError $script:Def).Count | Should -Be 0
     }
@@ -174,7 +174,7 @@ Describe 'AppxCleanupAction (bloat.persistence)' {
         $ctx.Appx.Seed([string[]]@(), [string[]]@('Microsoft.BingNews', 'Microsoft.WindowsStore'))
         $a = New-FaiAction $script:Def
         $a.Test($ctx) | Should -BeFalse
-        $a.Preview($ctx) | Should -Match 'provisioned: Microsoft.BingNews; görev: yok'
+        $a.Preview($ctx) | Should -Match 'provisioned: Microsoft.BingNews; task: none'
         $null = $a.Snapshot($ctx)
         $a.Apply($ctx)
         $ctx.Appx.GetProvisioned() | Should -Be @('Microsoft.WindowsStore')
@@ -207,7 +207,7 @@ Describe 'AppxCleanupAction (bloat.persistence)' {
         $a.Revert($ctx, $snap)
         $ctx.Tasks.GetTaskAction('\FAI_WinOP\BloatCleanup') | Should -BeNullOrEmpty
         $ctx.Files.FileExists('C:\ProgramData\FAI_WinOP\BloatCleanup.ps1') | Should -BeFalse
-        @($ctx.Logger.Entries | Where-Object { $_.Message -match 'geri getirilemez' }).Count | Should -Be 1
+        @($ctx.Logger.Entries | Where-Object { $_.Message -match 'cannot be restored' }).Count | Should -Be 1
     }
 
     It 'önceden var olan görev eski komutuyla geri gelir' {
@@ -247,7 +247,7 @@ Describe 'EdgeRemoveAction ve bloat.edge-remove' {
         $ctx = New-BloatContext
         $ctx.Edge.EdgeVersion = '131.0'
         $ctx.Edge.UninstallFails = $true
-        { (New-FaiAction @{ Type = 'EdgeRemove' }).Apply($ctx) } | Should -Throw '*Edge kaldırılamadı*'
+        { (New-FaiAction @{ Type = 'EdgeRemove' }).Apply($ctx) } | Should -Throw '*Edge could not be removed*'
     }
 
     It 'tweak: EdgeRemove ilk eylem (geri almada ilke önce kalkar), WebView2 kurulumu ve güncellemesi izinli' {
@@ -260,7 +260,7 @@ Describe 'EdgeRemoveAction ve bloat.edge-remove' {
     }
 
     It 'motorla uygula + geri al: Edge geri kurulur, ilke ve yönlendirme kalkar' {
-        $ctx = New-BloatContext -Answers @('E')
+        $ctx = New-BloatContext -Answers @('Y')
         $ctx.Edge.EdgeVersion = '131.0'
         $ctx.Edge.WebView2Version = '131.0'
         $report = Invoke-FaiEngine (New-BloatProfile -Tweaks @('bloat.edge-remove')) -Context $ctx -Catalog $script:Catalog

@@ -117,7 +117,7 @@ Describe 'build/Bundle.ps1' {
         $iface | Should -BeGreaterOrEqual 0
         $fake | Should -BeGreaterThan $iface
         $engine | Should -BeGreaterThan $fake
-        $text | Should -Match 'Fake\* sağlayıcıları içerir'
+        $text | Should -Match 'contains Fake\* providers'
         $text.IndexOf('#region src/Core/Interfaces.ps1') | Should -Be $text.IndexOf('#region src/') -Because 'Interfaces ilk kaynak olmalı'
     }
 

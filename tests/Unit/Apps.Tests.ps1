@@ -157,9 +157,9 @@ Describe 'Get-FaiAppCatalogError' {
                    "flattenStartMenu": true, "startMenuFolders": ["..\\Sistem"] } } ] }
 '@
         $e = @(Get-FaiAppCatalogError $bad)
-        ($e -join "`n") | Should -Match 'DisableTasks\[0\]: görev yolu'
-        ($e -join "`n") | Should -Match 'RemoveShortcuts\[0\]: joker'
-        ($e -join "`n") | Should -Match 'FlattenFolders\[0\]: joker ve yol'
+        ($e -join "`n") | Should -Match 'DisableTasks\[0\]: task path'
+        ($e -join "`n") | Should -Match 'RemoveShortcuts\[0\]: must be a .lnk file name without wildcards'
+        ($e -join "`n") | Should -Match 'FlattenFolders\[0\]: must be a folder name without wildcards'
     }
 
     It 'kök ve apps biçimi' {
@@ -296,9 +296,9 @@ Describe 'App eylemi: sessiz kaldırıcı (quietUninstall)' {
 
     It 'şema: yol mutlak olmalı, args yol olmadan verilmez; katalogda { path, args }' {
         $e = @(Get-FaiActionError @{ Type = 'App'; Id = 'A.B'; UninstallPath = 'uninstall.exe'; UninstallArgs = 3 })
-        ($e -join "`n") | Should -Match 'UninstallPath: mutlak yol'
-        ($e -join "`n") | Should -Match 'UninstallArgs: metin olmalı'
-        @(Get-FaiActionError @{ Type = 'App'; Id = 'A.B'; UninstallArgs = '/S' }) -join "`n" | Should -Match 'UninstallPath olmadan'
+        ($e -join "`n") | Should -Match 'UninstallPath: must be an absolute path'
+        ($e -join "`n") | Should -Match 'UninstallArgs: must be text'
+        @(Get-FaiActionError @{ Type = 'App'; Id = 'A.B'; UninstallArgs = '/S' }) -join "`n" | Should -Match 'without UninstallPath'
         $bad = ConvertFrom-JsonText '{ "apps": [ { "id": "a", "name": "A", "source": "winget", "packageId": "A.A", "quietUninstall": { "args": "/S", "x": 1 } } ] }'
         $ce = @(Get-FaiAppCatalogError $bad)
         Test-HasError $ce 'apps[0].quietUninstall.path: required' | Should -BeTrue -Because ($ce -join '; ')
@@ -319,7 +319,7 @@ Describe 'App eylemi: dry-run, msstore, rapor' {
         $r = Invoke-FaiEngine -Profile (New-AppProfile @('spotify', 'whatsapp')) -Context $ctx -Catalog @{} -AppCatalog $script:AppCatalog
         Get-FakeWriteCount $ctx | Should -Be 0
         $r.Count('Planned') | Should -Be 2
-        ($r.Items[0].Lines -join ' ') | Should -Match 'kurulu değil → kurulur'
+        ($r.Items[0].Lines -join ' ') | Should -Match 'not installed → will be installed'
         ($r.Items[1].Lines -join ' ') | Should -Match '\(msstore\): 9NKSQGP7F2NH'
     }
 
@@ -330,9 +330,9 @@ Describe 'App eylemi: dry-run, msstore, rapor' {
         $ctx.Files.SeedText("$script:CommonPrograms\Spotify\Spotify.lnk", 'x')
         $r = Invoke-FaiEngine -Profile (New-AppProfile @('spotify')) -Context $ctx -Catalog @{} -AppCatalog $script:AppCatalog
         $line = $r.Items[0].Lines -join ' '
-        $line | Should -Match "başlangıçta kapatılır: Run 'Spotify'"
-        $line | Should -Match ([regex]::Escape("silinir: $script:UserDesktop\Spotify.lnk"))
-        $line | Should -Match 'düzleştirilir: .*Spotify \(1 dosya\)'
+        $line | Should -Match "disabled at startup: Run 'Spotify'"
+        $line | Should -Match ([regex]::Escape("is deleted: $script:UserDesktop\Spotify.lnk"))
+        $line | Should -Match 'flattened: .*Spotify \(1 files\)'
         Get-FakeWriteCount $ctx | Should -Be 0
     }
 
@@ -377,14 +377,14 @@ Describe 'DefaultBrowser eylemi' {
         $ctx = New-AppContext
         $ctx.Registry.Seed("$script:Choice\UserChoiceLatest\ProgId", 'ProgId', 'MSEdgeHTM', 'String')
         $act = New-FaiAction $script:Def
-        $ctx.Prompt.Enqueue([string[]]@('E'))
-        { $act.Apply($ctx) } | Should -Throw '*değişmedi*'
+        $ctx.Prompt.Enqueue([string[]]@('Y'))
+        { $act.Apply($ctx) } | Should -Throw '*did not change*'
         $ctx.Shell.Opened | Should -Contain 'ms-settings:defaultapps?registeredAppMachine=Google%20Chrome'
 
         $reg = $ctx.Registry
         $choice = $script:Choice
         $ctx.Shell.OnOpen = { $reg.Seed("$choice\UserChoiceLatest\ProgId", 'ProgId', 'ChromeHTML', 'String') }.GetNewClosure()
-        $ctx.Prompt.Enqueue([string[]]@('E'))
+        $ctx.Prompt.Enqueue([string[]]@('Y'))
         { $act.Apply($ctx) } | Should -Not -Throw
         $act.Test($ctx) | Should -BeTrue
     }
@@ -392,7 +392,7 @@ Describe 'DefaultBrowser eylemi' {
     It 'etkileşimsiz kipte soru sormaz, sayfayı açıp hata verir' {
         $ctx = New-AppContext -Unattended
         $act = New-FaiAction $script:Def
-        { $act.Apply($ctx) } | Should -Throw '*Etkileşimsiz*'
+        { $act.Apply($ctx) } | Should -Throw '*unattended mode*'
         $ctx.Prompt.Asked.Count | Should -Be 0
         $ctx.Shell.Opened.Count | Should -Be 1
     }
@@ -409,9 +409,9 @@ Describe 'DefaultBrowser eylemi' {
 
     It 'şema: ProgId / AppName zorunlu, Scope Machine | User' {
         $e = @(Get-FaiActionError @{ Type = 'DefaultBrowser'; ProgId = 'a b'; Scope = 'Herkes' })
-        ($e -join "`n") | Should -Match 'ProgId: ProgID'
-        ($e -join "`n") | Should -Match 'AppName: zorunlu'
-        ($e -join "`n") | Should -Match 'Scope: Machine ya da User'
+        ($e -join "`n") | Should -Match 'ProgId: must be a ProgID'
+        ($e -join "`n") | Should -Match 'AppName: required'
+        ($e -join "`n") | Should -Match 'Scope: must be Machine or User'
     }
 }
 
@@ -431,8 +431,8 @@ Describe 'ExternalProcess: zaman aşımı sabitleri, argüman kurma, ileti' {
     }
 
     It 'TimeoutMessage: "<ne> <n> dk içinde bitmedi, süreç ağacı sonlandırıldı"' {
-        [ExternalProcess]::TimeoutMessage('winget install', 1800) | Should -Be 'winget install 30 dk içinde bitmedi, süreç ağacı sonlandırıldı'
-        [ExternalProcess]::TimeoutMessage('winget list', 120) | Should -Be 'winget list 2 dk içinde bitmedi, süreç ağacı sonlandırıldı'
-        [ExternalProcess]::TimeoutMessage('x', 90) | Should -Be 'x 1.5 dk içinde bitmedi, süreç ağacı sonlandırıldı'
+        [ExternalProcess]::TimeoutMessage('winget install', 1800) | Should -Be 'winget install did not finish within 30 min, process tree terminated'
+        [ExternalProcess]::TimeoutMessage('winget list', 120) | Should -Be 'winget list did not finish within 2 min, process tree terminated'
+        [ExternalProcess]::TimeoutMessage('x', 90) | Should -Be 'x did not finish within 1.5 min, process tree terminated'
     }
 }

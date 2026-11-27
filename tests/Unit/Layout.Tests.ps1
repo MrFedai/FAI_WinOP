@@ -46,9 +46,9 @@ Describe 'RegistryByteAction' {
     It 'şema: Offset, Value ve Mask denetlenir' {
         Errs @{ Type = 'RegistryByte'; Path = 'HKCU:\X'; Name = 'S'; Offset = 8; Value = 1 } | Should -BeNullOrEmpty
         Errs @{ Type = 'RegistryByte'; Path = 'HKCU:\X'; Name = 'S'; Offset = 8; Mask = 1; Value = $true } | Should -BeNullOrEmpty
-        (Errs @{ Type = 'RegistryByte'; Path = 'HKCU:\X'; Name = 'S'; Value = 1 }) -join ' ' | Should -Match 'Offset: zorunlu'
+        (Errs @{ Type = 'RegistryByte'; Path = 'HKCU:\X'; Name = 'S'; Value = 1 }) -join ' ' | Should -Match 'Offset: required'
         (Errs @{ Type = 'RegistryByte'; Path = 'HKCU:\X'; Name = 'S'; Offset = -1; Value = 1 }) -join ' ' | Should -Match 'Offset'
-        (Errs @{ Type = 'RegistryByte'; Path = 'HKCU:\X'; Name = 'S'; Offset = 1; Value = 300 }) -join ' ' | Should -Match 'Value: 0-255'
+        (Errs @{ Type = 'RegistryByte'; Path = 'HKCU:\X'; Name = 'S'; Offset = 1; Value = 300 }) -join ' ' | Should -Match 'Value: must be an integer from 0 to 255'
         (Errs @{ Type = 'RegistryByte'; Path = 'X'; Name = 'S'; Offset = 1; Value = 1 }) -join ' ' | Should -Match 'Path'
     }
 
@@ -73,8 +73,8 @@ Describe 'RegistryByteAction' {
         $ctx = New-Ctx
         $a = Act @{ Type = 'RegistryByte'; Path = 'HKCU:\Yok'; Name = 'Settings'; Offset = 8; Value = 3 }
         $a.Test($ctx) | Should -BeFalse
-        { $a.Snapshot($ctx) } | Should -Throw '*Windows oluşturur*'
-        $a.Preview($ctx) | Should -Match 'şu an: yok'
+        { $a.Snapshot($ctx) } | Should -Throw '*Windows creates the value*'
+        $a.Preview($ctx) | Should -Match 'current: none'
     }
 }
 
@@ -82,10 +82,10 @@ Describe 'TaskbarPinsAction' {
     It 'şema: tek alanlı AppId / Link / Aumid' {
         Errs @{ Type = 'TaskbarPins'; Pins = @(@{ AppId = 'Microsoft.Windows.Explorer' }, @{ Link = $script:Chrome }, @{ Aumid = 'Microsoft.WindowsStore_8wekyb3d8bbwe!App' }) } | Should -BeNullOrEmpty
         Errs @{ Type = 'TaskbarPins'; Pins = @() } | Should -BeNullOrEmpty
-        (Errs @{ Type = 'TaskbarPins'; Pins = @(@{ AppId = 'Chrome' }) }) -join ' ' | Should -Match 'bilinmeyen kimlik'
+        (Errs @{ Type = 'TaskbarPins'; Pins = @(@{ AppId = 'Chrome' }) }) -join ' ' | Should -Match 'unknown id'
         (Errs @{ Type = 'TaskbarPins'; Pins = @(@{ Link = 'C:\a.exe' }) }) -join ' ' | Should -Match '\.lnk'
         (Errs @{ Type = 'TaskbarPins'; Pins = @(@{ Aumid = 'Store' }) }) -join ' ' | Should -Match 'Aumid'
-        (Errs @{ Type = 'TaskbarPins'; Pins = @(@{ Link = $script:Chrome; Aumid = 'a_0123456789abc!App' }) }) -join ' ' | Should -Match 'tam olarak bir alan'
+        (Errs @{ Type = 'TaskbarPins'; Pins = @(@{ Link = $script:Chrome; Aumid = 'a_0123456789abc!App' }) }) -join ' ' | Should -Match 'exactly one field'
     }
 
     It 'mevcut sabitlemeler Favorites sırasıyla okunur (kısayollar + Store AUMID)' {
@@ -98,7 +98,7 @@ Describe 'TaskbarPinsAction' {
         $before = Get-LayoutState $ctx
         $a = Act @{ Type = 'TaskbarPins'; Pins = @(@{ AppId = 'Microsoft.Windows.Explorer' }, @{ Link = $script:Chrome }) }
         $a.Test($ctx) | Should -BeFalse
-        $a.Preview($ctx) | Should -Match 'şu an: File Explorer\.lnk, Microsoft Edge\.lnk'
+        $a.Preview($ctx) | Should -Match 'current: File Explorer\.lnk, Microsoft Edge\.lnk'
         $snap = RoundTrip ($a.Snapshot($ctx))
         $a.Apply($ctx)
         Pins $ctx | Should -Be 'File Explorer.lnk,Google Chrome.lnk'
@@ -118,14 +118,14 @@ Describe 'TaskbarPinsAction' {
         $xml | Should -Match '<taskbar:UWA AppUserModelID="Microsoft\.WindowsStore_8wekyb3d8bbwe!App" />'
         $xml | Should -Not -Match 'Yok\.lnk'
         $xml | Should -Match 'PinListPlacement="Replace"'
-        $a.Preview($ctx) | Should -Match '1 kısayol yok, atlanır'
+        $a.Preview($ctx) | Should -Match '1 shortcuts not found, will be skipped'
     }
 
     It 'etkileşimli kabuk yoksa hata verir ve hiçbir şey yazmaz' {
         $ctx = New-ShellCtx
         $ctx.Desktop.ShellRunning = $false
         $a = Act @{ Type = 'TaskbarPins'; Pins = @(@{ AppId = 'Microsoft.Windows.Explorer' }) }
-        { $a.Apply($ctx) } | Should -Throw '*kabuk*'
+        { $a.Apply($ctx) } | Should -Throw '*Interactive shell*'
         Get-FakeWriteCount $ctx | Should -Be 0
     }
 
@@ -133,7 +133,7 @@ Describe 'TaskbarPinsAction' {
         $ctx = New-ShellCtx
         $ctx.Desktop.OnRefresh = $null
         $a = Act @{ Type = 'TaskbarPins'; Pins = @(@{ AppId = 'Microsoft.Windows.Explorer' }) }
-        { $a.Apply($ctx) } | Should -Throw '*uygulamadı*'
+        { $a.Apply($ctx) } | Should -Throw '*did not apply*'
         $ctx.Registry.ValueExists($script:Policy, 'StartLayoutFile') | Should -BeFalse
         $ctx.Desktop.WaitCount | Should -BeGreaterThan 0
     }
@@ -144,10 +144,10 @@ Describe 'SolidImageAction' {
         Errs @{ Type = 'SolidImage'; Path = 'C:\x\a.png'; Color = '000000'; Width = 10; Height = 10 } | Should -BeNullOrEmpty
         Errs @{ Type = 'SolidImage'; Directory = 'C:\x'; Filter = @('*.png'); Color = '000000' } | Should -BeNullOrEmpty
         (Errs @{ Type = 'SolidImage'; Color = '000000' }) -join ' ' | Should -Match 'tam olarak biri'
-        (Errs @{ Type = 'SolidImage'; Path = 'C:\x\a.gif'; Color = '000000'; Width = 1; Height = 1 }) -join ' ' | Should -Match 'uzantı'
+        (Errs @{ Type = 'SolidImage'; Path = 'C:\x\a.gif'; Color = '000000'; Width = 1; Height = 1 }) -join ' ' | Should -Match 'extension must be'
         (Errs @{ Type = 'SolidImage'; Path = 'C:\x\a.png'; Color = 'siyah'; Width = 1; Height = 1 }) -join ' ' | Should -Match 'RRGGBB'
-        (Errs @{ Type = 'SolidImage'; Path = 'C:\x\a.png'; Color = '000000' }) -join ' ' | Should -Match 'Width: Path ile zorunlu'
-        (Errs @{ Type = 'SolidImage'; Directory = 'C:\x'; Filter = @('*.png'); Color = '000000'; Width = 5 }) -join ' ' | Should -Match 'yalnız Path'
+        (Errs @{ Type = 'SolidImage'; Path = 'C:\x\a.png'; Color = '000000' }) -join ' ' | Should -Match 'Width: required with Path'
+        (Errs @{ Type = 'SolidImage'; Directory = 'C:\x'; Filter = @('*.png'); Color = '000000'; Width = 5 }) -join ' ' | Should -Match 'only allowed with Path'
     }
 
     It 'Path: dosya yoksa verilen boyutta oluşturulur; geri alma siler' {
@@ -182,7 +182,7 @@ Describe 'AppSettingAction' {
         Errs @{ Type = 'AppSetting'; Package = $script:Notepad; Name = 'GhostFile'; Kind = 'Bool'; Value = $false } | Should -BeNullOrEmpty
         Errs @{ Type = 'AppSetting'; Package = $script:Notepad; Name = 'OpenFile'; Kind = 'Int32'; Value = 1 } | Should -BeNullOrEmpty
         (Errs @{ Type = 'AppSetting'; Package = 'Notepad'; Name = 'X'; Kind = 'Bool'; Value = $true }) -join ' ' | Should -Match 'Package'
-        (Errs @{ Type = 'AppSetting'; Package = $script:Notepad; Name = 'X'; Kind = 'Bool'; Value = 1 }) -join ' ' | Should -Match 'Bool için'
+        (Errs @{ Type = 'AppSetting'; Package = $script:Notepad; Name = 'X'; Kind = 'Bool'; Value = 1 }) -join ' ' | Should -Match 'for Bool'
         (Errs @{ Type = 'AppSetting'; Package = $script:Notepad; Name = 'X'; Kind = 'String'; Value = 'a' }) -join ' ' | Should -Match 'Kind'
     }
 
@@ -215,7 +215,7 @@ Describe 'AppSettingAction' {
     It 'ayar dosyası yoksa yapılacak iş yok (Test $true), günlüğe yazılır' {
         $ctx = New-Ctx
         (Act @{ Type = 'AppSetting'; Package = $script:Notepad; Name = 'GhostFile'; Kind = 'Bool'; Value = $false }).Test($ctx) | Should -BeTrue
-        (@($ctx.Logger.Entries | ForEach-Object { $_.Message }) -join ' ') | Should -Match 'ayar dosyası yok'
+        (@($ctx.Logger.Entries | ForEach-Object { $_.Message }) -join ' ') | Should -Match 'settings file not found'
     }
 }
 
@@ -229,15 +229,15 @@ Describe 'FileAction: Base64 içerik' {
         $a.Apply($ctx)
         $ctx.Files.ReadBytes('C:\x\start2.bin') | Should -Be @(0, 1, 2, 255)
         $a.Test($ctx) | Should -BeTrue
-        $a.Describe() | Should -Match '4 bayt, ikili'
+        $a.Describe() | Should -Match '4 bytes, binary'
         $a.Revert($ctx, $snap)
         $ctx.Files.ReadBytes('C:\x\start2.bin') | Should -Be @(9, 9)
     }
 
     It 'şema: Base64 ile Content / Encoding birlikte verilmez, geçersiz base64 hata' {
-        (Errs @{ Type = 'File'; Path = 'C:\a'; Base64 = 'AA=='; Content = 'x' }) -join ' ' | Should -Match 'Content: Base64 ile'
+        (Errs @{ Type = 'File'; Path = 'C:\a'; Base64 = 'AA=='; Content = 'x' }) -join ' ' | Should -Match 'Content: not allowed with Base64'
         (Errs @{ Type = 'File'; Path = 'C:\a'; Base64 = 'AA=='; Encoding = 'ASCII' }) -join ' ' | Should -Match 'Encoding'
-        (Errs @{ Type = 'File'; Path = 'C:\a'; Base64 = '!!' }) -join ' ' | Should -Match 'geçerli base64'
+        (Errs @{ Type = 'File'; Path = 'C:\a'; Base64 = '!!' }) -join ' ' | Should -Match 'valid base64'
     }
 }
 

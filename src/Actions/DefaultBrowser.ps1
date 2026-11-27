@@ -19,13 +19,13 @@ class DefaultBrowserAction : ActionBase {
     static [string[]] Validate([object] $Def) {
         $e = New-Object 'System.Collections.Generic.List[string]'
         foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'ProgId', 'AppName', 'Scope'))) { $e.Add($m) }
-        if (-not $Def.Contains('ProgId')) { $e.Add('ProgId: zorunlu alan eksik') }
+        if (-not $Def.Contains('ProgId')) { $e.Add('ProgId: required field missing') }
         elseif (Test-FaiHasPlaceholder $Def['ProgId']) { }
-        elseif ($Def['ProgId'] -isnot [string] -or $Def['ProgId'] -notmatch '^[A-Za-z0-9][A-Za-z0-9._\-]*$') { $e.Add('ProgId: ProgID olmalı (ör. ChromeHTML)') }
-        if (-not $Def.Contains('AppName')) { $e.Add('AppName: zorunlu alan eksik') }
-        elseif ($Def['AppName'] -isnot [string] -or [string]::IsNullOrWhiteSpace($Def['AppName'])) { $e.Add('AppName: boş olmayan metin olmalı') }
+        elseif ($Def['ProgId'] -isnot [string] -or $Def['ProgId'] -notmatch '^[A-Za-z0-9][A-Za-z0-9._\-]*$') { $e.Add('ProgId: must be a ProgID (e.g. ChromeHTML)') }
+        if (-not $Def.Contains('AppName')) { $e.Add('AppName: required field missing') }
+        elseif ($Def['AppName'] -isnot [string] -or [string]::IsNullOrWhiteSpace($Def['AppName'])) { $e.Add('AppName: must be non-empty text') }
         if ($Def.Contains('Scope') -and -not (Test-FaiHasPlaceholder $Def['Scope']) -and ($Def['Scope'] -isnot [string] -or @('Machine', 'User') -cnotcontains $Def['Scope'])) {
-            $e.Add('Scope: Machine ya da User olmalı')
+            $e.Add('Scope: must be Machine or User')
         }
         return $e.ToArray()
     }
@@ -56,25 +56,25 @@ class DefaultBrowserAction : ActionBase {
 
     [void] Apply([ExecutionContext] $Ctx) {
         $Ctx.Shell.OpenUri($this.SettingsUri())
-        $hint = "Ayarlar'da '{0}' sayfası açıldı: 'Varsayılan olarak ayarla' düğmesine basın." -f $this.AppName()
-        if ($Ctx.Unattended) { throw "Etkileşimsiz kipte yapılamaz. $hint" }
-        [void]$Ctx.Prompt.Confirm("$hint Bitirince E yazın.")
+        $hint = "The '{0}' page was opened in Settings: click 'Set as default'." -f $this.AppName()
+        if ($Ctx.Unattended) { throw "Cannot run in unattended mode. $hint" }
+        [void]$Ctx.Prompt.Confirm("$hint Type Y when done.")
         $now = [DefaultBrowserAction]::Current($Ctx)
-        if ($now -ne $this.ProgId()) { throw ("Varsayılan tarayıcı değişmedi (şu an: '{0}', beklenen: '{1}')." -f $now, $this.ProgId()) }
+        if ($now -ne $this.ProgId()) { throw ("Default browser did not change (current: '{0}', expected: '{1}')." -f $now, $this.ProgId()) }
     }
 
     [void] Revert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
         $was = [string]$Snapshot['ProgId']
         if (-not $was -or $was -eq [DefaultBrowserAction]::Current($Ctx)) { return }
         $Ctx.Shell.OpenUri('ms-settings:defaultapps')
-        $Ctx.Logger.Warn(("Varsayılan tarayıcı programla geri alınamaz: önceki tarayıcıyı ('{0}') Varsayılan uygulamalar sayfasından seçin." -f $was))
+        $Ctx.Logger.Warn(("Default browser cannot be reverted programmatically: pick the previous browser ('{0}') on the Default apps page." -f $was))
     }
 
-    [string] Describe() { return ("Varsayılan tarayıcı: {0} ({1}) — Ayarlar'da tek tıkla, elle" -f $this.AppName(), $this.ProgId()) }
+    [string] Describe() { return ("Default browser: {0} ({1}) — one click in Settings, manual" -f $this.AppName(), $this.ProgId()) }
 
     [string] Preview([ExecutionContext] $Ctx) {
         $now = [DefaultBrowserAction]::Current($Ctx)
-        if (-not $now) { $now = 'bilinmiyor' }
-        return ('{0} [şu an: {1}]' -f $this.Describe(), $now)
+        if (-not $now) { $now = 'unknown' }
+        return ('{0} [current: {1}]' -f $this.Describe(), $now)
     }
 }

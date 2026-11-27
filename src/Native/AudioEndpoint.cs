@@ -75,7 +75,7 @@ namespace FaiWinOP.Native
         private static IAudioEndpointVolume OpenOrThrow()
         {
             IAudioEndpointVolume volume = Open();
-            if (volume == null) { throw new InvalidOperationException("Varsayılan ses çıkış aygıtı yok."); }
+            if (volume == null) { throw new InvalidOperationException("No default audio output device."); }
             return volume;
         }
 
@@ -102,7 +102,7 @@ namespace FaiWinOP.Native
 
         public static void SetVolume(int level)
         {
-            if (level < 0 || level > 100) { throw new ArgumentOutOfRangeException("level", "0-100 olmalı"); }
+            if (level < 0 || level > 100) { throw new ArgumentOutOfRangeException("level", "must be 0-100"); }
             IAudioEndpointVolume volume = OpenOrThrow();
             try
             {

@@ -17,24 +17,24 @@ class AppxCleanupAction : ActionBase {
     static [string[]] Validate([object] $Def) {
         $e = New-Object 'System.Collections.Generic.List[string]'
         foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Names', 'TaskPath', 'ScriptPath'))) { $e.Add($m) }
-        if (-not $Def.Contains('Names')) { $e.Add('Names: zorunlu alan eksik') }
+        if (-not $Def.Contains('Names')) { $e.Add('Names: required field missing') }
         elseif ($Def['Names'] -is [string] -or $Def['Names'] -isnot [System.Collections.IEnumerable] -or @($Def['Names']).Count -eq 0) {
-            $e.Add('Names: boş olmayan paket adı listesi olmalı')
+            $e.Add('Names: must be a non-empty list of package names')
         }
         else {
             foreach ($n in @($Def['Names'])) {
                 if ($n -isnot [string] -or $n -notmatch '^[A-Za-z0-9][A-Za-z0-9.\-]*$') {
-                    $e.Add("Names: '$n' birebir paket adı olmalı (harf, rakam, nokta, tire; joker yok)")
+                    $e.Add("Names: '$n' must be an exact package name (letters, digits, dot, hyphen; no wildcards)")
                 }
             }
         }
-        if (-not $Def.Contains('TaskPath')) { $e.Add('TaskPath: zorunlu alan eksik') }
+        if (-not $Def.Contains('TaskPath')) { $e.Add('TaskPath: required field missing') }
         elseif ($Def['TaskPath'] -isnot [string] -or $Def['TaskPath'] -notmatch '^\\(.+\\)?[^\\]+$') {
-            $e.Add('TaskPath: ''\Klasör\Görev'' biçiminde olmalı')
+            $e.Add('TaskPath: must be in the form ''\Folder\Task''')
         }
-        if (-not $Def.Contains('ScriptPath')) { $e.Add('ScriptPath: zorunlu alan eksik') }
+        if (-not $Def.Contains('ScriptPath')) { $e.Add('ScriptPath: required field missing') }
         elseif (-not (Test-FaiWindowsPath $Def['ScriptPath']) -or [string]$Def['ScriptPath'] -notmatch '\.ps1$') {
-            $e.Add('ScriptPath: mutlak .ps1 yolu olmalı (C:\..., %DEĞİŞKEN%\...)')
+            $e.Add('ScriptPath: must be an absolute .ps1 path (C:\..., %VARIABLE%\...)')
         }
         return $e.ToArray()
     }
@@ -102,34 +102,34 @@ class AppxCleanupAction : ActionBase {
         if (-not $this.ScriptMatches($Ctx)) { $Ctx.Files.WriteBytes($this.ScriptFullPath(), $this.WantScript($Ctx)) }
         if (-not $this.TaskMatches($Ctx)) {
             $Ctx.Tasks.RegisterStartupTask($this.TaskPath(), (Expand-FaiPath ([AppxCleanupAction]::PowerShellPath())), $this.WantArguments(),
-                'FAI_WinOP: Windows güncellemesi sonrası kaldırılan bloatware paketlerini yeniden kaldırır (bloat.persistence).')
+                'FAI_WinOP: removes bloatware packages again after a Windows update (bloat.persistence).')
         }
     }
 
     [void] Revert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
         if ($Snapshot['TaskExisted']) {
-            $Ctx.Tasks.RegisterStartupTask($this.TaskPath(), [string]$Snapshot['TaskExecute'], [string]$Snapshot['TaskArguments'], 'FAI_WinOP (geri alındı)')
+            $Ctx.Tasks.RegisterStartupTask($this.TaskPath(), [string]$Snapshot['TaskExecute'], [string]$Snapshot['TaskArguments'], 'FAI_WinOP (reverted)')
         }
         else { $Ctx.Tasks.UnregisterTask($this.TaskPath()) }
         [FileAction]::RestoreFile($Ctx, $this.ScriptFullPath(), [hashtable]$Snapshot['Script'])
         $prov = @($Ctx.Appx.GetProvisioned())
         $gone = @(@($Snapshot['Provisioned']) | Where-Object { $_ -and $prov -notcontains $_ })
         if ($gone.Count -gt 0) {
-            $Ctx.Logger.Warn("Provisioned paketler geri getirilemez (Store'dan yeniden kurulmalı): " + ($gone -join ', '))
+            $Ctx.Logger.Warn("Provisioned packages cannot be restored (reinstall from the Store): " + ($gone -join ', '))
         }
     }
 
     [string] Describe() {
-        return ('Bloatware kalıcılığı: {0} paketin provisioned kopyası kaldırılır, açılış görevi {1} güncelleme sonrası yineler' -f @($this.Definition['Names']).Count, $this.TaskPath())
+        return ('Bloatware persistence: the provisioned copy of {0} packages is removed, startup task {1} repeats it after updates' -f @($this.Definition['Names']).Count, $this.TaskPath())
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
         $prov = @($this.PresentProvisioned($Ctx))
-        $task = 'yok'
-        if ($this.TaskMatches($Ctx)) { $task = 'güncel' }
-        elseif ($null -ne $Ctx.Tasks.GetTaskAction($this.TaskPath())) { $task = 'farklı komutla var' }
-        $list = 'yok'
+        $task = 'none'
+        if ($this.TaskMatches($Ctx)) { $task = 'current' }
+        elseif ($null -ne $Ctx.Tasks.GetTaskAction($this.TaskPath())) { $task = 'exists with a different command' }
+        $list = 'none'
         if ($prov.Count -gt 0) { $list = $prov -join ', ' }
-        return ('{0} [şu an provisioned: {1}; görev: {2}]' -f $this.Describe(), $list, $task)
+        return ('{0} [current provisioned: {1}; task: {2}]' -f $this.Describe(), $list, $task)
     }
 }

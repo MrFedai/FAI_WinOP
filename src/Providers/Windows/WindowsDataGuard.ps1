@@ -76,7 +76,7 @@ class WindowsFileSecurityProvider : IFileSecurityProvider {
 
     [void] MoveItem([string] $Path, [string] $Destination) {
         $attr = $this.Attributes($Path)
-        if ($null -eq $attr) { throw "Taşınacak öğe yok: $Path" }
+        if ($null -eq $attr) { throw "Item to move not found: $Path" }
         if (([int]$attr -band [int][System.IO.FileAttributes]::Directory) -ne 0) { [System.IO.Directory]::Move($Path, $Destination) }
         else { [System.IO.File]::Move($Path, $Destination) }
     }

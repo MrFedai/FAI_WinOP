@@ -229,7 +229,7 @@ Describe 'Invoke-FaiCli' {
     }
 
     It '-Only profil olmadan yalnız verilenleri çalıştırır ve araçlara izin verir (onaylı)' {
-        $ctx = New-Env -Answers @('E')
+        $ctx = New-Env -Answers @('Y')
         Invoke-Quiet { Invoke-FaiCli -Bound @{ Only = @('refresh.tool,ui.beta') } -Context $ctx -Catalog (New-TestCatalog) } | Should -Be 0
         $ctx.Registry.GetValue($script:Key, 'Tool') | Should -Be 1
         $ctx.Registry.GetValue($script:Key, 'Beta') | Should -Be 1

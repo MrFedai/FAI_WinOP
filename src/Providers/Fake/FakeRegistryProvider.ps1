@@ -86,7 +86,7 @@ class FakeRegistryProvider : IRegistryProvider {
     [void] SetValue([string] $Path, [string] $Name, [object] $Value, [string] $Kind) {
         $this.WriteCount++
         [void]$this.WriteLog.Add("SetValue $Path $Name")
-        if ($this.FailOnName -and $Name -eq $this.FailOnName) { throw "Sahte yazma hatası: $Name" }
+        if ($this.FailOnName -and $Name -eq $this.FailOnName) { throw "Simulated write error: $Name" }
         $this.Store($Path, $Name, $Value, $Kind)
     }
 
@@ -126,7 +126,7 @@ class FakeRegistryProvider : IRegistryProvider {
     [void] SetRawValue([string] $Path, [string] $Name, [int] $Type, [byte[]] $Bytes) {
         $this.WriteCount++
         [void]$this.WriteLog.Add("SetRawValue $Path $Name")
-        if ($this.FailOnName -and $Name -eq $this.FailOnName) { throw "Sahte yazma hatası: $Name" }
+        if ($this.FailOnName -and $Name -eq $this.FailOnName) { throw "Simulated write error: $Name" }
         $this.StoreRaw($Path, $Name, $Type, $Bytes)
     }
 

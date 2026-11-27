@@ -50,7 +50,7 @@ function New-FaiAdminDir {
     # Yonetici sureci: %ProgramData%\FAI_WinOP_get_<guid>, ACL olusturma aninda (yaris yok). Sonra yeniden denetlenir.
     $root = [Environment]::GetFolderPath('CommonApplicationData')
     $path = Join-Path $root ('FAI_WinOP_get_' + [guid]::NewGuid().ToString('N'))
-    if (Test-Path -LiteralPath $path) { throw ('FAI_WinOP: klasor zaten var: {0}' -f $path) }
+    if (Test-Path -LiteralPath $path) { throw ('FAI_WinOP: folder already exists: {0}' -f $path) }
     $admins = New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-544')
     $system = New-Object System.Security.Principal.SecurityIdentifier('S-1-5-18')
     $sec = New-Object System.Security.AccessControl.DirectorySecurity
@@ -72,7 +72,7 @@ function New-FaiAdminDir {
     }
     if (-not $ok) {
         Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction SilentlyContinue
-        throw ('FAI_WinOP: yonetici-yalniz klasor kurulamadi: {0}' -f $path)
+        throw ('FAI_WinOP: could not set up the admin-only folder: {0}' -f $path)
     }
     return $path
 }
@@ -88,10 +88,10 @@ function Invoke-FaiSecureRun([string] $Source, [string] $Expected, [string[]] $A
         $target = Join-Path $dir 'install.ps1'
         [System.IO.File]::Copy($Source, $target, $false)
         if (-not (Test-FaiFileHash -Path $target -Expected $Expected)) {
-            Write-Host 'SHA-256 dogrulamasi BASARISIZ: yonetici kopyasi ozetle eslesmiyor (dosya dogrulamadan sonra degismis); calistirilmadi.' -ForegroundColor Red
-            throw 'FAI_WinOP: yonetici kopyasi SHA-256 dogrulamasi basarisiz'
+            Write-Host 'SHA-256 verification FAILED: the admin copy does not match the hash (the file changed after verification); not run.' -ForegroundColor Red
+            throw 'FAI_WinOP: admin copy SHA-256 verification failed'
         }
-        Write-Host ('Yonetici-yalniz kopya yeniden dogrulandi: {0}' -f $target) -ForegroundColor Green
+        Write-Host ('Admin-only copy re-verified: {0}' -f $target) -ForegroundColor Green
         Start-FaiInstaller -Path $target -Arguments $Arguments
     }
     finally {
@@ -101,7 +101,7 @@ function Invoke-FaiSecureRun([string] $Source, [string] $Expected, [string[]] $A
 
 function New-FaiElevatedScript([string] $Source, [string] $Expected, [string[]] $Arguments) {
     # UAC ile acilan surecin betigi: gereken fonksiyonlar + Invoke-FaiSecureRun cagrisi (degerler tek tirnakli metin).
-    if ($Expected -notmatch '^[0-9a-f]{64}$') { throw 'FAI_WinOP: gecersiz ozet' }
+    if ($Expected -notmatch '^[0-9a-f]{64}$') { throw 'FAI_WinOP: invalid hash' }
     $sb = New-Object System.Text.StringBuilder
     [void]$sb.AppendLine("`$ErrorActionPreference = 'Stop'")
     foreach ($n in @('Test-FaiFileHash', 'New-FaiAdminDir', 'Start-FaiInstaller', 'Invoke-FaiSecureRun')) {
@@ -117,8 +117,8 @@ function New-FaiElevatedScript([string] $Source, [string] $Expected, [string[]] 
 $faiBase = 'https://github.com/MrFedai/FAI_WinOP/releases/latest/download'
 if ($env:FAI_WINOP_BASEURL) {
     if (-not (Test-FaiBaseUrl $env:FAI_WINOP_BASEURL)) {
-        Write-Host ('FAI_WINOP_BASEURL reddedildi: {0} (yalniz https:// ya da http://localhost, http://127.0.0.1); calistirilmadi.' -f $env:FAI_WINOP_BASEURL) -ForegroundColor Red
-        throw 'FAI_WinOP: FAI_WINOP_BASEURL reddedildi'
+        Write-Host ('FAI_WINOP_BASEURL rejected: {0} (only https:// or http://localhost, http://127.0.0.1 are allowed); not run.' -f $env:FAI_WINOP_BASEURL) -ForegroundColor Red
+        throw 'FAI_WinOP: FAI_WINOP_BASEURL rejected'
     }
     $faiBase = $env:FAI_WINOP_BASEURL.TrimEnd('/')
 }
@@ -135,7 +135,7 @@ $faiDir = Join-Path $env:TEMP 'FAI_WinOP'
 if (-not (Test-Path -LiteralPath $faiDir)) { [void](New-Item -ItemType Directory -Path $faiDir -Force) }
 $faiFile = Join-Path $faiDir 'install.ps1'
 
-Write-Host ('Indiriliyor: {0}/install.ps1' -f $faiBase)
+Write-Host ('Downloading: {0}/install.ps1' -f $faiBase)
 $wc = New-Object System.Net.WebClient
 try {
     $wc.DownloadFile($faiBase + '/install.ps1', $faiFile)
@@ -147,10 +147,10 @@ finally { $wc.Dispose() }
 $faiExpected = Get-FaiExpectedHash $faiHashText
 if (-not $faiExpected -or -not (Test-FaiFileHash -Path $faiFile -Expected $faiExpected)) {
     Remove-Item -LiteralPath $faiFile -Force -ErrorAction SilentlyContinue
-    Write-Host 'SHA-256 dogrulamasi BASARISIZ: install.ps1 yayimlanan ozetle eslesmiyor; calistirilmadi.' -ForegroundColor Red
-    throw 'FAI_WinOP: SHA-256 dogrulamasi basarisiz'
+    Write-Host 'SHA-256 verification FAILED: install.ps1 does not match the published hash; not run.' -ForegroundColor Red
+    throw 'FAI_WinOP: SHA-256 verification failed'
 }
-Write-Host ('SHA-256 dogrulandi: {0}' -f $faiExpected) -ForegroundColor Green
+Write-Host ('SHA-256 verified: {0}' -f $faiExpected) -ForegroundColor Green
 
 $faiPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if ($faiPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -159,7 +159,7 @@ if ($faiPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrato
 else {
     $faiScript = New-FaiElevatedScript -Source $faiFile -Expected $faiExpected -Arguments $faiArgs.ToArray()
     $faiEncoded = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($faiScript))
-    if ($faiEncoded.Length -gt 30000) { throw 'FAI_WinOP: argumanlar cok uzun (yonetici komutu 32 KB sinirini asar)' }
-    Write-Host 'Yonetici izni isteniyor (UAC); arac yeni pencerede acilacak.' -ForegroundColor Yellow
+    if ($faiEncoded.Length -gt 30000) { throw 'FAI_WinOP: arguments too long (the admin command would exceed the 32 KB limit)' }
+    Write-Host 'Requesting administrator permission (UAC); the tool will open in a new window.' -ForegroundColor Yellow
     Start-Process -FilePath 'powershell.exe' -ArgumentList ('-NoProfile -ExecutionPolicy Bypass -NoExit -EncodedCommand ' + $faiEncoded) -Verb RunAs | Out-Null
 }

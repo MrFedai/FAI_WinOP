@@ -19,33 +19,33 @@ class FileAction : ActionBase {
     static [string[]] Validate([object] $Def) {
         $e = New-Object 'System.Collections.Generic.List[string]'
         foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Path', 'Content', 'Base64', 'Encoding', 'Ensure'))) { $e.Add($m) }
-        if (-not $Def.Contains('Path')) { $e.Add('Path: zorunlu alan eksik') }
-        elseif (-not (Test-FaiWindowsPath $Def['Path'])) { $e.Add('Path: mutlak yol olmalı (C:\..., %DEĞİŞKEN%\...)') }
+        if (-not $Def.Contains('Path')) { $e.Add('Path: required field missing') }
+        elseif (-not (Test-FaiWindowsPath $Def['Path'])) { $e.Add('Path: must be an absolute path (C:\..., %VARIABLE%\...)') }
         $ensure = 'Present'
         if ($Def.Contains('Ensure')) {
-            if ($Def['Ensure'] -isnot [string] -or @('Present', 'Absent') -cnotcontains $Def['Ensure']) { $e.Add('Ensure: Present ya da Absent olmalı') }
+            if ($Def['Ensure'] -isnot [string] -or @('Present', 'Absent') -cnotcontains $Def['Ensure']) { $e.Add('Ensure: must be Present or Absent') }
             else { $ensure = $Def['Ensure'] }
         }
         if ($ensure -eq 'Absent') {
-            if ($Def.Contains('Content')) { $e.Add('Content: Ensure=Absent iken verilmez') }
-            if ($Def.Contains('Base64')) { $e.Add('Base64: Ensure=Absent iken verilmez') }
-            if ($Def.Contains('Encoding')) { $e.Add('Encoding: Ensure=Absent iken verilmez') }
+            if ($Def.Contains('Content')) { $e.Add('Content: not allowed when Ensure=Absent') }
+            if ($Def.Contains('Base64')) { $e.Add('Base64: not allowed when Ensure=Absent') }
+            if ($Def.Contains('Encoding')) { $e.Add('Encoding: not allowed when Ensure=Absent') }
             return $e.ToArray()
         }
         if ($Def.Contains('Base64')) {
-            if ($Def.Contains('Content')) { $e.Add('Content: Base64 ile birlikte verilmez') }
-            if ($Def.Contains('Encoding')) { $e.Add('Encoding: Base64 ile verilmez (içerik ikili)') }
+            if ($Def.Contains('Content')) { $e.Add('Content: not allowed with Base64') }
+            if ($Def.Contains('Encoding')) { $e.Add('Encoding: not allowed with Base64 (content is binary)') }
             if (-not (Test-FaiHasPlaceholder $Def['Base64'])) {
                 $ok = $Def['Base64'] -is [string]
                 if ($ok) { try { [void][Convert]::FromBase64String($Def['Base64']) } catch { $ok = $false } }
-                if (-not $ok) { $e.Add('Base64: geçerli base64 metni olmalı') }
+                if (-not $ok) { $e.Add('Base64: must be valid base64 text') }
             }
             return $e.ToArray()
         }
-        if (-not $Def.Contains('Content')) { $e.Add('Content: zorunlu alan eksik (ya da Base64)') }
-        elseif ($Def['Content'] -isnot [string]) { $e.Add('Content: metin olmalı') }
+        if (-not $Def.Contains('Content')) { $e.Add('Content: required field missing (or Base64)') }
+        elseif ($Def['Content'] -isnot [string]) { $e.Add('Content: must be text') }
         if ($Def.Contains('Encoding') -and ($Def['Encoding'] -isnot [string] -or [FileAction]::Encodings() -cnotcontains $Def['Encoding'])) {
-            $e.Add('Encoding: ' + ([FileAction]::Encodings() -join ', ') + ' değerlerinden biri olmalı')
+            $e.Add('Encoding: must be one of ' + ([FileAction]::Encodings() -join ', '))
         }
         return $e.ToArray()
     }
@@ -77,7 +77,7 @@ class FileAction : ActionBase {
         if (-not $Ctx.Files.FileExists($FullPath)) { return @{ Exists = $false } }
         $size = $Ctx.Files.GetSize($FullPath)
         if ($size -gt [FileAction]::MaxBackupBytes) {
-            throw ('Dosya yedek sınırından büyük ({0} bayt > {1}); dokunulmadı: {2}' -f $size, [FileAction]::MaxBackupBytes, $FullPath)
+            throw ('File exceeds the backup limit ({0} bytes > {1}); left untouched: {2}' -f $size, [FileAction]::MaxBackupBytes, $FullPath)
         }
         return @{ Exists = $true; Bytes = [Convert]::ToBase64String($Ctx.Files.ReadBytes($FullPath)) }
     }
@@ -124,30 +124,30 @@ class FileAction : ActionBase {
     [void] Revert([ExecutionContext] $Ctx, [hashtable] $Snapshot) { [FileAction]::RestoreFile($Ctx, $this.FullPath(), $Snapshot) }
 
     [string] Describe() {
-        if ($this.IsAbsent()) { return ('Dosya: {0} silinir' -f $this.Definition['Path']) }
-        if ($this.Definition.ContainsKey('Base64')) { return ('Dosya: {0} yazılır ({1} bayt, ikili)' -f $this.Definition['Path'], $this.WantBytes().Length) }
+        if ($this.IsAbsent()) { return ('File: {0} is deleted' -f $this.Definition['Path']) }
+        if ($this.Definition.ContainsKey('Base64')) { return ('File: {0} is written ({1} bytes, binary)' -f $this.Definition['Path'], $this.WantBytes().Length) }
         $enc = 'UTF8'
         if ($this.Definition.ContainsKey('Encoding')) { $enc = [string]$this.Definition['Encoding'] }
-        return ('Dosya: {0} yazılır ({1} karakter, {2})' -f $this.Definition['Path'], ([string]$this.Definition['Content']).Length, $enc)
+        return ('File: {0} is written ({1} characters, {2})' -f $this.Definition['Path'], ([string]$this.Definition['Content']).Length, $enc)
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
         $size = $Ctx.Files.GetSize($this.FullPath())
-        $now = 'yok'
-        if ($size -ge 0) { $now = '{0} bayt' -f $size }
-        return ('{0} [şu an: {1}]' -f $this.Describe(), $now)
+        $now = 'none'
+        if ($size -ge 0) { $now = '{0} bytes' -f $size }
+        return ('{0} [current: {1}]' -f $this.Describe(), $now)
     }
 
     [string] PreviewRevert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
         $size = $Ctx.Files.GetSize($this.FullPath())
-        $now = 'yok'
-        if ($size -ge 0) { $now = '{0} bayt' -f $size }
-        $will = 'dosya silinecek (önceden yoktu)'
+        $now = 'none'
+        if ($size -ge 0) { $now = '{0} bytes' -f $size }
+        $will = 'file deleted (it did not exist before)'
         if ($Snapshot['Exists']) {
             $len = 0
             try { $len = [Convert]::FromBase64String([string]$Snapshot['Bytes']).Length } catch { $len = 0 }
-            $will = 'önceki içerik ({0} bayt) geri yazılacak' -f $len
+            $will = 'previous content ({0} bytes) restored' -f $len
         }
-        return ('Dosya: {0} — şu an {1} → geri alınca {2}' -f $this.Definition['Path'], $now, $will)
+        return ('File: {0} — currently {1} → will revert to {2}' -f $this.Definition['Path'], $now, $will)
     }
 }

@@ -85,7 +85,7 @@ Describe 'ScheduledTaskAction' {
         $a.Apply($ctx)
         $ctx.Tasks.WriteCount | Should -Be 0
         $ctx.Logger.Count('WARN') | Should -Be 1
-        $a.Preview($ctx) | Should -Match 'görev yok'
+        $a.Preview($ctx) | Should -Match 'task not found'
     }
 }
 
@@ -114,7 +114,7 @@ Describe 'AppxAction' {
         $a.Test($ctx) | Should -BeTrue
         { $a.Revert($ctx, $snap) } | Should -Not -Throw
         $ctx.Logger.Count('WARN') | Should -Be 2
-        $a.Describe() | Should -Match 'kullanıcı \+ provisioned'
+        $a.Describe() | Should -Match 'user \+ provisioned'
     }
 
     It 'kurulu değilse Test $true, Apply yazmaz' {
@@ -145,7 +145,7 @@ Describe 'WingetAction' {
         $ctx.Packages.Seed('9NKSQGP7F2NH', 'msstore')
         $a = Act @{ Type = 'Winget'; Id = '9NKSQGP7F2NH'; Source = 'msstore'; Ensure = 'Absent' }
         Invoke-Cycle $ctx $a { $ctx.Packages.IsInstalled('9NKSQGP7F2NH', 'msstore') } | Should -BeFalse
-        $a.Describe() | Should -Be 'Paket (msstore): 9NKSQGP7F2NH kaldırılır'
+        $a.Describe() | Should -Be 'Package (msstore): 9NKSQGP7F2NH is removed'
     }
 }
 
@@ -163,7 +163,7 @@ Describe 'PowerAction' {
         $ctx.Power.Seed('SCHEME_CURRENT', 'SUB_SLEEP', 'STANDBYIDLE', 1800, 600)
         $a = Act @{ Type = 'Power'; Subgroup = 'SUB_SLEEP'; Setting = 'STANDBYIDLE'; AC = 0; DC = 900 }
         $a.Test($ctx) | Should -BeFalse
-        $a.Preview($ctx) | Should -Match 'şu an: prizde = 1800, pilde = 600'
+        $a.Preview($ctx) | Should -Match 'current: on AC = 1800, on battery = 600'
         $after = Invoke-Cycle $ctx $a { $ctx.Power.Dump() -join ';' }
         $after | Should -Match 'sub_sleep\|standbyidle\|0\|900'
     }
@@ -196,7 +196,7 @@ Describe 'PowerAction' {
         Invoke-Cycle $ctx $a { $ctx.Power.GetActiveScheme() } | Should -Be '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c'
         $missing = Act @{ Type = 'Power'; ActiveScheme = 'e9a42b02-d5df-448d-aa00-03f14749eb61' }
         $missing.Test($ctx) | Should -BeFalse
-        { $missing.Apply($ctx) } | Should -Throw '*Güç planı yok*'
+        { $missing.Apply($ctx) } | Should -Throw '*Power plan not found*'
     }
 }
 
@@ -242,7 +242,7 @@ Describe 'FileAction' {
         $ctx = New-Ctx
         $ctx.Files.Seed('C:\buyuk.bin', (New-Object byte[] ([FileAction]::MaxBackupBytes + 1)))
         $a = Act @{ Type = 'File'; Path = 'C:\buyuk.bin'; Ensure = 'Absent' }
-        { $a.Snapshot($ctx) } | Should -Throw '*yedek sınırından büyük*'
+        { $a.Snapshot($ctx) } | Should -Throw '*exceeds the backup limit*'
     }
 
     It '%DEĞİŞKEN% yolu çalışma anında açılır' {
@@ -370,7 +370,7 @@ Describe 'ScriptAction' {
         $a.Test($ctx) | Should -BeFalse
         Invoke-Cycle $ctx $a { [FakeScriptHost]::State['v'] } | Should -Be 'yeni'
         $ctx.Scripts.WriteCount | Should -Be 2
-        $a.Describe() | Should -Be 'Betik: deneme'
+        $a.Describe() | Should -Be 'Script: deneme'
     }
 
     It 'çıktı vermeyen betik hata vermez (5.1: sınıf yönteminde boş dönüş tuzağı)' {
@@ -455,7 +455,7 @@ Describe 'TimerResolutionAction' {
         $ctx.TimerResolution.WriteCount = 0
         $a = Act @{ Type = 'TimerResolution'; Resolution = 5000 }
         Invoke-Cycle $ctx $a { '{0}|{1}' -f $ctx.TimerResolution.IsInstalled(), $ctx.TimerResolution.GetResolution() } | Should -Be 'True|5000'
-        $a.Describe() | Should -Be 'Zamanlayıcı çözünürlüğü servisi: 0.5 ms'
+        $a.Describe() | Should -Be 'Timer resolution service: 0.5 ms'
     }
 
     It 'Ensure=Absent kaldırır; geri alınca yeniden kurar' {
@@ -622,7 +622,7 @@ Describe 'Fabrika, arayüzler ve Windows sağlayıcıları' {
         Get-FaiNativeSource -Name 'TimerResolution' | Should -Match 'class TimerResolutionService : ServiceBase'
         $src = Get-FaiNativeSource -Name 'AudioEndpoint'
         $src | Should -Match 'namespace FaiWinOP.Native'
-        { Get-FaiNativeSource -Name 'Yok' } | Should -Throw '*Gömülü native kaynak yok*'
+        { Get-FaiNativeSource -Name 'Yok' } | Should -Throw '*Embedded native source not found*'
         if ($null -eq ('FaiWinOP.Native.AudioEndpoint' -as [type])) { Add-Type -TypeDefinition $src -Language CSharp }
         ('FaiWinOP.Native.AudioEndpoint' -as [type]).GetMethod('SetVolume') | Should -Not -BeNullOrEmpty
     }
@@ -656,7 +656,7 @@ Describe 'RegistryEachAction' {
         $bad['Ensure'] = 'Absent'
         $msgs = (Errs $bad) -join "`n"
         $msgs | Should -Match 'Kind: '
-        $msgs | Should -Match 'Ensure: bilinmeyen alan'
+        $msgs | Should -Match 'Ensure: unknown field'
     }
 
     It 'alt anahtar adları büyük/küçük harfi korunarak listelenir; olmayan anahtar boş' {
@@ -701,8 +701,8 @@ Describe 'RegistryEachAction' {
         (Act (EachDef $null)).Test($ctx) | Should -BeTrue
         $ctx = Seeded
         $a = Act (EachDef @('Keep*'))
-        $a.Preview($ctx) | Should -Match 'değişecek 3 alt anahtar: App.One, App.Two, App.Zero'
-        $a.Describe() | Should -Match 'hariç: Keep\*'
+        $a.Preview($ctx) | Should -Match 'will change 3 subkeys: App.One, App.Two, App.Zero'
+        $a.Describe() | Should -Match 'excluding: Keep\*'
     }
 
     It 'geri alma: arada silinmiş alt anahtarı yeniden oluşturmaz' {
@@ -745,7 +745,7 @@ Describe 'RegistryEachAction: Include / Match / SubKey süzgeçleri (Faz 7)' {
         $m | Should -Match 'Include: '
         $m | Should -Match 'Match\.Name: '
         $m | Should -Match 'Match\.Like: '
-        $m | Should -Match 'Match\.Fazla: bilinmeyen alan'
+        $m | Should -Match 'Match\.Fazla: unknown field'
         $m | Should -Match 'SubKey: '
     }
 
@@ -753,7 +753,7 @@ Describe 'RegistryEachAction: Include / Match / SubKey süzgeçleri (Faz 7)' {
         $ctx = GpuCtx
         $a = Act (GpuDef @{ Include = @('[0-9][0-9][0-9][0-9]'); Match = @{ Name = 'ProviderName'; Like = @('NVIDIA*') } })
         @($a.Targets($ctx)) | Should -Be @('0000')
-        $a.Describe() | Should -Match 'yalnız: \[0-9\]'
+        $a.Describe() | Should -Match 'only: \[0-9\]'
         $a.Describe() | Should -Match 'ProviderName: NVIDIA\*'
         $null = Invoke-Cycle $ctx $a { $ctx.Registry.Dump() -join "`n" }
         $a.Apply($ctx)
@@ -777,7 +777,7 @@ Describe 'RegistryEachAction: Include / Match / SubKey süzgeçleri (Faz 7)' {
 Describe 'Tek seferlik sistem eylemleri: RestorePoint, Reboot, OpenSettings (Faz 7)' {
     It 'şema' {
         Errs @{ Type = 'RestorePoint'; Description = 'FAI_WinOP' } | Should -BeNullOrEmpty
-        ((Errs @{ Type = 'RestorePoint' }) -join "`n") | Should -Match 'Description: zorunlu'
+        ((Errs @{ Type = 'RestorePoint' }) -join "`n") | Should -Match 'Description: required'
         ((Errs @{ Type = 'RestorePoint'; Description = ('x' * 65) }) -join "`n") | Should -Match 'Description: '
         Errs @{ Type = 'Reboot'; Firmware = $true; Delay = 0 } | Should -BeNullOrEmpty
         ((Errs @{ Type = 'Reboot'; Firmware = $false; Delay = 900 }) -join "`n") | Should -Match 'Firmware: .*Delay: |Delay: '
@@ -790,7 +790,7 @@ Describe 'Tek seferlik sistem eylemleri: RestorePoint, Reboot, OpenSettings (Faz
         $ctx = New-Ctx
         $ctx.SystemControl.RestoreEnabled = $false
         $a = Act @{ Type = 'RestorePoint'; Description = 'FAI_WinOP' }
-        $a.Preview($ctx) | Should -Match 'kapalı, açılacak'
+        $a.Preview($ctx) | Should -Match 'off, will be turned on'
         $a.Test($ctx) | Should -BeFalse
         $a.Apply($ctx)
         $ctx.SystemControl.RestoreEnabled | Should -BeTrue
@@ -814,7 +814,7 @@ Describe 'Tek seferlik sistem eylemleri: RestorePoint, Reboot, OpenSettings (Faz
         $a.Apply($ctx)
         @($ctx.Shell.Opened) | Should -Be @('ms-settings:activation')
         $ctx.Unattended = $true
-        { $a.Apply($ctx) } | Should -Throw '*Etkileşim gerekir*'
+        { $a.Apply($ctx) } | Should -Throw '*Needs interaction*'
         $ctx.Shell.Opened.Count | Should -Be 1
     }
 
@@ -848,7 +848,7 @@ Describe 'Güç planı ve bellek yöneticisi eylemleri: PowerScheme, Hibernate, 
         $ctx.Power.Schemes['99999999-9999-9999-9999-999999999999'] = @{}
         $a = Act @{ Type = 'PowerScheme'; Guid = $script:Plan; Name = 'FAI_WinOP'; Base = $script:Balanced }
         $a.Test($ctx) | Should -BeFalse
-        $a.Preview($ctx) | Should -Match 'plan yok'
+        $a.Preview($ctx) | Should -Match 'no plan'
         $after = Invoke-Cycle $ctx $a { $ctx.Power.Dump() -join ';' }
         $after | Should -Match ('etkin=' + $script:Plan)
         $after | Should -Match ([regex]::Escape($script:Plan) + '\|sub_sleep\|standbyidle\|1800\|900')
@@ -866,7 +866,7 @@ Describe 'Güç planı ve bellek yöneticisi eylemleri: PowerScheme, Hibernate, 
         $a.Apply($ctx)
         $ctx.Power.Active | Should -Be $script:Plan
         $ctx.Power.GetValue($script:Plan, 'SUB_SLEEP', 'STANDBYIDLE', $true) | Should -Be 0
-        @($ctx.Logger.Entries | Where-Object { $_.Message -match 'kopyalanamadı' }).Count | Should -BeGreaterThan 0
+        @($ctx.Logger.Entries | Where-Object { $_.Message -match 'could not be copied' }).Count | Should -BeGreaterThan 0
     }
 
     It 'PowerScheme: plan zaten varsa (önceki çalıştırma) geri alma onu silmez, yalnız eski planı etkin yapar' {
@@ -884,17 +884,17 @@ Describe 'Güç planı ve bellek yöneticisi eylemleri: PowerScheme, Hibernate, 
         $ctx = New-Ctx
         $a = Act @{ Type = 'Power'; Scheme = $script:Plan; Subgroup = 'SUB_SLEEP'; Setting = 'STANDBYIDLE'; AC = 0 }
         $a.Test($ctx) | Should -BeFalse
-        $a.Preview($ctx) | Should -Match 'plan yok, oluşturulacak'
+        $a.Preview($ctx) | Should -Match 'plan missing, will be created'
     }
 
     It 'Hibernate ve MMAgent: uygula → geri al' {
         $ctx = New-Ctx
         $h = Act @{ Type = 'Hibernate'; Enabled = $true }
         $h.Test($ctx) | Should -BeFalse
-        $h.Preview($ctx) | Should -Match 'şu an: kapalı'
+        $h.Preview($ctx) | Should -Match 'current: off'
         [void](Invoke-Cycle $ctx $h { [string]$ctx.Power.GetHibernate() })
         $m = Act @{ Type = 'MMAgent'; Feature = 'MemoryCompression'; Enabled = $false }
-        $m.Preview($ctx) | Should -Match 'MemoryCompression → kapalı \[şu an: açık\]'
+        $m.Preview($ctx) | Should -Match 'MemoryCompression → off \[current: on\]'
         $after = Invoke-Cycle $ctx $m { $ctx.MemoryAgent.Dump() -join ';' }
         $after | Should -Match 'MemoryCompression=False'
         $after | Should -Match 'PageCombining=True'

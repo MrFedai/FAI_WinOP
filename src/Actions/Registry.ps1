@@ -16,50 +16,50 @@ class RegistryAction : ActionBase {
         $e = New-Object 'System.Collections.Generic.List[string]'
         $allowed = @('Type', 'Path', 'Name', 'Value', 'Kind', 'Ensure')
         foreach ($k in @($Def.Keys)) {
-            if ($allowed -cnotcontains [string]$k) { $e.Add("${k}: bilinmeyen alan (izin verilenler: " + ($allowed -join ', ') + ')') }
+            if ($allowed -cnotcontains [string]$k) { $e.Add("${k}: unknown field (allowed: " + ($allowed -join ', ') + ')') }
         }
-        if (-not $Def.Contains('Path')) { $e.Add('Path: zorunlu alan eksik') }
+        if (-not $Def.Contains('Path')) { $e.Add('Path: required field missing') }
         elseif ($Def['Path'] -isnot [string] -or $Def['Path'] -notmatch '^(HKLM|HKCU|HKCR|HKU|HKCC):\\.+') {
-            $e.Add('Path: ''HKLM:\...'' biçiminde olmalı (HKLM, HKCU, HKCR, HKU, HKCC)')
+            $e.Add('Path: must be in the form ''HKLM:\...'' (HKLM, HKCU, HKCR, HKU, HKCC)')
         }
-        if (-not $Def.Contains('Name')) { $e.Add('Name: zorunlu alan eksik') }
-        elseif ($Def['Name'] -isnot [string]) { $e.Add('Name: metin olmalı (boş metin = varsayılan değer)') }
+        if (-not $Def.Contains('Name')) { $e.Add('Name: required field missing') }
+        elseif ($Def['Name'] -isnot [string]) { $e.Add('Name: must be text (empty text = default value)') }
 
         $ensure = 'Present'
         if ($Def.Contains('Ensure')) {
-            if ($Def['Ensure'] -isnot [string] -or @('Present', 'Absent') -cnotcontains $Def['Ensure']) { $e.Add('Ensure: Present ya da Absent olmalı') }
+            if ($Def['Ensure'] -isnot [string] -or @('Present', 'Absent') -cnotcontains $Def['Ensure']) { $e.Add('Ensure: must be Present or Absent') }
             else { $ensure = $Def['Ensure'] }
         }
         if ($ensure -eq 'Absent') {
-            if ($Def.Contains('Value')) { $e.Add('Value: Ensure=Absent iken verilmez') }
-            if ($Def.Contains('Kind')) { $e.Add('Kind: Ensure=Absent iken verilmez') }
+            if ($Def.Contains('Value')) { $e.Add('Value: not allowed when Ensure=Absent') }
+            if ($Def.Contains('Kind')) { $e.Add('Kind: not allowed when Ensure=Absent') }
             return $e.ToArray()
         }
 
         $kind = $null
-        if (-not $Def.Contains('Kind')) { $e.Add('Kind: zorunlu alan eksik') }
+        if (-not $Def.Contains('Kind')) { $e.Add('Kind: required field missing') }
         elseif ($Def['Kind'] -isnot [string] -or [RegistryAction]::Kinds() -cnotcontains $Def['Kind']) {
-            $e.Add('Kind: ' + ([RegistryAction]::Kinds() -join ', ') + ' değerlerinden biri olmalı')
+            $e.Add('Kind: must be one of ' + ([RegistryAction]::Kinds() -join ', '))
         }
         else { $kind = $Def['Kind'] }
 
-        if (-not $Def.Contains('Value')) { $e.Add('Value: zorunlu alan eksik') }
+        if (-not $Def.Contains('Value')) { $e.Add('Value: required field missing') }
         elseif ($null -ne $kind -and @(Get-FaiPlaceholder -Value $Def['Value']).Count -eq 0) {
             $v = $Def['Value']
             switch ($kind) {
                 'DWord' {
                     $ok = ($v -is [int] -or $v -is [long]) -and $v -ge -2147483648 -and $v -le 4294967295
-                    if (-not $ok) { $e.Add('Value: DWord için 32 bit tamsayı olmalı') }
+                    if (-not $ok) { $e.Add('Value: must be a 32-bit integer for DWord') }
                 }
-                'QWord' { if (-not ($v -is [int] -or $v -is [long])) { $e.Add('Value: QWord için tamsayı olmalı') } }
-                'String' { if ($v -isnot [string]) { $e.Add('Value: String için metin olmalı') } }
-                'ExpandString' { if ($v -isnot [string]) { $e.Add('Value: ExpandString için metin olmalı') } }
+                'QWord' { if (-not ($v -is [int] -or $v -is [long])) { $e.Add('Value: must be an integer for QWord') } }
+                'String' { if ($v -isnot [string]) { $e.Add('Value: must be text for String') } }
+                'ExpandString' { if ($v -isnot [string]) { $e.Add('Value: must be text for ExpandString') } }
                 'MultiString' {
-                    if (-not (Test-FaiIsList $v) -or @($v | Where-Object { $_ -isnot [string] }).Count -gt 0) { $e.Add('Value: MultiString için metin dizisi olmalı') }
+                    if (-not (Test-FaiIsList $v) -or @($v | Where-Object { $_ -isnot [string] }).Count -gt 0) { $e.Add('Value: must be a list of text for MultiString') }
                 }
                 'Binary' {
                     $bad = @($v | Where-Object { -not (($_ -is [int] -or $_ -is [long] -or $_ -is [byte]) -and $_ -ge 0 -and $_ -le 255) })
-                    if (-not (Test-FaiIsList $v) -or $bad.Count -gt 0) { $e.Add('Value: Binary için 0-255 arası sayı dizisi olmalı') }
+                    if (-not (Test-FaiIsList $v) -or $bad.Count -gt 0) { $e.Add('Value: must be a list of numbers from 0 to 255 for Binary') }
                 }
             }
         }
@@ -174,41 +174,41 @@ class RegistryAction : ActionBase {
     }
 
     [string] Describe() {
-        if ($this.IsAbsent()) { return ('Kayıt defteri: {0} silinir' -f $this.Target()) }
+        if ($this.IsAbsent()) { return ('Registry: {0} is deleted' -f $this.Target()) }
         $v = $this.Definition['Value']
         $shown = (@($v) | ForEach-Object { [string]$_ }) -join ','
-        return ('Kayıt defteri: {0} = {1} ({2})' -f $this.Target(), $shown, $this.Definition['Kind'])
+        return ('Registry: {0} = {1} ({2})' -f $this.Target(), $shown, $this.Definition['Kind'])
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
         $path = [string]$this.Definition['Path']
         $name = [string]$this.Definition['Name']
-        $now = 'yok'
+        $now = 'none'
         if ($Ctx.Registry.ValueExists($path, $name)) {
             $now = (@($Ctx.Registry.GetValue($path, $name)) | ForEach-Object { [string]$_ }) -join ','
         }
-        return ('{0} [şu an: {1}]' -f $this.Describe(), $now)
+        return ('{0} [current: {1}]' -f $this.Describe(), $now)
     }
 
     [string] PreviewRevert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
         $path = [string]$this.Definition['Path']
         $name = [string]$this.Definition['Name']
-        $now = 'yok'
+        $now = 'none'
         if ($Ctx.Registry.ValueExists($path, $name)) {
             $now = (@($Ctx.Registry.GetValue($path, $name)) | ForEach-Object { [string]$_ }) -join ','
         }
         $will = ''
         if (-not $Snapshot['Exists']) {
-            $will = 'değer silinecek'
-            if ($Snapshot['MissingFrom']) { $will += (', oluşturulan anahtar da silinecek (' + [string]$Snapshot['MissingFrom'] + ')') }
+            $will = 'value deleted'
+            if ($Snapshot['MissingFrom']) { $will += (', created key also deleted (' + [string]$Snapshot['MissingFrom'] + ')') }
         }
         elseif ([string]$Snapshot['Kind'] -ceq 'Raw') {
-            $will = 'ham tür {0}, {1} bayt geri yazılacak' -f $Snapshot['RawType'], @($Snapshot['Bytes']).Count
+            $will = 'raw type {0}, {1} bytes restored' -f $Snapshot['RawType'], @($Snapshot['Bytes']).Count
         }
         else {
-            $will = 'değer {0} ({1}) geri yazılacak' -f ((@($Snapshot['Value']) | ForEach-Object { [string]$_ }) -join ','), $Snapshot['Kind']
+            $will = 'value {0} ({1}) restored' -f ((@($Snapshot['Value']) | ForEach-Object { [string]$_ }) -join ','), $Snapshot['Kind']
         }
-        return ('Kayıt defteri: {0} — şu an {1} → geri alınca {2}' -f $this.Target(), $now, $will)
+        return ('Registry: {0} — currently {1} → will revert to {2}' -f $this.Target(), $now, $will)
     }
 }
 
@@ -239,26 +239,26 @@ class RegistryEachAction : ActionBase {
             # Parametre açılınca öğe metin dizisi olabilir: bir düzey düzleştirilir (Patterns ile aynı).
             $flat = @(foreach ($item in @($Def['Exclude'])) { foreach ($p in @($item)) { $p } })
             $bad = @($flat | Where-Object { $_ -isnot [string] -or [string]::IsNullOrWhiteSpace($_) })
-            if (-not (Test-FaiIsList $Def['Exclude']) -or $bad.Count -gt 0) { $e.Add('Exclude: boş olmayan metin dizisi olmalı (-like kalıpları)') }
+            if (-not (Test-FaiIsList $Def['Exclude']) -or $bad.Count -gt 0) { $e.Add('Exclude: must be a non-empty list of text (-like patterns)') }
         }
         if ($Def.Contains('Include')) {
             $bad = @(@($Def['Include']) | Where-Object { $_ -isnot [string] -or [string]::IsNullOrWhiteSpace($_) })
-            if (-not (Test-FaiIsList $Def['Include']) -or $bad.Count -gt 0) { $e.Add('Include: boş olmayan metin dizisi olmalı (-like kalıpları)') }
+            if (-not (Test-FaiIsList $Def['Include']) -or $bad.Count -gt 0) { $e.Add('Include: must be a non-empty list of text (-like patterns)') }
         }
         if ($Def.Contains('SubKey')) {
             $sk = $Def['SubKey']
-            if ($sk -isnot [string] -or [string]::IsNullOrWhiteSpace($sk) -or $sk.StartsWith('\') -or $sk.EndsWith('\')) { $e.Add('SubKey: göreli anahtar yolu olmalı (ör. UMD)') }
+            if ($sk -isnot [string] -or [string]::IsNullOrWhiteSpace($sk) -or $sk.StartsWith('\') -or $sk.EndsWith('\')) { $e.Add('SubKey: must be a relative key path (e.g. UMD)') }
         }
         if ($Def.Contains('Match')) {
             $mt = $Def['Match']
-            if ($mt -isnot [System.Collections.IDictionary]) { $e.Add('Match: @{ Name=''değer adı''; Like=@(''kalıp'') } olmalı') }
+            if ($mt -isnot [System.Collections.IDictionary]) { $e.Add('Match: must be @{ Name=''value name''; Like=@(''pattern'') }') }
             else {
                 foreach ($m in (Get-FaiUnknownKeyError $mt @('Name', 'Like'))) { $e.Add('Match.' + $m) }
-                if (-not $mt.Contains('Name') -or $mt['Name'] -isnot [string] -or [string]::IsNullOrWhiteSpace($mt['Name'])) { $e.Add('Match.Name: boş olmayan metin olmalı') }
+                if (-not $mt.Contains('Name') -or $mt['Name'] -isnot [string] -or [string]::IsNullOrWhiteSpace($mt['Name'])) { $e.Add('Match.Name: must be non-empty text') }
                 $like = @()
                 if ($mt.Contains('Like')) { $like = @($mt['Like']) }
                 $bad = @($like | Where-Object { $_ -isnot [string] -or [string]::IsNullOrWhiteSpace($_) })
-                if ($like.Count -eq 0 -or $bad.Count -gt 0) { $e.Add('Match.Like: boş olmayan metin ya da metin dizisi olmalı (-like kalıpları)') }
+                if ($like.Count -eq 0 -or $bad.Count -gt 0) { $e.Add('Match.Like: must be non-empty text or a list of text (-like patterns)') }
             }
         }
         return $e.ToArray()
@@ -385,11 +385,11 @@ class RegistryEachAction : ActionBase {
         $v = (@($this.Definition['Value']) | ForEach-Object { [string]$_ }) -join ','
         $sub = ''
         if ($this.Definition.ContainsKey('SubKey')) { $sub = '\' + [string]$this.Definition['SubKey'] }
-        $text = 'Kayıt defteri: {0}\*{1}\{2} = {3} ({4})' -f ([string]$this.Definition['Path']).TrimEnd('\'), $sub, $this.Definition['Name'], $v, $this.Definition['Kind']
-        if ($this.Definition.ContainsKey('Include')) { $text += ' — yalnız: ' + (@($this.Definition['Include']) -join ', ') }
+        $text = 'Registry: {0}\*{1}\{2} = {3} ({4})' -f ([string]$this.Definition['Path']).TrimEnd('\'), $sub, $this.Definition['Name'], $v, $this.Definition['Kind']
+        if ($this.Definition.ContainsKey('Include')) { $text += ' — only: ' + (@($this.Definition['Include']) -join ', ') }
         if ($this.Definition.ContainsKey('Match')) { $text += (' — {0}: {1}' -f $this.Definition['Match']['Name'], (@($this.Definition['Match']['Like']) -join ' / ')) }
         $pats = $this.Patterns()
-        if ($pats.Count -gt 0) { $text += ' — hariç: ' + ($pats -join ', ') }
+        if ($pats.Count -gt 0) { $text += ' — excluding: ' + ($pats -join ', ') }
         return $text
     }
 
@@ -398,13 +398,13 @@ class RegistryEachAction : ActionBase {
         $shown = @($pending | Select-Object -First 8)
         $list = $shown -join ', '
         if ($pending.Count -gt $shown.Count) { $list += (', … +{0}' -f ($pending.Count - $shown.Count)) }
-        return ('{0} [değişecek {1} alt anahtar: {2}]' -f $this.Describe(), $pending.Count, $list)
+        return ('{0} [will change {1} subkeys: {2}]' -f $this.Describe(), $pending.Count, $list)
     }
 
     [string] PreviewRevert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
         $keys = @($Snapshot['Keys'] | Where-Object { $null -ne $_ })
         $del = @($keys | Where-Object { -not $_['Exists'] }).Count
         $write = $keys.Count - $del
-        return ('Kayıt defteri: {0}\*\{1} — {2} anahtar; geri alınca {3} anahtara önceki değer yazılacak, {4} anahtarda değer silinecek' -f ([string]$this.Definition['Path']).TrimEnd('\'), $this.Definition['Name'], $keys.Count, $write, $del)
+        return ('Registry: {0}\*\{1} — {2} keys; on revert the previous value is restored on {3} keys, the value is deleted on {4} keys' -f ([string]$this.Definition['Path']).TrimEnd('\'), $this.Definition['Name'], $keys.Count, $write, $del)
     }
 }

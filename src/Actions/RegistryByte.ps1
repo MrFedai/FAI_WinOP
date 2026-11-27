@@ -12,23 +12,23 @@ class RegistryByteAction : ActionBase {
     static [string[]] Validate([object] $Def) {
         $e = New-Object 'System.Collections.Generic.List[string]'
         foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Path', 'Name', 'Offset', 'Mask', 'Value'))) { $e.Add($m) }
-        if (-not $Def.Contains('Path')) { $e.Add('Path: zorunlu alan eksik') }
+        if (-not $Def.Contains('Path')) { $e.Add('Path: required field missing') }
         elseif ($Def['Path'] -isnot [string] -or $Def['Path'] -notmatch '^(HKLM|HKCU|HKCR|HKU|HKCC):\\.+') {
-            $e.Add('Path: ''HKLM:\...'' biçiminde olmalı (HKLM, HKCU, HKCR, HKU, HKCC)')
+            $e.Add('Path: must be in the form ''HKLM:\...'' (HKLM, HKCU, HKCR, HKU, HKCC)')
         }
-        if (-not $Def.Contains('Name')) { $e.Add('Name: zorunlu alan eksik') }
-        elseif ($Def['Name'] -isnot [string]) { $e.Add('Name: metin olmalı') }
-        if (-not $Def.Contains('Offset')) { $e.Add('Offset: zorunlu alan eksik') }
-        elseif (-not (Test-FaiIsInteger $Def['Offset']) -or $Def['Offset'] -lt 0) { $e.Add('Offset: 0 ya da daha büyük tamsayı olmalı') }
+        if (-not $Def.Contains('Name')) { $e.Add('Name: required field missing') }
+        elseif ($Def['Name'] -isnot [string]) { $e.Add('Name: must be text') }
+        if (-not $Def.Contains('Offset')) { $e.Add('Offset: required field missing') }
+        elseif (-not (Test-FaiIsInteger $Def['Offset']) -or $Def['Offset'] -lt 0) { $e.Add('Offset: must be an integer, 0 or greater') }
         foreach ($f in @('Mask', 'Value')) {
             if (-not $Def.Contains($f)) {
-                if ($f -eq 'Value') { $e.Add('Value: zorunlu alan eksik') }
+                if ($f -eq 'Value') { $e.Add('Value: required field missing') }
                 continue
             }
             if (Test-FaiHasPlaceholder $Def[$f]) { continue }
             $v = $Def[$f]
             if ($v -is [bool]) { continue }
-            if (-not (Test-FaiIsInteger $v) -or $v -lt 0 -or $v -gt 255) { $e.Add("${f}: 0-255 arası tamsayı olmalı") }
+            if (-not (Test-FaiIsInteger $v) -or $v -lt 0 -or $v -gt 255) { $e.Add("${f}: must be an integer from 0 to 255") }
         }
         return $e.ToArray()
     }
@@ -67,7 +67,7 @@ class RegistryByteAction : ActionBase {
 
     [hashtable] Snapshot([ExecutionContext] $Ctx) {
         $cur = $this.Current($Ctx)
-        if ($cur -lt 0) { throw ('{0} yok ya da {1}. baytı yok (değeri Windows oluşturur)' -f $this.Target(), $this.Definition['Offset']) }
+        if ($cur -lt 0) { throw ('{0} is missing or has no byte {1} (Windows creates the value)' -f $this.Target(), $this.Definition['Offset']) }
         return @{ Byte = $cur }
     }
 
@@ -81,7 +81,7 @@ class RegistryByteAction : ActionBase {
 
     [void] Apply([ExecutionContext] $Ctx) {
         $cur = $this.Current($Ctx)
-        if ($cur -lt 0) { throw ('{0} yok ya da {1}. baytı yok (değeri Windows oluşturur)' -f $this.Target(), $this.Definition['Offset']) }
+        if ($cur -lt 0) { throw ('{0} is missing or has no byte {1} (Windows creates the value)' -f $this.Target(), $this.Definition['Offset']) }
         $mask = $this.Mask()
         $this.WriteByte($Ctx, (($cur -band (-bnot $mask) -band 255) -bor $this.Want()))
     }
@@ -94,20 +94,20 @@ class RegistryByteAction : ActionBase {
     [string] Target() { return ('{0}\{1}' -f $this.Definition['Path'], $this.Definition['Name']) }
 
     [string] Describe() {
-        return ('Kayıt defteri: {0} [{1}. bayt, maske 0x{2:X2}] = 0x{3:X2}' -f $this.Target(), $this.Definition['Offset'], $this.Mask(), $this.Want())
+        return ('Registry: {0} [byte {1}, mask 0x{2:X2}] = 0x{3:X2}' -f $this.Target(), $this.Definition['Offset'], $this.Mask(), $this.Want())
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
         $cur = $this.Current($Ctx)
-        $now = 'yok'
+        $now = 'none'
         if ($cur -ge 0) { $now = '0x{0:X2}' -f $cur }
-        return ('{0} [şu an: {1}]' -f $this.Describe(), $now)
+        return ('{0} [current: {1}]' -f $this.Describe(), $now)
     }
 
     [string] PreviewRevert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
         $cur = $this.Current($Ctx)
-        $now = 'yok'
+        $now = 'none'
         if ($cur -ge 0) { $now = '0x{0:X2}' -f $cur }
-        return ('Kayıt defteri: {0} [{1}. bayt] — şu an {2} → geri alınca 0x{3:X2}' -f $this.Target(), $this.Definition['Offset'], $now, [int]$Snapshot['Byte'])
+        return ('Registry: {0} [byte {1}] — currently {2} → will revert to 0x{3:X2}' -f $this.Target(), $this.Definition['Offset'], $now, [int]$Snapshot['Byte'])
     }
 }

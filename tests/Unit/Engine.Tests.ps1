@@ -127,7 +127,7 @@ Describe 'Caution onayı' {
     }
 
     It 'kullanıcı kabul ederse (E) tweak uygulanır' {
-        $ctx = New-Env -Answers 'E'
+        $ctx = New-Env -Answers 'Y'
         $t = New-Tweak -Id 'test.caut' -Risk 'Caution' -Actions @(RegSet 'C' 1)
         $r = Invoke-FaiEngine -Profile (New-Profile @('test.caut')) -Context $ctx -Catalog (New-Catalog $t)
 
@@ -146,7 +146,7 @@ Describe 'Caution onayı' {
     }
 
     It 'her tweak için ayrı sorulur: biri reddedilir, öteki kabul edilir' {
-        $ctx = New-Env -Answers 'H', 'E'
+        $ctx = New-Env -Answers 'N', 'Y'
         $a = New-Tweak -Id 'test.a' -Risk 'Caution' -Actions @(RegSet 'A' 1)
         $b = New-Tweak -Id 'test.b' -Risk 'Caution' -Actions @(RegSet 'B' 1)
         $r = Invoke-FaiEngine -Profile (New-Profile @('test.a', 'test.b')) -Context $ctx -Catalog (New-Catalog $a, $b)
@@ -178,7 +178,7 @@ Describe 'Risk ve -Unattended' {
     }
 
     It 'Caution -Unattended modda profilde autoConfirm yoksa atlanır (soru sorulmaz)' {
-        $ctx = New-Env -Unattended -Answers 'E'
+        $ctx = New-Env -Unattended -Answers 'Y'
         $t = New-Tweak -Id 'test.caut' -Risk 'Caution' -Actions @(RegSet 'C' 1)
         $r = Invoke-FaiEngine -Profile (New-Profile @('test.caut')) -Context $ctx -Catalog (New-Catalog $t)
 
@@ -379,7 +379,7 @@ Describe 'Snapshot → Undo' {
         $r = Invoke-FaiEngine -Profile (New-Profile @('test.half')) -Context $ctx -Catalog $cat
 
         $r.Find('test.half').Status | Should -Be 'Failed'
-        $r.Find('test.half').Reason | Should -Match 'Sahte yazma hatası'
+        $r.Find('test.half').Reason | Should -Match 'Simulated write error'
         $ctx.Registry.GetValue($script:Key, 'Existing') | Should -Be 99
         $ctx.Registry.ValueExists($script:Key, 'After') | Should -BeFalse -Because 'hatadan sonraki eylem çalışmamalı'
 
@@ -468,8 +468,8 @@ Describe 'Dry-run' {
         $r = Invoke-FaiEngine -Profile (New-Profile @('test.one')) -Context $ctx -Catalog $cat
         $lines = $r.Find('test.one').Lines
         $lines.Count | Should -Be 2
-        $lines[0] | Should -Match 'Existing = 2 \(DWord\) \[şu an: 1\]'
-        $lines[1] | Should -Match 'New = x \(String\) \[şu an: yok\]'
+        $lines[0] | Should -Match 'Existing = 2 \(DWord\) \[current: 1\]'
+        $lines[1] | Should -Match 'New = x \(String\) \[current: none\]'
         $r.Render() | Should -Match 'PREVIEW'
     }
 
@@ -529,8 +529,8 @@ Describe 'Dry-run' {
         $dry = Copy-Env $ctx -DryRun
         $r = Invoke-FaiEngine -Context $dry -Catalog $cat -Undo
         $text = ($r.Items | ForEach-Object { $_.Lines }) -join "`n"
-        $text | Should -Match 'geri alınca değer 7 \(DWord\) geri yazılacak'
-        $text | Should -Match 'geri alınca değer silinecek'
+        $text | Should -Match 'will revert to value 7 \(DWord\) restored'
+        $text | Should -Match 'will revert to value deleted'
         Get-FakeWriteCount $dry | Should -Be $writes
     }
 }
@@ -644,7 +644,7 @@ Describe 'Faz 7 tweak alanları: First, AlwaysConfirm, Tool ve eylem koşulu Whe
         $ctx.Prompt.Asked.Count | Should -Be 1
         $ctx.Prompt.Asked[0]['Message'] | Should -Match 'pil ve ısı'
 
-        $ctx2 = Copy-Env $ctx -Answers @('E')
+        $ctx2 = Copy-Env $ctx -Answers @('Y')
         (Invoke-FaiEngine -Profile $p -Context $ctx2 -Catalog $cat).Find('test.p0').Status | Should -Be 'Applied'
         $ctx2.Prompt.Asked.Count | Should -Be 1
 
@@ -766,7 +766,7 @@ Describe 'v0.1.1 geri alma sağlamlığı: kayıt başına geri alındı, -SkipF
         $row = @($r.Items | Where-Object { $_.TweakId -eq 'test.three' -and $_.Status -eq 'Skipped' })
         $row.Count | Should -Be 1
         $row[0].Title | Should -Be 'action 2'
-        $row[0].Reason | Should -BeLike 'could not revert, skipped: *Sahte yazma hatası*'
+        $row[0].Reason | Should -BeLike 'could not revert, skipped: *Simulated write error*'
         @($r.Items | Where-Object { $_.Title -like 'Failed entries skipped*' }).Count | Should -Be 1
         $s = ([BackupStore]::new($g.Ctx.Backup.Root)).Load($g.Id)
         $s.IsUndone() | Should -BeTrue
@@ -775,10 +775,10 @@ Describe 'v0.1.1 geri alma sağlamlığı: kayıt başına geri alındı, -SkipF
         $g.Ctx.Registry.GetValue($script:Key, 'C') | Should -Be 1
     }
 
-    It 'etkileşimli onay (E) hatalıları atlar ve oturumu kapatır' {
+    It 'etkileşimli onay (Y) hatalıları atlar ve oturumu kapatır' {
         $g = New-ThreeEnv
         $g.Ctx.Registry.FailOnName = 'B'
-        $uctx = Copy-Env $g.Ctx -Answers @('e')
+        $uctx = Copy-Env $g.Ctx -Answers @('y')
         $r = Invoke-FaiEngine -Undo -Context $uctx -Catalog $g.Cat 6>$null
         $uctx.Prompt.Asked[0].Message | Should -BeLike '*Entries not reverted: 1 (test.three)*'
         $r.HasFailures() | Should -BeFalse

@@ -72,10 +72,10 @@ Describe 'Tweak şeması — geçersiz fixture''lar (alan yolu + neden)' {
     It 'eylem hatalarını Actions[i].alan yoluyla verir' {
         $e = @(Get-FaiTweakError (Import-PowerShellDataFile (Join-Path $TweakInvalid 'bad-action.psd1')))
         Test-HasError $e 'Actions[0].Path:' | Should -BeTrue -Because ($e -join '; ')
-        Test-HasError $e 'Actions[0].Value: DWord için 32 bit tamsayı olmalı' | Should -BeTrue
-        Test-HasError $e 'Actions[1].Type: bilinmeyen eylem türü ''Teleport''' | Should -BeTrue
-        Test-HasError $e 'Actions[2].StartTyp: bilinmeyen alan' | Should -BeTrue
-        Test-HasError $e 'Actions[2].StartType / State: en az biri gerekir' | Should -BeTrue
+        Test-HasError $e 'Actions[0].Value: must be a 32-bit integer for DWord' | Should -BeTrue
+        Test-HasError $e 'Actions[1].Type: unknown action type ''Teleport''' | Should -BeTrue
+        Test-HasError $e 'Actions[2].StartTyp: unknown field' | Should -BeTrue
+        Test-HasError $e 'Actions[2].StartType / State: at least one is required' | Should -BeTrue
     }
 
     It 'bilinmeyen alan, geçersiz Risk, geçersiz koşul ve tanımsız yer tutucuyu yakalar' {
@@ -141,20 +141,20 @@ Describe 'Tweak şeması — tek tek kurallar' {
     It 'Actions dizi, boş olmayan ve hashtable elemanlı olmalı' {
         Test-HasError @(Get-FaiTweakError (New-TweakData @{ Actions = @() })) 'Actions: at least one action' | Should -BeTrue
         Test-HasError @(Get-FaiTweakError (New-TweakData @{ Actions = @{ Type = 'Registry' } })) 'Actions: must be an array' | Should -BeTrue
-        Test-HasError @(Get-FaiTweakError (New-TweakData @{ Actions = @('x') })) 'Actions[0]: eylem hashtable olmalı' | Should -BeTrue
-        Test-HasError @(Get-FaiTweakError (New-TweakData @{ Actions = @(@{ Name = 'x' }) })) 'Actions[0].Type: zorunlu alan eksik' | Should -BeTrue
+        Test-HasError @(Get-FaiTweakError (New-TweakData @{ Actions = @('x') })) 'Actions[0]: action must be a hashtable' | Should -BeTrue
+        Test-HasError @(Get-FaiTweakError (New-TweakData @{ Actions = @(@{ Name = 'x' }) })) 'Actions[0].Type: required field missing' | Should -BeTrue
     }
 
     It 'Registry eylemi: Path, Kind, Value türü ve Ensure kurallarını denetler' {
         $act = { param($h) @(Get-FaiTweakError (New-TweakData @{ Actions = @($h) })) }
         Test-HasError (& $act @{ Type = 'Registry'; Path = 'X:\a'; Name = 'n'; Value = 1; Kind = 'DWord' }) 'Actions[0].Path:' | Should -BeTrue
         Test-HasError (& $act @{ Type = 'Registry'; Path = 'HKCU:\a'; Name = 'n'; Value = 1; Kind = 'Bogus' }) 'Actions[0].Kind:' | Should -BeTrue
-        Test-HasError (& $act @{ Type = 'Registry'; Path = 'HKCU:\a'; Name = 'n'; Kind = 'DWord' }) 'Actions[0].Value: zorunlu' | Should -BeTrue
+        Test-HasError (& $act @{ Type = 'Registry'; Path = 'HKCU:\a'; Name = 'n'; Kind = 'DWord' }) 'Actions[0].Value: required' | Should -BeTrue
         Test-HasError (& $act @{ Type = 'Registry'; Path = 'HKCU:\a'; Name = 'n'; Value = 'x'; Kind = 'DWord' }) 'Actions[0].Value:' | Should -BeTrue
         Test-HasError (& $act @{ Type = 'Registry'; Path = 'HKCU:\a'; Name = 'n'; Value = 1; Kind = 'String' }) 'Actions[0].Value:' | Should -BeTrue
         Test-HasError (& $act @{ Type = 'Registry'; Path = 'HKCU:\a'; Name = 'n'; Value = @(1, 2); Kind = 'MultiString' }) 'Actions[0].Value:' | Should -BeTrue
         Test-HasError (& $act @{ Type = 'Registry'; Path = 'HKCU:\a'; Name = 'n'; Value = @(1, 300); Kind = 'Binary' }) 'Actions[0].Value:' | Should -BeTrue
-        Test-HasError (& $act @{ Type = 'Registry'; Path = 'HKCU:\a'; Name = 'n'; Ensure = 'Absent'; Value = 1 }) 'Actions[0].Value: Ensure=Absent' | Should -BeTrue
+        Test-HasError (& $act @{ Type = 'Registry'; Path = 'HKCU:\a'; Name = 'n'; Ensure = 'Absent'; Value = 1 }) 'Actions[0].Value: not allowed when Ensure=Absent' | Should -BeTrue
         Test-HasError (& $act @{ Type = 'Registry'; Path = 'HKCU:\a'; Name = 'n'; Ensure = 'Maybe' }) 'Actions[0].Ensure:' | Should -BeTrue
         (& $act @{ Type = 'Registry'; Path = 'HKLM:\a\b'; Name = ''; Value = @('a'); Kind = 'MultiString' }).Count | Should -Be 0
         (& $act @{ Type = 'Registry'; Path = 'HKCU:\a'; Name = 'n'; Ensure = 'Absent' }).Count | Should -Be 0
@@ -164,7 +164,7 @@ Describe 'Tweak şeması — tek tek kurallar' {
         $act = { param($h) @(Get-FaiTweakError (New-TweakData @{ Actions = @($h) })) }
         Test-HasError (& $act @{ Type = 'Service'; Name = 'S'; StartType = 'Never' }) 'Actions[0].StartType:' | Should -BeTrue
         Test-HasError (& $act @{ Type = 'Service'; Name = 'S'; State = 'Paused' }) 'Actions[0].State:' | Should -BeTrue
-        Test-HasError (& $act @{ Type = 'Service'; StartType = 'Manual' }) 'Actions[0].Name: zorunlu' | Should -BeTrue
+        Test-HasError (& $act @{ Type = 'Service'; StartType = 'Manual' }) 'Actions[0].Name: required' | Should -BeTrue
         (& $act @{ Type = 'Service'; Name = 'S'; StartType = 'Manual' }).Count | Should -Be 0
     }
 

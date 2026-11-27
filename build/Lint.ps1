@@ -29,7 +29,7 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 if (-not $Settings) { $Settings = Join-Path $PSScriptRoot 'PSScriptAnalyzerSettings.psd1' }
 
 if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
-    throw 'PSScriptAnalyzer yok. Kur: Install-Module PSScriptAnalyzer -Scope CurrentUser'
+    throw 'PSScriptAnalyzer is missing. Install: Install-Module PSScriptAnalyzer -Scope CurrentUser'
 }
 Import-Module PSScriptAnalyzer
 
@@ -77,7 +77,7 @@ $findings = New-Object System.Collections.Generic.List[object]
 $i = 0
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 
-Write-Host ("Lint: {0} dosya, ayar {1}" -f $files.Count, (Resolve-Path -LiteralPath $Settings -Relative))
+Write-Host ("Lint: {0} files, settings {1}" -f $files.Count, (Resolve-Path -LiteralPath $Settings -Relative))
 
 foreach ($file in $files) {
     $i++
@@ -91,7 +91,7 @@ foreach ($file in $files) {
     $nonAscii = $false
     foreach ($b in $bytes) { if ($b -ge 0x80) { $nonAscii = $true; break } }
     if (-not $hasBom -and $nonAscii) {
-        $findings.Add([pscustomobject]@{ File = $rel; Line = 1; Rule = 'FAI.Utf8Bom'; Message = 'UTF-8 BOM yok (5.1 Türkçe karakterleri bozar).' })
+        $findings.Add([pscustomobject]@{ File = $rel; Line = 1; Rule = 'FAI.Utf8Bom'; Message = 'UTF-8 BOM missing (5.1 corrupts non-ASCII characters).' })
     }
 
     # 2. 7'ye özgü ?. ve ?[ (ad sınırı belirsiz olduğundan ayrıca belirteçten bakılır)
@@ -107,7 +107,7 @@ foreach ($file in $files) {
     foreach ($t in $tokens) {
         $kind = $t.Kind.ToString()
         if ($kind -eq 'QuestionDot' -or $kind -eq 'QuestionLBracket') {
-            $findings.Add([pscustomobject]@{ File = $rel; Line = $t.Extent.StartLineNumber; Rule = 'FAI.NullConditional'; Message = "'$($t.Text)' işleci PowerShell 5.1'de yok." })
+            $findings.Add([pscustomobject]@{ File = $rel; Line = $t.Extent.StartLineNumber; Rule = 'FAI.NullConditional'; Message = "The '$($t.Text)' operator does not exist in PowerShell 5.1." })
         }
     }
 
@@ -123,12 +123,12 @@ foreach ($file in $files) {
 $sw.Stop()
 if ($findings.Count -gt 0) {
     Write-Host ''
-    Write-Host ("Lint BAŞARISIZ: {0} bulgu ({1:N1} sn)" -f $findings.Count, $sw.Elapsed.TotalSeconds) -ForegroundColor Red
+    Write-Host ("Lint FAILED: {0} findings ({1:N1} s)" -f $findings.Count, $sw.Elapsed.TotalSeconds) -ForegroundColor Red
     foreach ($f in $findings) {
         Write-Host ("  {0}:{1}  {2}  {3}" -f $f.File, $f.Line, $f.Rule, $f.Message) -ForegroundColor Red
     }
     exit 1
 }
 
-Write-Host ("Lint temiz: {0} dosya ({1:N1} sn)" -f $files.Count, $sw.Elapsed.TotalSeconds) -ForegroundColor Green
+Write-Host ("Lint clean: {0} files ({1:N1} s)" -f $files.Count, $sw.Elapsed.TotalSeconds) -ForegroundColor Green
 exit 0

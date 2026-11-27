@@ -139,9 +139,9 @@ Describe 'RegistryAction' {
     It 'Describe / Preview Türkçe ve tek satır' {
         $ctx = New-Ctx
         $a = New-Reg @{ Path = $script:Key; Name = 'V'; Value = 1; Kind = 'DWord' }
-        $a.Describe() | Should -Match '^Kayıt defteri: .*\\V = 1 \(DWord\)$'
-        $a.Preview($ctx) | Should -Match '\[şu an: yok\]$'
-        (New-Reg @{ Path = $script:Key; Name = 'V'; Ensure = 'Absent' }).Describe() | Should -Match 'silinir$'
+        $a.Describe() | Should -Match '^Registry: .*\\V = 1 \(DWord\)$'
+        $a.Preview($ctx) | Should -Match '\[current: none\]$'
+        (New-Reg @{ Path = $script:Key; Name = 'V'; Ensure = 'Absent' }).Describe() | Should -Match 'is deleted$'
     }
 
     It 'sağlayıcı yol büyük/küçük harfini ve sondaki ters eğik çizgiyi yok sayar' {
@@ -195,7 +195,7 @@ Describe 'ServiceAction' {
         $a.Apply($ctx)
         $a.Revert($ctx, @{ Exists = $false })
         $ctx.Services.WriteCount | Should -Be 0
-        $a.Preview($ctx) | Should -Match 'servis yok'
+        $a.Preview($ctx) | Should -Match 'service not found'
     }
 
     It 'Revert: durdurulmuş ve devre dışı servisi çalışır / otomatik hale geri getirir' {
@@ -217,7 +217,7 @@ Describe 'PreviewRevert (geri alma önizlemesi)' {
         $ctx.Registry.Seed($script:Key, 'V', 2, 'DWord')
         $a = New-Reg @{ Path = $script:Key; Name = 'V'; Value = 2; Kind = 'DWord' }
         $line = $a.PreviewRevert($ctx, @{ Exists = $true; Value = 5; Kind = 'DWord' })
-        $line | Should -Match 'şu an 2 → geri alınca değer 5 \(DWord\) geri yazılacak'
+        $line | Should -Match 'currently 2 → will revert to value 5 \(DWord\) restored'
         $ctx.Registry.WriteCount | Should -Be 0
     }
 
@@ -225,15 +225,15 @@ Describe 'PreviewRevert (geri alma önizlemesi)' {
         $ctx = New-Ctx
         $ctx.Registry.Seed($script:Key, 'V', 2, 'DWord')
         $a = New-Reg @{ Path = $script:Key; Name = 'V'; Value = 2; Kind = 'DWord' }
-        $a.PreviewRevert($ctx, @{ Exists = $false }) | Should -Match 'geri alınca değer silinecek$'
-        $a.PreviewRevert($ctx, @{ Exists = $false; MissingFrom = 'HKCU:\Software\X' }) | Should -Match 'oluşturulan anahtar da silinecek \(HKCU:\\Software\\X\)'
+        $a.PreviewRevert($ctx, @{ Exists = $false }) | Should -Match 'will revert to value deleted$'
+        $a.PreviewRevert($ctx, @{ Exists = $false; MissingFrom = 'HKCU:\Software\X' }) | Should -Match 'created key also deleted \(HKCU:\\Software\\X\)'
         $ctx.Registry.WriteCount | Should -Be 0
     }
 
     It 'Registry: Raw tür → ham tür numarası ve bayt sayısı' {
         $ctx = New-Ctx
         $a = New-Reg @{ Path = $script:Key; Name = 'V'; Value = 2; Kind = 'DWord' }
-        $a.PreviewRevert($ctx, @{ Exists = $true; Kind = 'Raw'; RawType = 0; Bytes = @(1, 2, 3) }) | Should -Match 'ham tür 0, 3 bayt geri yazılacak'
+        $a.PreviewRevert($ctx, @{ Exists = $true; Kind = 'Raw'; RawType = 0; Bytes = @(1, 2, 3) }) | Should -Match 'raw type 0, 3 bytes restored'
         $ctx.Registry.WriteCount | Should -Be 0
     }
 
@@ -252,7 +252,7 @@ Describe 'PreviewRevert (geri alma önizlemesi)' {
         $ctx = New-Ctx
         $ctx.Services.Seed('Svc', 'Disabled', 'Stopped')
         $a = [ServiceAction]::new(@{ Type = 'Service'; Name = 'Svc'; StartType = 'Disabled' })
-        $a.PreviewRevert($ctx, @{ Exists = $true; StartType = 'Automatic'; Status = 'Running' }) | Should -Match 'şu an başlangıç = Disabled → geri alınca Automatic'
+        $a.PreviewRevert($ctx, @{ Exists = $true; StartType = 'Automatic'; Status = 'Running' }) | Should -Match 'currently start = Disabled → will revert to Automatic'
     }
 }
 
@@ -260,7 +260,7 @@ Describe 'Eylem fabrikası' {
     It 'Type alanına göre doğru sınıfı üretir; bilinmeyen tür hata verir' {
         (New-FaiAction @{ Type = 'Registry'; Path = 'HKCU:\a'; Name = 'n'; Value = 1; Kind = 'DWord' }).GetType().Name | Should -Be 'RegistryAction'
         (New-FaiAction @{ Type = 'Service'; Name = 's'; State = 'Running' }).GetType().Name | Should -Be 'ServiceAction'
-        { New-FaiAction @{ Type = 'Teleport' } } | Should -Throw '*Bilinmeyen eylem türü*'
+        { New-FaiAction @{ Type = 'Teleport' } } | Should -Throw '*Unknown action type*'
     }
 
     It 'eylemler doğrudan Windows cmdlet''i çağırmaz (kaynak taraması)' {
@@ -314,7 +314,7 @@ Describe 'Arayüz tabanları ve Fake sağlayıcılar' {
 
     It 'FakePromptProvider: yanıt listesi biterse güvenli varsayılan (reddet)' {
         $p = [FakePromptProvider]::new()
-        $p.Enqueue(@('E'))
+        $p.Enqueue(@('Y'))
         $p.Confirm('x') | Should -BeTrue
         $p.Confirm('y') | Should -BeFalse
         $p.ConfirmExact('z', 'EVET') | Should -BeFalse

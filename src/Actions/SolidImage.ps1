@@ -17,25 +17,25 @@ class SolidImageAction : ActionBase {
         $hasDir = $Def.Contains('Directory')
         if ($hasPath -eq $hasDir) { $e.Add('Path / Directory: ikisinden tam olarak biri verilmeli') }
         if ($hasPath) {
-            if (-not (Test-FaiWindowsPath $Def['Path'])) { $e.Add('Path: mutlak yol olmalı (C:\..., %DEĞİŞKEN%\...)') }
-            elseif (-not [SolidImageAction]::FormatOf([string]$Def['Path'])) { $e.Add('Path: uzantı .png, .jpg ya da .bmp olmalı') }
+            if (-not (Test-FaiWindowsPath $Def['Path'])) { $e.Add('Path: must be an absolute path (C:\..., %VARIABLE%\...)') }
+            elseif (-not [SolidImageAction]::FormatOf([string]$Def['Path'])) { $e.Add('Path: extension must be .png, .jpg or .bmp') }
             foreach ($f in @('Width', 'Height')) {
-                if (-not $Def.Contains($f)) { $e.Add("${f}: Path ile zorunlu") }
-                elseif (-not (Test-FaiHasPlaceholder $Def[$f]) -and (-not (Test-FaiIsInteger $Def[$f]) -or $Def[$f] -lt 1 -or $Def[$f] -gt 16384)) { $e.Add("${f}: 1-16384 arası tamsayı olmalı") }
+                if (-not $Def.Contains($f)) { $e.Add("${f}: required with Path") }
+                elseif (-not (Test-FaiHasPlaceholder $Def[$f]) -and (-not (Test-FaiIsInteger $Def[$f]) -or $Def[$f] -lt 1 -or $Def[$f] -gt 16384)) { $e.Add("${f}: must be an integer from 1 to 16384") }
             }
-            if ($Def.Contains('Filter')) { $e.Add('Filter: yalnız Directory ile verilir') }
+            if ($Def.Contains('Filter')) { $e.Add('Filter: only allowed with Directory') }
         }
         if ($hasDir) {
-            if (-not (Test-FaiWindowsPath $Def['Directory'])) { $e.Add('Directory: mutlak yol olmalı (C:\..., %DEĞİŞKEN%\...)') }
-            if (-not $Def.Contains('Filter')) { $e.Add('Filter: Directory ile zorunlu (ör. @(''*.png''))') }
+            if (-not (Test-FaiWindowsPath $Def['Directory'])) { $e.Add('Directory: must be an absolute path (C:\..., %VARIABLE%\...)') }
+            if (-not $Def.Contains('Filter')) { $e.Add('Filter: required with Directory (e.g. @(''*.png''))') }
             else {
                 $bad = @(@($Def['Filter']) | Where-Object { $_ -isnot [string] -or [string]::IsNullOrWhiteSpace($_) })
-                if (@($Def['Filter']).Count -eq 0 -or $bad.Count -gt 0) { $e.Add('Filter: boş olmayan metin ya da metin dizisi olmalı (-like kalıbı)') }
+                if (@($Def['Filter']).Count -eq 0 -or $bad.Count -gt 0) { $e.Add('Filter: must be non-empty text or a list of text (-like pattern)') }
             }
-            foreach ($f in @('Width', 'Height')) { if ($Def.Contains($f)) { $e.Add("${f}: yalnız Path ile verilir (Directory boyutu korur)") } }
+            foreach ($f in @('Width', 'Height')) { if ($Def.Contains($f)) { $e.Add("${f}: only allowed with Path (Directory keeps the size)") } }
         }
-        if (-not $Def.Contains('Color')) { $e.Add('Color: zorunlu alan eksik') }
-        elseif (-not (Test-FaiHasPlaceholder $Def['Color']) -and ($Def['Color'] -isnot [string] -or $Def['Color'] -notmatch '^[0-9A-Fa-f]{6}$')) { $e.Add('Color: RRGGBB (onaltılık) olmalı, ör. 000000') }
+        if (-not $Def.Contains('Color')) { $e.Add('Color: required field missing') }
+        elseif (-not (Test-FaiHasPlaceholder $Def['Color']) -and ($Def['Color'] -isnot [string] -or $Def['Color'] -notmatch '^[0-9A-Fa-f]{6}$')) { $e.Add('Color: must be RRGGBB (hex), e.g. 000000') }
         return $e.ToArray()
     }
 
@@ -110,15 +110,15 @@ class SolidImageAction : ActionBase {
 
     [string] Describe() {
         if ($this.Definition.ContainsKey('Path')) {
-            return ('Görüntü: {0} tek renk #{1} ({2}x{3}, varsa boyutu korunur)' -f $this.Definition['Path'], $this.Color(), $this.Definition['Width'], $this.Definition['Height'])
+            return ('Image: {0} solid color #{1} ({2}x{3}, existing size is kept)' -f $this.Definition['Path'], $this.Color(), $this.Definition['Width'], $this.Definition['Height'])
         }
-        return ('Görüntü: {0}\{1} tek renk #{2} (boyut korunur)' -f $this.Definition['Directory'], (@($this.Definition['Filter']) -join ','), $this.Color())
+        return ('Image: {0}\{1} solid color #{2} (size is kept)' -f $this.Definition['Directory'], (@($this.Definition['Filter']) -join ','), $this.Color())
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
         $pending = @($this.Pending($Ctx))
         $names = @($pending | Select-Object -First 6 | ForEach-Object { (Get-FaiFileName $_) }) -join ', '
         if ($pending.Count -gt 6) { $names += (', … +{0}' -f ($pending.Count - 6)) }
-        return ('{0} [boyanacak {1} dosya: {2}]' -f $this.Describe(), $pending.Count, $names)
+        return ('{0} [{1} files to paint: {2}]' -f $this.Describe(), $pending.Count, $names)
     }
 }

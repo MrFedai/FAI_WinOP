@@ -50,7 +50,7 @@ function New-FaiAction {
         'WindowsUpdate' { return [WindowsUpdateAction]::new($Definition) }
         'UpdatePause' { return [UpdatePauseAction]::new($Definition) }
         'GameAffinity' { return [GameAffinityAction]::new($Definition) }
-        default { throw ("Bilinmeyen eylem türü: '{0}' (bilinenler: {1})" -f $Definition['Type'], ((Get-FaiActionType) -join ', ')) }
+        default { throw ("Unknown action type: '{0}' (known: {1})" -f $Definition['Type'], ((Get-FaiActionType) -join ', ')) }
     }
 }
 
@@ -64,16 +64,16 @@ function Get-FaiActionError {
 
     $errs = New-Object 'System.Collections.Generic.List[string]'
     if ($Definition -isnot [System.Collections.IDictionary]) {
-        $errs.Add("${Path}: eylem hashtable olmalı")
+        $errs.Add("${Path}: action must be a hashtable")
         return $errs.ToArray()
     }
     if (-not $Definition.Contains('Type')) {
-        $errs.Add("${Path}.Type: zorunlu alan eksik")
+        $errs.Add("${Path}.Type: required field missing")
         return $errs.ToArray()
     }
     $actionType = $Definition['Type']
     if ($actionType -isnot [string] -or (Get-FaiActionType) -cnotcontains $actionType) {
-        $errs.Add("${Path}.Type: bilinmeyen eylem türü '$actionType' (bilinenler: " + ((Get-FaiActionType) -join ', ') + ')')
+        $errs.Add("${Path}.Type: unknown action type '$actionType' (known: " + ((Get-FaiActionType) -join ', ') + ')')
         return $errs.ToArray()
     }
     # Eylem düzeyi koşul: Condition sözdizimi; türe özgü doğrulama When'siz kopyaya yapılır.
@@ -128,7 +128,7 @@ function Get-FaiUnknownKeyError {
 
     $out = New-Object 'System.Collections.Generic.List[string]'
     foreach ($k in @($Definition.Keys)) {
-        if ($Allowed -cnotcontains [string]$k) { $out.Add("${k}: bilinmeyen alan (izin verilenler: " + ($Allowed -join ', ') + ')') }
+        if ($Allowed -cnotcontains [string]$k) { $out.Add("${k}: unknown field (allowed: " + ($Allowed -join ', ') + ')') }
     }
     return , $out.ToArray()
 }
@@ -177,6 +177,6 @@ function Test-FaiScriptText {
     $parseErrors = $null
     [void][System.Management.Automation.Language.Parser]::ParseInput($Code, [ref]$tokens, [ref]$parseErrors)
     $out = New-Object 'System.Collections.Generic.List[string]'
-    foreach ($e in @($parseErrors)) { if ($null -ne $e) { $out.Add(('{0}. satır: {1}' -f $e.Extent.StartLineNumber, $e.Message)) } }
+    foreach ($e in @($parseErrors)) { if ($null -ne $e) { $out.Add(('line {0}: {1}' -f $e.Extent.StartLineNumber, $e.Message)) } }
     return , $out.ToArray()
 }

@@ -16,20 +16,20 @@ if [[ -n "${FAI_WINOP_TEST_DIR:-}" ]]; then
   win_dir="$FAI_WINOP_TEST_DIR"
 else
   userprofile="$(cd /mnt/c && cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r')"
-  [[ -n "$userprofile" && "$userprofile" != *'%'* ]] || { echo "HATA: %USERPROFILE% okunamadı; FAI_WINOP_TEST_DIR ver." >&2; exit 1; }
+  [[ -n "$userprofile" && "$userprofile" != *'%'* ]] || { echo "ERROR: could not read %USERPROFILE%; set FAI_WINOP_TEST_DIR." >&2; exit 1; }
   win_dir="${userprofile}\\FAI_WinOP_test"
 fi
 dest="$(wslpath -u "$win_dir")"
 
-echo "[1/4] Bundle üretiliyor (build/Bundle.ps1: dist/install.ps1 + testler için dist/install.fakes.ps1)"
+echo "[1/4] Building bundle (build/Bundle.ps1: dist/install.ps1 + dist/install.fakes.ps1 for tests)"
 if command -v pwsh >/dev/null; then
   pwsh -NoProfile -NonInteractive -File "$repo/build/Bundle.ps1" | sed 's/^/      /'
   pwsh -NoProfile -NonInteractive -File "$repo/build/Bundle.ps1" -IncludeFakes | sed 's/^/      /'
 else
-  echo "      UYARI: pwsh yok, bundle üretilmedi (dist/ olduğu gibi kopyalanır)"
+  echo "      WARNING: pwsh not found, bundle not built (dist/ is copied as is)"
 fi
 
-echo "[2/4] Depo aynalanıyor → $win_dir\\repo"
+echo "[2/4] Mirroring repo → $win_dir\\repo"
 mkdir -p "$dest/repo" "$dest/out"
 rlog="$(mktemp)"
 trap 'rm -f "$rlog"' EXIT
@@ -43,23 +43,23 @@ rsync -a --delete --itemize-changes --info=progress2 \
   | while IFS= read -r pl; do printf '\r      %s   ' "$pl" >&2; done
 rs=("${PIPESTATUS[@]}")
 echo >&2
-[[ "${rs[0]}" -eq 0 ]] || { echo "HATA: rsync başarısız (çıkış ${rs[0]})" >&2; exit 1; }
+[[ "${rs[0]}" -eq 0 ]] || { echo "ERROR: rsync failed (exit ${rs[0]})" >&2; exit 1; }
 changes="$(grep -a -v '%' "$rlog" || true)"
 copied="$(grep -c '^>f' <<<"$changes" || true)"
 deleted="$(grep '^\*deleting' <<<"$changes" || true)"
-echo "      kopyalanan / güncellenen dosya: $copied"
+echo "      files copied / updated: $copied"
 if [[ -n "$deleted" ]]; then
-  echo "      aynadan silinen (depoda artık yok):"
+  echo "      removed from the mirror (no longer in the repo):"
   sed 's/^\*deleting */        /' <<<"$deleted"
 fi
 
-echo "[3/4] Sandbox yapılandırması yazılıyor → $win_dir\\FAI_WinOP.wsb"
+echo "[3/4] Writing Sandbox configuration → $win_dir\\FAI_WinOP.wsb"
 esc="${win_dir//\\/\\\\}"   # sed yer değiştirme metninde özel: \ & ve sınırlayıcı |
 esc="${esc//&/\\&}"
 esc="${esc//|/\\|}"
 sed -e "s|__TEST_DIR__|${esc}|g" -e 's/\r$//' -e 's/$/\r/' "$repo/tests/Sandbox/FAI_WinOP.wsb" > "$dest/FAI_WinOP.wsb"
 
-echo "[4/4] Hazır. Örnek komutlar:"
+echo "[4/4] Ready. Example commands:"
 echo "      powershell.exe -NoProfile -ExecutionPolicy Bypass -File '$win_dir\\repo\\tests\\Integration\\Load-Bundle.ps1'"
 echo "      powershell.exe -NoProfile -ExecutionPolicy Bypass -File '$win_dir\\repo\\tests\\Integration\\Engine-Smoke.ps1'"
-echo "      cmd.exe /c start \"\" \"$win_dir\\FAI_WinOP.wsb\"     (sonuç: $win_dir\\out\\SONUC.txt)"
+echo "      cmd.exe /c start \"\" \"$win_dir\\FAI_WinOP.wsb\"     (result: $win_dir\\out\\SONUC.txt)"

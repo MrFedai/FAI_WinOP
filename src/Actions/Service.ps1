@@ -13,16 +13,16 @@ class ServiceAction : ActionBase {
         $e = New-Object 'System.Collections.Generic.List[string]'
         $allowed = @('Type', 'Name', 'StartType', 'State')
         foreach ($k in @($Def.Keys)) {
-            if ($allowed -cnotcontains [string]$k) { $e.Add("${k}: bilinmeyen alan (izin verilenler: " + ($allowed -join ', ') + ')') }
+            if ($allowed -cnotcontains [string]$k) { $e.Add("${k}: unknown field (allowed: " + ($allowed -join ', ') + ')') }
         }
-        if (-not $Def.Contains('Name')) { $e.Add('Name: zorunlu alan eksik') }
-        elseif ($Def['Name'] -isnot [string] -or [string]::IsNullOrWhiteSpace($Def['Name'])) { $e.Add('Name: boş olmayan metin olmalı') }
-        if (-not $Def.Contains('StartType') -and -not $Def.Contains('State')) { $e.Add('StartType / State: en az biri gerekir') }
+        if (-not $Def.Contains('Name')) { $e.Add('Name: required field missing') }
+        elseif ($Def['Name'] -isnot [string] -or [string]::IsNullOrWhiteSpace($Def['Name'])) { $e.Add('Name: must be non-empty text') }
+        if (-not $Def.Contains('StartType') -and -not $Def.Contains('State')) { $e.Add('StartType / State: at least one is required') }
         if ($Def.Contains('StartType') -and ($Def['StartType'] -isnot [string] -or [ServiceAction]::StartTypes() -cnotcontains $Def['StartType'])) {
-            $e.Add('StartType: ' + ([ServiceAction]::StartTypes() -join ', ') + ' değerlerinden biri olmalı')
+            $e.Add('StartType: must be one of ' + ([ServiceAction]::StartTypes() -join ', '))
         }
         if ($Def.Contains('State') -and ($Def['State'] -isnot [string] -or [ServiceAction]::States() -cnotcontains $Def['State'])) {
-            $e.Add('State: ' + ([ServiceAction]::States() -join ', ') + ' değerlerinden biri olmalı')
+            $e.Add('State: must be one of ' + ([ServiceAction]::States() -join ', '))
         }
         return $e.ToArray()
     }
@@ -50,7 +50,7 @@ class ServiceAction : ActionBase {
     [void] Apply([ExecutionContext] $Ctx) {
         $name = $this.ServiceName()
         if (-not $Ctx.Services.ServiceExists($name)) {
-            $Ctx.Logger.Warn("Servis yok, atlandı: $name")
+            $Ctx.Logger.Warn("Service not found, skipped: $name")
             return
         }
         if ($this.Definition.ContainsKey('StartType') -and $Ctx.Services.GetStartType($name) -ne [string]$this.Definition['StartType']) {
@@ -78,21 +78,21 @@ class ServiceAction : ActionBase {
 
     [string] Describe() {
         $parts = New-Object 'System.Collections.Generic.List[string]'
-        if ($this.Definition.ContainsKey('StartType')) { $parts.Add('başlangıç = ' + $this.Definition['StartType']) }
-        if ($this.Definition.ContainsKey('State')) { $parts.Add('durum = ' + $this.Definition['State']) }
-        return ('Servis: {0} → {1}' -f $this.ServiceName(), ($parts -join ', '))
+        if ($this.Definition.ContainsKey('StartType')) { $parts.Add('start = ' + $this.Definition['StartType']) }
+        if ($this.Definition.ContainsKey('State')) { $parts.Add('status = ' + $this.Definition['State']) }
+        return ('Service: {0} → {1}' -f $this.ServiceName(), ($parts -join ', '))
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
         $name = $this.ServiceName()
-        if (-not $Ctx.Services.ServiceExists($name)) { return ('{0} [servis yok, atlanır]' -f $this.Describe()) }
-        return ('{0} [şu an: başlangıç = {1}, durum = {2}]' -f $this.Describe(), $Ctx.Services.GetStartType($name), $Ctx.Services.GetStatus($name))
+        if (-not $Ctx.Services.ServiceExists($name)) { return ('{0} [service not found, will be skipped]' -f $this.Describe()) }
+        return ('{0} [current: start = {1}, status = {2}]' -f $this.Describe(), $Ctx.Services.GetStartType($name), $Ctx.Services.GetStatus($name))
     }
 
     [string] PreviewRevert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
         $name = $this.ServiceName()
-        if (-not $Snapshot['Exists']) { return ('Servis {0}: kayıtta yoktu, geri alınca dokunulmaz' -f $name) }
-        if (-not $Ctx.Services.ServiceExists($name)) { return ('Servis {0}: şu an yok, geri alma atlanır' -f $name) }
-        return ('Servis {0}: şu an başlangıç = {1} → geri alınca {2}, durum {3}' -f $name, $Ctx.Services.GetStartType($name), $Snapshot['StartType'], $Snapshot['Status'])
+        if (-not $Snapshot['Exists']) { return ('Service {0}: was not in the backup, left untouched on revert' -f $name) }
+        if (-not $Ctx.Services.ServiceExists($name)) { return ('Service {0}: current: none, revert will be skipped' -f $name) }
+        return ('Service {0}: currently start = {1} → will revert to {2}, status {3}' -f $name, $Ctx.Services.GetStartType($name), $Snapshot['StartType'], $Snapshot['Status'])
     }
 }

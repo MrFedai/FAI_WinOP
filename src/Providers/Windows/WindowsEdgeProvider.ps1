@@ -43,7 +43,7 @@ class WindowsEdgeProvider : IEdgeProvider {
         if (-not $exe) { return '' }
         $v = [WindowsEdgeProvider]::ClientVersion([WindowsEdgeProvider]::EdgeAppId)
         if (-not $v) { $v = [string](Get-Item -LiteralPath $exe).VersionInfo.ProductVersion }
-        if (-not $v) { $v = 'bilinmeyen sürüm' }
+        if (-not $v) { $v = 'unknown version' }
         return $v
     }
 
@@ -64,7 +64,7 @@ class WindowsEdgeProvider : IEdgeProvider {
 
     [void] UninstallEdge() {
         $setup = $this.FindSetup()
-        if (-not $setup) { throw 'Edge kurucusu (Installer\setup.exe) bulunamadı.' }
+        if (-not $setup) { throw 'Edge installer (Installer\setup.exe) not found.' }
 
         Get-Process -Name 'msedge' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
@@ -92,7 +92,7 @@ class WindowsEdgeProvider : IEdgeProvider {
                 (Join-Path $env:APPDATA 'Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\Microsoft Edge.lnk'))) {
             if (Test-Path -LiteralPath $lnk -PathType Leaf) { Remove-Item -LiteralPath $lnk -Force -ErrorAction SilentlyContinue }
         }
-        if ($this.EdgeExe()) { throw "Edge kurucusu kaldırmayı tamamlamadı: $setup" }
+        if ($this.EdgeExe()) { throw "Edge installer did not finish the removal: $setup" }
     }
 
     # winget ile sistem düzeyinde kurulum. EdgeUpdate'in Install{Edge} ilkesi 0 ise kurulum engellenebilir; tweak'te

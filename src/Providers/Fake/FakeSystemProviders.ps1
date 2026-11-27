@@ -22,7 +22,7 @@ class FakeFileProvider : IFileProvider {
     }
 
     [byte[]] ReadBytes([string] $Path) {
-        if (-not $this.FileExists($Path)) { throw "Dosya yok: $Path" }
+        if (-not $this.FileExists($Path)) { throw "File not found: $Path" }
         return [byte[]]$this.Files[[FakeFileProvider]::Norm($Path)]['Bytes']
     }
 
@@ -212,14 +212,14 @@ class FakePowerProvider : IPowerProvider {
         $this.WriteCount++
         [void]$this.WriteLog.Add("SetActiveScheme $Scheme")
         $g = $this.Resolve($Scheme)
-        if (-not $this.Schemes.ContainsKey($g)) { throw "Güç planı yok: $Scheme" }
+        if (-not $this.Schemes.ContainsKey($g)) { throw "Power plan not found: $Scheme" }
         $this.Active = $g
     }
 
     [long] GetValue([string] $Scheme, [string] $Subgroup, [string] $Setting, [bool] $OnAC) {
         $g = $this.Resolve($Scheme)
         $k = [FakePowerProvider]::Key($Subgroup, $Setting)
-        if (-not $this.Schemes.ContainsKey($g) -or -not $this.Schemes[$g].ContainsKey($k)) { throw "Güç ayarı yok: $Scheme $Subgroup $Setting" }
+        if (-not $this.Schemes.ContainsKey($g) -or -not $this.Schemes[$g].ContainsKey($k)) { throw "Power setting not found: $Scheme $Subgroup $Setting" }
         if ($OnAC) { return [long]$this.Schemes[$g][$k]['AC'] }
         return [long]$this.Schemes[$g][$k]['DC']
     }
@@ -229,7 +229,7 @@ class FakePowerProvider : IPowerProvider {
         [void]$this.WriteLog.Add("SetValue $Scheme $Subgroup $Setting $OnAC $Value")
         $g = $this.Resolve($Scheme)
         $k = [FakePowerProvider]::Key($Subgroup, $Setting)
-        if (-not $this.Schemes.ContainsKey($g) -or -not $this.Schemes[$g].ContainsKey($k)) { throw "Güç ayarı yok: $Scheme $Subgroup $Setting" }
+        if (-not $this.Schemes.ContainsKey($g) -or -not $this.Schemes[$g].ContainsKey($k)) { throw "Power setting not found: $Scheme $Subgroup $Setting" }
         if ($OnAC) { $this.Schemes[$g][$k]['AC'] = $Value }
         else { $this.Schemes[$g][$k]['DC'] = $Value }
     }
@@ -239,8 +239,8 @@ class FakePowerProvider : IPowerProvider {
         [void]$this.WriteLog.Add("CreateScheme $Source $Guid $Name")
         $src = $this.Resolve($Source)
         $g = $Guid.ToLowerInvariant()
-        if (-not $this.Schemes.ContainsKey($src) -or $this.NoCopy -contains $src) { throw "Güç planı kopyalanamadı: $Source" }
-        if ($this.Schemes.ContainsKey($g)) { throw "Güç planı zaten var: $Guid" }
+        if (-not $this.Schemes.ContainsKey($src) -or $this.NoCopy -contains $src) { throw "Power plan could not be copied: $Source" }
+        if ($this.Schemes.ContainsKey($g)) { throw "Power plan already exists: $Guid" }
         $copy = @{}
         foreach ($k in $this.Schemes[$src].Keys) { $copy[$k] = @{ AC = $this.Schemes[$src][$k]['AC']; DC = $this.Schemes[$src][$k]['DC'] } }
         $this.Schemes[$g] = $copy
@@ -251,7 +251,7 @@ class FakePowerProvider : IPowerProvider {
         $this.WriteCount++
         [void]$this.WriteLog.Add("DeleteScheme $Guid")
         $g = $Guid.ToLowerInvariant()
-        if ($g -eq $this.Active) { throw "Etkin güç planı silinemez: $Guid" }
+        if ($g -eq $this.Active) { throw "Active power plan cannot be deleted: $Guid" }
         $this.Schemes.Remove($g)
         $this.Names.Remove($g)
     }
@@ -312,26 +312,26 @@ class FakeAudioProvider : IAudioProvider {
     [bool] HasDevice() { return $this.Device }
 
     [int] GetVolume() {
-        if (-not $this.Device) { throw 'Ses çıkış aygıtı yok' }
+        if (-not $this.Device) { throw 'No audio output device' }
         return $this.Volume
     }
 
     [void] SetVolume([int] $Level) {
         $this.WriteCount++
         [void]$this.WriteLog.Add("SetVolume $Level")
-        if (-not $this.Device) { throw 'Ses çıkış aygıtı yok' }
+        if (-not $this.Device) { throw 'No audio output device' }
         $this.Volume = $Level
     }
 
     [bool] GetMute() {
-        if (-not $this.Device) { throw 'Ses çıkış aygıtı yok' }
+        if (-not $this.Device) { throw 'No audio output device' }
         return $this.Muted
     }
 
     [void] SetMute([bool] $Mute) {
         $this.WriteCount++
         [void]$this.WriteLog.Add("SetMute $Mute")
-        if (-not $this.Device) { throw 'Ses çıkış aygıtı yok' }
+        if (-not $this.Device) { throw 'No audio output device' }
         $this.Muted = $Mute
     }
 }

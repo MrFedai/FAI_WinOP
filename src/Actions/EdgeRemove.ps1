@@ -23,12 +23,12 @@ class EdgeRemoveAction : ActionBase {
 
     [void] Apply([ExecutionContext] $Ctx) {
         $webView = $Ctx.Edge.GetWebView2Version()
-        if (-not $webView) { $Ctx.Logger.Warn('WebView2 Runtime kurulu değil; WhatsApp gibi uygulamalar için gerekir (Edge kaldırma bunu değiştirmez).') }
+        if (-not $webView) { $Ctx.Logger.Warn('WebView2 Runtime is not installed; apps such as WhatsApp need it (removing Edge does not change this).') }
         $Ctx.Edge.UninstallEdge()
         $left = $Ctx.Edge.GetEdgeVersion()
-        if ($left) { throw "Edge kaldırılamadı (hâlâ kurulu: $left)" }
+        if ($left) { throw "Edge could not be removed (still installed: $left)" }
         if ($webView -and -not $Ctx.Edge.GetWebView2Version()) {
-            $Ctx.Logger.Error('UYARI: Edge kaldırıldıktan sonra WebView2 Runtime bulunamıyor; WhatsApp çalışmayabilir. WebView2 yeniden kurulmalı.')
+            $Ctx.Logger.Error('WARNING: WebView2 Runtime not found after Edge removal; WhatsApp may not work. Reinstall WebView2.')
         }
     }
 
@@ -38,13 +38,13 @@ class EdgeRemoveAction : ActionBase {
         $Ctx.Edge.InstallEdge()
     }
 
-    [string] Describe() { return 'Microsoft Edge kaldırılır (WebView2 Runtime ve güncellemesi kalır)' }
+    [string] Describe() { return 'Microsoft Edge is removed (WebView2 Runtime and its updater stay)' }
 
     [string] Preview([ExecutionContext] $Ctx) {
         $edge = $Ctx.Edge.GetEdgeVersion()
-        if (-not $edge) { $edge = 'yok' }
+        if (-not $edge) { $edge = 'none' }
         $wv = $Ctx.Edge.GetWebView2Version()
-        if (-not $wv) { $wv = 'yok' }
-        return ('{0} [şu an Edge: {1}; WebView2: {2}]' -f $this.Describe(), $edge, $wv)
+        if (-not $wv) { $wv = 'none' }
+        return ('{0} [current Edge: {1}; WebView2: {2}]' -f $this.Describe(), $edge, $wv)
     }
 }

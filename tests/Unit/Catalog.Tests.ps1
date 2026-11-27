@@ -58,7 +58,7 @@ BeforeAll {
         $ctx.Registry.Seed("$script:GpuClass\0001", 'ProviderName', 'Intel Corporation', 'String')
         $ctx.Registry.Seed("$script:GpuClass\Configuration", 'Reset', 0, 'DWord')
         Initialize-Faz7BState -Ctx $ctx
-        $ctx.Prompt.Enqueue([string[]]@('E', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E'))
+        $ctx.Prompt.Enqueue([string[]]@('Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y'))
         return $ctx
     }
 
@@ -161,7 +161,7 @@ Describe 'Katalog dry-run raporu' {
 
     It 'P0 tweak''i yalnız NVIDIA sınıf anahtarına yazar, onay her çalıştırmada' {
         $line = @($script:DryReport.Find('graphics.p0-state').Lines)[0]
-        $line | Should -Match 'değişecek 1 alt anahtar: 0000\]'
+        $line | Should -Match 'will change 1 subkeys: 0000\]'
         $script:DryReport.Find('graphics.p0-state').Reason | Should -Match 'confirm'
     }
 
@@ -177,13 +177,13 @@ Describe 'Katalog dry-run raporu' {
 
     It 'rapor metni değişikliği ve şu anki değeri gösterir' {
         $text = $script:DryReport.Render()
-        $text | Should -Match 'DisableStartupSound = 1 \(DWord\) \[şu an: yok\]'
-        $text | Should -Match 'Servis: DiagTrack'
+        $text | Should -Match 'DisableStartupSound = 1 \(DWord\) \[current: none\]'
+        $text | Should -Match 'Service: DiagTrack'
         $text | Should -Match 'Ses'
     }
 
     It 'bildirimlerde istisnalar ve güvenlik gönderenleri değişecekler listesinde yok' {
-        $line = @($script:DryReport.Find('ui.notifications').Lines | Where-Object { $_ -match 'değişecek' })[0]
+        $line = @($script:DryReport.Find('ui.notifications').Lines | Where-Object { $_ -match 'will change' })[0]
         $line | Should -Match 'Logi\.GHUB\.Systray'
         $line | Should -Match 'Discord\.Discord'
         $line | Should -Not -Match 'WhatsAppDesktop'
@@ -257,7 +257,7 @@ Describe 'Katalog: uygula → geri al' {
         $p = [Profile]::FromHashtable(@{ name = 'u'; tweaks = @('setup.edition-pro'); autoConfirm = @('setup.edition-pro') }, 'test')
         $r2 = Invoke-FaiEngine -Profile $p -Context $ctx2 -Catalog $script:Catalog
         $r2.Find('setup.edition-pro').Status | Should -Be 'Failed'
-        $r2.Find('setup.edition-pro').Reason | Should -Match 'Etkileşim gerekir'
+        $r2.Find('setup.edition-pro').Reason | Should -Match 'Needs interaction'
     }
 
     It 'profil parametreleri: ses seviyesi ve bildirim istisnaları geçersiz kılınır' {
