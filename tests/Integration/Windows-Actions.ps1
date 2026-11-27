@@ -264,7 +264,7 @@ try {
         $planned = New-Object 'System.Collections.Generic.List[string]'
         foreach ($item in $dry.Items) {
             foreach ($l in @($item.Lines)) {
-                if ($l -match '^Appx: (\S+) kaldırılır') {
+                if ($l -match '^Appx: (\S+) is removed') {
                     Assert (-not (Test-FaiAppxProtected -Name $Matches[1] -Patterns $protected)) "korunan paket listede: $($Matches[1])"
                     $planned.Add($Matches[1])
                 }

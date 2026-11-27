@@ -15,7 +15,7 @@ class SolidImageAction : ActionBase {
         foreach ($m in (Get-FaiUnknownKeyError $Def @('Type', 'Path', 'Directory', 'Filter', 'Color', 'Width', 'Height'))) { $e.Add($m) }
         $hasPath = $Def.Contains('Path')
         $hasDir = $Def.Contains('Directory')
-        if ($hasPath -eq $hasDir) { $e.Add('Path / Directory: ikisinden tam olarak biri verilmeli') }
+        if ($hasPath -eq $hasDir) { $e.Add('Path / Directory: exactly one of the two must be given') }
         if ($hasPath) {
             if (-not (Test-FaiWindowsPath $Def['Path'])) { $e.Add('Path: must be an absolute path (C:\..., %VARIABLE%\...)') }
             elseif (-not [SolidImageAction]::FormatOf([string]$Def['Path'])) { $e.Add('Path: extension must be .png, .jpg or .bmp') }

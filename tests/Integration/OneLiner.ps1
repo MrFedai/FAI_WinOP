@@ -6,7 +6,7 @@
 .DESCRIPTION
     dist/install.ps1 + .sha256 + src/Bootstrap/get.ps1 yerel HTTP sunucusundan (python -m http.server, 127.0.0.1)
     iki klasörde sunulur:
-      good/  özgün dosyalar            → çıkış 0, 'SHA-256 dogrulandi', rapor 'ÖNİZLEME'
+      good/  özgün dosyalar            → çıkış 0, 'SHA-256 verified', rapor 'PREVIEW'
       bad/   install.ps1'e satır eklenmiş (özet aynı) → çıkış ≠ 0, 'BASARISIZ', eklenen satır ÇALIŞMAMIŞ
     Ayrıca: çalışan kopya yönetici-yalnız klasörde yeniden doğrulanır; https / localhost dışı FAI_WINOP_BASEURL reddedilir.
     Tek satır kullanıcınınkiyle aynıdır; yalnız FAI_WINOP_BASEURL yerel sunucuyu gösterir. Yönetici (CI runner) ister.
@@ -80,14 +80,14 @@ try {
         $r = Invoke-OneLiner 'good'
         Write-Host $r.Output
         if ($r.Code -ne 0) { throw "çıkış kodu $($r.Code)" }
-        if ($r.Output -notmatch 'SHA-256 dogrulandi') { throw 'doğrulama satırı yok' }
+        if ($r.Output -notmatch 'SHA-256 verified') { throw 'doğrulama satırı yok' }
         # Çalışan kopya %TEMP%'teki değil, yönetici-yalnız klasörde yeniden doğrulanan (ProgramData) kopya.
-        if ($r.Output -notmatch 'Yonetici-yalniz kopya yeniden dogrulandi') { throw 'yönetici-yalnız kopya doğrulama satırı yok' }
+        if ($r.Output -notmatch 'Admin-only copy re-verified') { throw 'yönetici-yalnız kopya doğrulama satırı yok' }
         if (@(Get-ChildItem -LiteralPath $env:ProgramData -Directory -Filter 'FAI_WinOP_get_*' -ErrorAction SilentlyContinue).Count -gt 0) {
             throw 'yönetici-yalnız geçici klasör silinmedi'
         }
-        if ($r.Output -notmatch 'ÖNİZLEME|ONIZLEME|dry-run') { throw 'dry-run raporu yok' }
-        $sum = ($r.Output -split "`r?`n" | Where-Object { $_ -match '^Özet:|^Ozet:|Özet:' } | Select-Object -Last 1)
+        if ($r.Output -notmatch 'PREVIEW|dry-run') { throw 'dry-run raporu yok' }
+        $sum = ($r.Output -split "`r?`n" | Where-Object { $_ -match 'Summary:' } | Select-Object -Last 1)
         "($sum)"
     }
 
@@ -95,7 +95,7 @@ try {
         $r = Invoke-OneLiner 'bad'
         Write-Host $r.Output
         if ($r.Code -eq 0) { throw 'çıkış kodu 0 (durmalıydı)' }
-        if ($r.Output -notmatch 'BASARISIZ') { throw 'başarısızlık iletisi yok' }
+        if ($r.Output -notmatch 'verification FAILED') { throw 'başarısızlık iletisi yok' }
         if (Test-Path -LiteralPath $marker) { throw 'kurcalanmış betik ÇALIŞTI' }
         if (Test-Path -LiteralPath (Join-Path $env:TEMP 'FAI_WinOP\install.ps1')) {
             $h = (Get-FileHash -LiteralPath (Join-Path $env:TEMP 'FAI_WinOP\install.ps1') -Algorithm SHA256).Hash
@@ -109,8 +109,8 @@ try {
         $r = Invoke-OneLiner 'good' 'http://example.com/good'
         Write-Host $r.Output
         if ($r.Code -eq 0) { throw 'çıkış kodu 0 (reddetmeliydi)' }
-        if ($r.Output -notmatch 'FAI_WINOP_BASEURL reddedildi') { throw 'red iletisi yok' }
-        if ($r.Output -match 'Indiriliyor') { throw 'indirmeye başladı' }
+        if ($r.Output -notmatch 'FAI_WINOP_BASEURL rejected') { throw 'red iletisi yok' }
+        if ($r.Output -match 'Downloading') { throw 'indirmeye başladı' }
         "(çıkış $($r.Code))"
     }
 }

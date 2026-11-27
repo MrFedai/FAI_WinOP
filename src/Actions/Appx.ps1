@@ -81,7 +81,7 @@ class AppxAction : ActionBase {
     }
 
     [string] Preview([ExecutionContext] $Ctx) {
-        if ($this.IsProtected($Ctx)) { return ('{0} [korunuyor, dokunulmaz]' -f $this.Describe()) }
+        if ($this.IsProtected($Ctx)) { return ('{0} [protected, left untouched]' -f $this.Describe()) }
         $state = New-Object 'System.Collections.Generic.List[string]'
         if ($this.IsInstalled($Ctx)) { $state.Add('installed for user') }
         if ($this.IsProvisioned($Ctx)) { $state.Add('provisioned') }

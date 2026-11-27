@@ -71,7 +71,7 @@ Describe 'AppxAction korumasi' {
         $ctx.Appx.Seed([string[]]@('5319275A.WhatsAppDesktop'), [string[]]@('5319275A.WhatsAppDesktop'))
         $a = New-FaiAction @{ Type = 'Appx'; Name = '5319275A.WhatsAppDesktop'; Scope = 'All' }
         $a.Test($ctx) | Should -BeTrue
-        $a.Preview($ctx) | Should -Match 'korunuyor'
+        $a.Preview($ctx) | Should -Match 'protected'
         $a.Apply($ctx)
         $ctx.Appx.WriteCount | Should -Be 0
         @($ctx.Logger.Entries | Where-Object { $_.Message -match 'Protected package' }).Count | Should -Be 1

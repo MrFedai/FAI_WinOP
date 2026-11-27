@@ -143,7 +143,7 @@ Describe 'SolidImageAction' {
     It 'şema: Path ya da Directory, boyut ve renk' {
         Errs @{ Type = 'SolidImage'; Path = 'C:\x\a.png'; Color = '000000'; Width = 10; Height = 10 } | Should -BeNullOrEmpty
         Errs @{ Type = 'SolidImage'; Directory = 'C:\x'; Filter = @('*.png'); Color = '000000' } | Should -BeNullOrEmpty
-        (Errs @{ Type = 'SolidImage'; Color = '000000' }) -join ' ' | Should -Match 'tam olarak biri'
+        (Errs @{ Type = 'SolidImage'; Color = '000000' }) -join ' ' | Should -Match 'exactly one'
         (Errs @{ Type = 'SolidImage'; Path = 'C:\x\a.gif'; Color = '000000'; Width = 1; Height = 1 }) -join ' ' | Should -Match 'extension must be'
         (Errs @{ Type = 'SolidImage'; Path = 'C:\x\a.png'; Color = 'siyah'; Width = 1; Height = 1 }) -join ' ' | Should -Match 'RRGGBB'
         (Errs @{ Type = 'SolidImage'; Path = 'C:\x\a.png'; Color = '000000' }) -join ' ' | Should -Match 'Width: required with Path'
