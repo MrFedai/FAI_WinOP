@@ -360,7 +360,9 @@ try {
     Step 'Faz 6 uygula → düzen doğrula → -Undo (yalnız etkileşimli kabukta)' {
         if (-not $ctx.Desktop.IsShellRunning()) { return 'ATLA etkileşimli kabuk yok (CI hizmet oturumu)' }
         $catalog = Import-FaiTweakCatalog -Path (Join-Path $repoRoot 'tweaks')
-        $faiProfile = [Profile]::FromHashtable(@{ name = 'faz6'; tweaks = $faz6 }, 'test')
+        # 4.3'ten beri otomatik gizleme ve masaüstü simgeleri tweak'te değil, profilin layout bölümünde
+        $faz6Layout = @{ taskbar = @{ autoHide = $true }; desktopIcons = @{ thisPC = $true; recycleBin = $true } }
+        $faiProfile = [Profile]::FromHashtable(@{ name = 'faz6'; tweaks = $faz6; layout = $faz6Layout }, 'test')
         # Karşılaştırma görev çubuğu + masaüstü simgeleri üzerinden (simge konumlarını / start2.bin'i Gezgin kendisi de yazar).
         $view = { $l = (Export-FaiLayout -Context $ctx).Layout; @{ taskbar = $l['taskbar']; desktopIcons = $l['desktopIcons'] } | ConvertTo-Json -Depth 10 -Compress }
         $before = & $view
