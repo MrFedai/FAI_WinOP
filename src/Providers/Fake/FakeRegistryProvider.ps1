@@ -54,6 +54,8 @@ class FakeRegistryProvider : IRegistryProvider {
         $this.WriteCount++
         [void]$this.WriteLog.Add("DeleteEmptyKey $Path")
         $p = [FakeRegistryProvider]::NormPath($Path)
+        # Gerçek sağlayıcı gibi: kovanın hemen altındaki anahtarı (HKCU:\Foo) silmez.
+        if ($p -notmatch '^[^\\]+\\.+\\') { return }
         if (-not $this.Keys.ContainsKey($p) -or $this.Keys[$p].Count -gt 0) { return }
         foreach ($k in $this.Keys.Keys) { if ($k.StartsWith($p + '\')) { return } }
         $this.Keys.Remove($p)

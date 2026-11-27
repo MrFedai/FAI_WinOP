@@ -289,6 +289,49 @@ Describe 'ShortcutAction' {
     }
 }
 
+Describe 'Fake = gerçek sağlayıcı davranışı (4.1)' {
+    It 'DeleteEmptyKey: kovanın hemen altındaki anahtarı silmez, derindekini siler' {
+        $ctx = New-Ctx
+        $ctx.Registry.SetValue('HKCU:\FakeTop', 'V', 1, 'DWord')
+        $ctx.Registry.DeleteValue('HKCU:\FakeTop', 'V')
+        $ctx.Registry.DeleteEmptyKey('HKCU:\FakeTop')
+        $ctx.Registry.KeyExists('HKCU:\FakeTop') | Should -BeTrue
+        $ctx.Registry.SetValue('HKCU:\Soft\Deep', 'V', 1, 'DWord')
+        $ctx.Registry.DeleteValue('HKCU:\Soft\Deep', 'V')
+        $ctx.Registry.DeleteEmptyKey('HKCU:\Soft\Deep')
+        $ctx.Registry.KeyExists('HKCU:\Soft\Deep') | Should -BeFalse
+    }
+
+    It 'DeleteEmptyKey: değeri ya da alt anahtarı olan anahtarı silmez' {
+        $ctx = New-Ctx
+        $ctx.Registry.SetValue('HKCU:\Soft\A', 'V', 1, 'DWord')
+        $ctx.Registry.SetValue('HKCU:\Soft\A\B', 'V', 1, 'DWord')
+        $ctx.Registry.DeleteEmptyKey('HKCU:\Soft\A')
+        $ctx.Registry.KeyExists('HKCU:\Soft\A') | Should -BeTrue
+        $ctx.Registry.DeleteEmptyKey('HKCU:\Soft\A\B')
+        $ctx.Registry.ValueExists('HKCU:\Soft\A\B', 'V') | Should -BeTrue
+    }
+
+    It 'winget paket kimliği harfe duyarsız eşlenir' {
+        $p = [FakePackageProvider]::new()
+        $p.Seed('Google.Chrome', 'winget')
+        $p.IsInstalled('google.CHROME', 'winget') | Should -BeTrue
+        $p.Uninstall('GOOGLE.chrome', 'winget')
+        $p.IsInstalled('Google.Chrome', 'winget') | Should -BeFalse
+    }
+
+    It 'kısayol IconLocation "yol,indeks" döner; Test "x.ico" ile "x.ico,0"ı eşit sayar' {
+        $ctx = New-Ctx
+        $ctx.Shortcuts.Seed('C:\S\a.lnk', @{ TargetPath = 'C:\a.exe'; IconLocation = 'C:\x.ico' })
+        $ctx.Shortcuts.ReadShortcut('C:\S\a.lnk')['IconLocation'] | Should -Be 'C:\x.ico,0'
+        $ctx.Shortcuts.Seed('C:\S\b.lnk', @{ TargetPath = 'C:\a.exe'; IconLocation = 'C:\x.ico,3' })
+        $ctx.Shortcuts.ReadShortcut('C:\S\b.lnk')['IconLocation'] | Should -Be 'C:\x.ico,3'
+        (Act @{ Type = 'Shortcut'; Path = 'C:\S\a.lnk'; TargetPath = 'C:\a.exe'; IconLocation = 'C:\x.ico' }).Test($ctx) | Should -BeTrue
+        (Act @{ Type = 'Shortcut'; Path = 'C:\S\a.lnk'; TargetPath = 'C:\a.exe'; IconLocation = 'C:\x.ico,0' }).Test($ctx) | Should -BeTrue
+        (Act @{ Type = 'Shortcut'; Path = 'C:\S\b.lnk'; TargetPath = 'C:\a.exe'; IconLocation = 'C:\x.ico' }).Test($ctx) | Should -BeFalse
+    }
+}
+
 Describe 'ScriptAction' {
     BeforeEach { [FakeScriptHost]::State.Clear() }
 

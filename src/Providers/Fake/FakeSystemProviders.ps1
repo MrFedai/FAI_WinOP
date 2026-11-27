@@ -152,6 +152,8 @@ class FakeShortcutProvider : IShortcutProvider {
         $data = ConvertFrom-JsonText -Json $text
         $result = @{}
         foreach ($n in [FakeShortcutProvider]::PropertyNames()) { $result[$n] = [string]$data[$n] }
+        # WScript.Shell IconLocation'ı 'yol,indeks' döndürür; indeks yoksa ',0' eklenir (boş değer ',0' olur).
+        if ($result['IconLocation'] -notmatch ',-?\d+$') { $result['IconLocation'] = $result['IconLocation'] + ',0' }
         return $result
     }
 

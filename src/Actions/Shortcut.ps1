@@ -47,6 +47,11 @@ class ShortcutAction : ActionBase {
             if (-not $this.Definition.ContainsKey($name)) { continue }
             $want = Expand-FaiPath ([string]$this.Definition[$name])
             $have = Expand-FaiPath ([string]$now[$name])
+            if ($name -eq 'IconLocation') {
+                # Gerçek kısayol sağlayıcısı 'yol,indeks' döndürür:'x.ico' ile 'x.ico,0' aynıdır.
+                if ($want -notmatch ',-?\d+$') { $want += ',0' }
+                if ($have -notmatch ',-?\d+$') { $have += ',0' }
+            }
             if ($want -ne $have) { return $false }
         }
         return $true
