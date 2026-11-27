@@ -36,6 +36,10 @@ jobs:
         shell: pwsh
         run: ./build/TweaksDoc.ps1 -Check
 
+      - name: README profil bölümü güncel mi (build/ProfileDoc.ps1)
+        shell: pwsh
+        run: ./build/ProfileDoc.ps1 -Check
+
       - name: Birim testleri (Pester)
         shell: pwsh
         run: |
