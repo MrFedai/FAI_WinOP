@@ -93,10 +93,23 @@ class RegistryAction : ActionBase {
             }
             return $snap
         }
+        $kind = $Ctx.Registry.GetValueKind($path, $name)
+        if ([RegistryAction]::Kinds() -cnotcontains $kind) {
+            # REG_NONE / bilinmeyen tür: ham tür numarası + bayt (JSON'a yazılabilir int dizisi).
+            $raw = $Ctx.Registry.GetRawValue($path, $name)
+            if ($null -ne $raw) {
+                return @{
+                    Exists  = $true
+                    Kind    = 'Raw'
+                    RawType = [int]$raw['Type']
+                    Bytes   = [int[]]@($raw['Bytes'] | ForEach-Object { [int]$_ })
+                }
+            }
+        }
         return @{
             Exists = $true
             Value  = $Ctx.Registry.GetValue($path, $name)
-            Kind   = $Ctx.Registry.GetValueKind($path, $name)
+            Kind   = $kind
         }
     }
 
@@ -115,7 +128,11 @@ class RegistryAction : ActionBase {
     [void] Revert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
         $path = [string]$this.Definition['Path']
         $name = [string]$this.Definition['Name']
-        if ($Snapshot['Exists']) {
+        if ($Snapshot['Exists'] -and [string]$Snapshot['Kind'] -ceq 'Raw') {
+            $bytes = [byte[]]@(@($Snapshot['Bytes']) | ForEach-Object { [byte][int]$_ })
+            $Ctx.Registry.SetRawValue($path, $name, [int]$Snapshot['RawType'], $bytes)
+        }
+        elseif ($Snapshot['Exists']) {
             $kind = [string]$Snapshot['Kind']
             $value = ConvertTo-FaiRegistryValue -Value $Snapshot['Value'] -Kind $kind
             $Ctx.Registry.SetValue($path, $name, $value, $kind)
@@ -300,7 +317,13 @@ class RegistryEachAction : ActionBase {
         foreach ($k in $this.Targets($Ctx)) {
             $p = $this.KeyPath($k)
             if ($Ctx.Registry.ValueExists($p, $name)) {
-                [void]$entries.Add(@{ Key = $k; Exists = $true; Value = $Ctx.Registry.GetValue($p, $name); Kind = $Ctx.Registry.GetValueKind($p, $name) })
+                $vk = $Ctx.Registry.GetValueKind($p, $name)
+                $raw = $null
+                if ([RegistryAction]::Kinds() -cnotcontains $vk) { $raw = $Ctx.Registry.GetRawValue($p, $name) }
+                if ($null -ne $raw) {
+                    [void]$entries.Add(@{ Key = $k; Exists = $true; Kind = 'Raw'; RawType = [int]$raw['Type']; Bytes = [int[]]@($raw['Bytes'] | ForEach-Object { [int]$_ }) })
+                }
+                else { [void]$entries.Add(@{ Key = $k; Exists = $true; Value = $Ctx.Registry.GetValue($p, $name); Kind = $vk }) }
             }
             else { [void]$entries.Add(@{ Key = $k; Exists = $false }) }
         }
@@ -320,7 +343,10 @@ class RegistryEachAction : ActionBase {
             if ($null -eq $entry) { continue }
             $p = $this.KeyPath([string]$entry['Key'])
             if (-not $Ctx.Registry.KeyExists($p)) { continue }
-            if ($entry['Exists']) {
+            if ($entry['Exists'] -and [string]$entry['Kind'] -ceq 'Raw') {
+                $Ctx.Registry.SetRawValue($p, $name, [int]$entry['RawType'], [byte[]]@(@($entry['Bytes']) | ForEach-Object { [byte][int]$_ }))
+            }
+            elseif ($entry['Exists']) {
                 $kind = [string]$entry['Kind']
                 $Ctx.Registry.SetValue($p, $name, (ConvertTo-FaiRegistryValue -Value $entry['Value'] -Kind $kind), $kind)
             }

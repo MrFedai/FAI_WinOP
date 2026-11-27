@@ -82,6 +82,48 @@ class WindowsRegistryProvider : IRegistryProvider {
         finally { $k.Dispose() }
     }
 
+    # advapi32 P/Invoke tipi yalnız ilk ham çağrıda yüklenir (dosya yüklenince / Linux'ta değil).
+    hidden static [void] EnsureNative() {
+        if ('FaiWinOP.Native.RegistryRaw' -as [type]) { return }
+        Add-Type -TypeDefinition (Get-FaiNativeSource -Name 'RegistryRaw') -Language CSharp -ErrorAction Stop
+    }
+
+    [hashtable] GetRawValue([string] $Path, [string] $Name) {
+        $k = $this.OpenKey($Path, 'Read')
+        if ($null -eq $k) { return $null }
+        try {
+            if (@($k.GetValueNames()) -notcontains $Name) { return $null }
+            [WindowsRegistryProvider]::EnsureNative()
+            $type = 0
+            $size = 0
+            $rc = [FaiWinOP.Native.RegistryRaw]::QueryValue($k.Handle, $Name, [IntPtr]::Zero, [ref]$type, $null, [ref]$size)
+            for ($try = 0; $try -lt 5; $try++) {
+                if ($rc -ne 0 -and $rc -ne 234) { throw "RegQueryValueExW hata kodu $rc ($Path\$Name)" }
+                $buf = New-Object 'byte[]' ([Math]::Max($size, 1))
+                $size = $buf.Length
+                $rc = [FaiWinOP.Native.RegistryRaw]::QueryValue($k.Handle, $Name, [IntPtr]::Zero, [ref]$type, $buf, [ref]$size)
+                if ($rc -eq 0) {
+                    $out = New-Object 'byte[]' $size
+                    [System.Array]::Copy($buf, $out, $size)
+                    return @{ Type = [int]$type; Bytes = $out }
+                }
+            }
+            throw "RegQueryValueExW tamamlanamadı ($Path\$Name)"
+        }
+        finally { $k.Dispose() }
+    }
+
+    [void] SetRawValue([string] $Path, [string] $Name, [int] $Type, [byte[]] $Bytes) {
+        $k = $this.OpenKey($Path, 'Create')
+        try {
+            [WindowsRegistryProvider]::EnsureNative()
+            $data = [byte[]]@($Bytes)
+            $rc = [FaiWinOP.Native.RegistryRaw]::SetValue($k.Handle, $Name, 0, $Type, $data, $data.Length)
+            if ($rc -ne 0) { throw "RegSetValueExW hata kodu $rc ($Path\$Name)" }
+        }
+        finally { $k.Dispose() }
+    }
+
     [void] DeleteEmptyKey([string] $Path) {
         $parts = [WindowsRegistryProvider]::SplitPath($Path)
         $sub = $parts['SubKey']

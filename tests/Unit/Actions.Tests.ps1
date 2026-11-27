@@ -87,6 +87,27 @@ Describe 'RegistryAction' {
         ($ctx.Registry.GetValue($script:Key, 'V') -join ',') | Should -Be '7,8'
     }
 
+    It 'REG_NONE ve bilinmeyen tür (8): Apply → Revert ham tür + baytlarla birebir döner (JSON gidiş-dönüşüyle de)' -ForEach @(
+        @{ T = 0; B = [byte[]]@(1, 2, 255, 0) }
+        @{ T = 8; B = [byte[]]@(9, 0, 0, 0, 128, 7) }
+    ) {
+        foreach ($viaJson in @($false, $true)) {
+            $ctx = New-Ctx
+            $ctx.Registry.SeedRaw($script:Key, 'R', $T, $B)
+            $a = New-Reg @{ Path = $script:Key; Name = 'R'; Value = 5; Kind = 'DWord' }
+            $snap = $a.Snapshot($ctx)
+            $snap['Kind'] | Should -BeExactly 'Raw'
+            $snap['RawType'] | Should -Be $T
+            if ($viaJson) { $snap = ConvertFrom-JsonText (ConvertTo-Json $snap -Depth 5) }
+            $a.Apply($ctx)
+            $ctx.Registry.GetValueKind($script:Key, 'R') | Should -Be 'DWord'
+            $a.Revert($ctx, $snap)
+            $raw = $ctx.Registry.GetRawValue($script:Key, 'R')
+            $raw['Type'] | Should -Be $T
+            ($raw['Bytes'] -join ',') | Should -Be ($B -join ',')
+        }
+    }
+
     It 'Revert: snapshot''ta olmayan değer yoksa yazma yapmaz' {
         $ctx = New-Ctx
         $a = New-Reg @{ Path = $script:Key; Name = 'V'; Value = 1; Kind = 'DWord' }

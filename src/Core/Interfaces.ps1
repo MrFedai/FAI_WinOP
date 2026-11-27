@@ -16,6 +16,10 @@ class IRegistryProvider {
     [string] GetValueKind([string] $Path, [string] $Name) { throw [System.NotImplementedException]::new('IRegistryProvider.GetValueKind') }
     # Anahtar yoksa oluşturur. YAZMA.
     [void] SetValue([string] $Path, [string] $Name, [object] $Value, [string] $Kind) { throw [System.NotImplementedException]::new('IRegistryProvider.SetValue') }
+    # Ham okuma: @{ Type = <int ham tür (REG_*)>; Bytes = <byte[]> }; değer yoksa $null. REG_NONE / bilinmeyen tür için.
+    [hashtable] GetRawValue([string] $Path, [string] $Name) { throw [System.NotImplementedException]::new('IRegistryProvider.GetRawValue') }
+    # Ham yazma: tür numarası aynen korunur. Anahtar yoksa oluşturur. YAZMA.
+    [void] SetRawValue([string] $Path, [string] $Name, [int] $Type, [byte[]] $Bytes) { throw [System.NotImplementedException]::new('IRegistryProvider.SetRawValue') }
     # Değer yoksa sessizce geçer. YAZMA.
     [void] DeleteValue([string] $Path, [string] $Name) { throw [System.NotImplementedException]::new('IRegistryProvider.DeleteValue') }
     # Anahtarda değer ve alt anahtar yoksa siler; anahtar yoksa ya da doluysa sessizce geçer. YAZMA.

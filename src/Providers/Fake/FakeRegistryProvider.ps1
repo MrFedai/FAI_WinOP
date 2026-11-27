@@ -88,6 +88,46 @@ class FakeRegistryProvider : IRegistryProvider {
         $this.Store($Path, $Name, $Value, $Kind)
     }
 
+    # Ham türlü (REG_NONE=0, REG_RESOURCE_LIST=8 vb.) başlangıç değeri kurar (yazma sayılmaz).
+    [void] SeedRaw([string] $Path, [string] $Name, [int] $Type, [byte[]] $Bytes) {
+        $this.StoreRaw($Path, $Name, $Type, $Bytes)
+    }
+
+    hidden [void] StoreRaw([string] $Path, [string] $Name, [int] $Type, [byte[]] $Bytes) {
+        $p = [FakeRegistryProvider]::NormPath($Path)
+        if (-not $this.Keys.ContainsKey($p)) { $this.Keys[$p] = @{} }
+        if (-not $this.Spelling.ContainsKey($p)) { $this.Spelling[$p] = $Path.TrimEnd('\') }
+        $kind = 'Unknown'
+        $map = @{ 0 = 'None'; 1 = 'String'; 2 = 'ExpandString'; 3 = 'Binary'; 4 = 'DWord'; 7 = 'MultiString'; 11 = 'QWord' }
+        if ($map.ContainsKey($Type)) { $kind = $map[$Type] }
+        $copy = [byte[]]@($Bytes)
+        $this.Keys[$p][$Name.ToLowerInvariant()] = @{ Name = $Name; Value = $copy; Kind = $kind; RawType = $Type; RawBytes = $copy }
+    }
+
+    # Ham tür + bayt (SeedRaw / SetRawValue ile yazılmışsa); diğer değerler için bilinen türden türetilir.
+    [hashtable] GetRawValue([string] $Path, [string] $Name) {
+        if (-not $this.ValueExists($Path, $Name)) { return $null }
+        $e = $this.Keys[[FakeRegistryProvider]::NormPath($Path)][$Name.ToLowerInvariant()]
+        if ($e.ContainsKey('RawType')) { return @{ Type = [int]$e['RawType']; Bytes = [byte[]]@($e['RawBytes']) } }
+        $v = $e['Value']
+        switch ([string]$e['Kind']) {
+            'Binary' { return @{ Type = 3; Bytes = [byte[]]@($v) } }
+            'DWord' { return @{ Type = 4; Bytes = [System.BitConverter]::GetBytes([int]$v) } }
+            'QWord' { return @{ Type = 11; Bytes = [System.BitConverter]::GetBytes([long]$v) } }
+            'String' { return @{ Type = 1; Bytes = [System.Text.Encoding]::Unicode.GetBytes([string]$v + [char]0) } }
+            'ExpandString' { return @{ Type = 2; Bytes = [System.Text.Encoding]::Unicode.GetBytes([string]$v + [char]0) } }
+            default { return @{ Type = 7; Bytes = [System.Text.Encoding]::Unicode.GetBytes((@($v) -join [string][char]0) + [string][char]0 + [char]0) } }
+        }
+        return $null
+    }
+
+    [void] SetRawValue([string] $Path, [string] $Name, [int] $Type, [byte[]] $Bytes) {
+        $this.WriteCount++
+        [void]$this.WriteLog.Add("SetRawValue $Path $Name")
+        if ($this.FailOnName -and $Name -eq $this.FailOnName) { throw "Sahte yazma hatası: $Name" }
+        $this.StoreRaw($Path, $Name, $Type, $Bytes)
+    }
+
     [void] DeleteValue([string] $Path, [string] $Name) {
         $this.WriteCount++
         [void]$this.WriteLog.Add("DeleteValue $Path $Name")
