@@ -99,6 +99,71 @@ Describe 'BackupStore' {
     }
 }
 
+Describe 'BackupStore: atomik kayıt ve kayıt başına geri alındı (v0.1.1)' {
+    BeforeAll {
+        function Write-Raw([string] $Path, [string] $Text) {
+            [System.IO.File]::WriteAllText($Path, $Text, (New-Object System.Text.UTF8Encoding($false)))
+        }
+    }
+
+    It 'kayıt geçici dosya üzerinden yer değiştirir: .tmp kalmaz, ikinci yazım içeriği günceller' {
+        $store = [BackupStore]::new((Join-Path $TestDrive 'atomic'))
+        $s = $store.BeginSession('demo')
+        $s.SaveCount | Should -Be 1
+        $s.AddEntry('t.one', 0, @{ Type = 'Registry'; Path = 'HKCU:\X'; Name = 'N'; Value = 1; Kind = 'DWord' }, @{ Exists = $false })
+        $s.SaveCount | Should -Be 2
+        @(Get-ChildItem -LiteralPath $store.Root -File | ForEach-Object { $_.Name }) | Should -Be @($s.Id + '.json')
+        ([BackupStore]::new($store.Root)).Load($s.Id).Entries.Count | Should -Be 1
+    }
+
+    It 'eski çalıştırmadan kalan .tmp kaydı bozmaz, oturum listesine girmez' {
+        $store = [BackupStore]::new((Join-Path $TestDrive 'stale'))
+        $s = $store.BeginSession('demo')
+        Write-Raw ($s.Path + '.tmp') '{"yarım'
+        $s.Save()
+        Test-Path -LiteralPath ($s.Path + '.tmp') | Should -BeFalse
+        $store.ListSessionIds() | Should -Be @($s.Id)
+    }
+
+    It 'bozuk (yarım yazılmış) oturum Load ile okunmaz, açık hata' {
+        $store = [BackupStore]::new((Join-Path $TestDrive 'corrupt-load'))
+        [void](New-Item -ItemType Directory -Path $store.Root -Force)
+        Write-Raw (Join-Path $store.Root '20990101-000000-000-00.json') '{"Id": "20990101-000000-000-00", "Entries": [ {"TweakId'
+        { $store.Load('20990101-000000-000-00') } | Should -Throw '*bozuk*'
+    }
+
+    It 'GetLatest bozuk ya da boş son oturumları uyarıyla atlar, öncekini döndürür' {
+        $store = [BackupStore]::new((Join-Path $TestDrive 'corrupt-latest'))
+        $first = $store.BeginSession('a')
+        Write-Raw (Join-Path $store.Root '20990101-000000-000-00.json') '{"Id": "20990101-000000-000-00", "Entr'
+        Write-Raw (Join-Path $store.Root '20990101-000000-000-01.json') ''
+        $store.GetLatest().Id | Should -Be $first.Id
+        @($store.Warnings).Count | Should -Be 2
+        @($store.Warnings)[0] | Should -BeLike '*bozuk*20990101-000000-000-01.json*'
+        @($store.Warnings)[1] | Should -BeLike '*bozuk*20990101-000000-000-00.json*'
+    }
+
+    It 'kayıt başına geri alındı ve atlama işareti diske yazılır' {
+        $store = [BackupStore]::new((Join-Path $TestDrive 'entry-undone'))
+        $s = $store.BeginSession('demo')
+        foreach ($n in 0..2) {
+            $s.AddEntry('t.one', $n, @{ Type = 'Registry'; Path = 'HKCU:\X'; Name = "N$n"; Value = 1; Kind = 'DWord' }, @{ Exists = $false })
+        }
+        $s.MarkEntryUndone(2)
+        $back = ([BackupStore]::new($store.Root)).Load($s.Id)
+        $back.IsEntryUndone(2) | Should -BeTrue
+        $back.IsEntryUndone(1) | Should -BeFalse
+        $back.IsUndone() | Should -BeFalse
+
+        $back.CloseSkipping([int[]]@(1))
+        $again = ([BackupStore]::new($store.Root)).Load($s.Id)
+        $again.IsUndone() | Should -BeTrue
+        [string]$again.Entries[1]['UndoSkippedAt'] | Should -Not -BeNullOrEmpty
+        [string]$again.Entries[0]['UndoSkippedAt'] | Should -BeNullOrEmpty
+        ([BackupStore]::new($store.Root)).GetLatest() | Should -BeNullOrEmpty
+    }
+}
+
 Describe 'BackupStore: sahip denetimi (Security)' {
     BeforeAll {
         $script:User = 'S-1-5-21-1000-1000-1000-1001'

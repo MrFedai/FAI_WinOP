@@ -687,3 +687,142 @@ Describe 'Faz 7 tweak alanları: First, AlwaysConfirm, Tool ve eylem koşulu Whe
         $ctx.Registry.Dump() -join "`n" | Should -Be $before
     }
 }
+
+Describe 'v0.1.1 geri alma sağlamlığı: kayıt başına geri alındı, -SkipFailed, devam aynı oturuma' {
+    BeforeAll {
+        # A, B, C = 1; tweak üçünü 2 yapar. B'nin geri alınması (SetValue B 1) FailOnName ile patlatılır.
+        function New-ThreeEnv {
+            $ctx = New-Env
+            foreach ($n in 'A', 'B', 'C') { $ctx.Registry.Seed($script:Key, $n, 1, 'DWord') }
+            $cat = New-Catalog (New-Tweak -Id 'test.three' -Actions @((RegSet 'A' 2), (RegSet 'B' 2), (RegSet 'C' 2)))
+            [void](Invoke-FaiEngine -Profile (New-Profile @('test.three')) -Context $ctx -Catalog $cat 6>$null)
+            return @{ Ctx = $ctx; Cat = $cat; Id = $ctx.Backup.ListSessionIds()[0] }
+        }
+        function New-ResumeCatalog {
+            return (New-Catalog @((New-Tweak -Id 'test.r1' -Actions @((RegSet 'A' 2))), (New-Tweak -Id 'test.r2' -Actions @((RegSet 'B' 2)))))
+        }
+    }
+
+    It 'başarısız kayıt oturumu açık bırakır; yeniden -Undo yalnız kalanları dener' {
+        $g = New-ThreeEnv
+        $g.Ctx.Registry.FailOnName = 'B'
+        $u1ctx = Copy-Env $g.Ctx
+        $u1 = Invoke-FaiEngine -Undo -Context $u1ctx -Catalog $g.Cat 6>$null
+        @($u1.Items | Where-Object { $_.Status -eq 'Reverted' }).Count | Should -Be 2
+        @($u1.Items | Where-Object { $_.Status -eq 'Failed' }).Count | Should -Be 1
+        $u1ctx.Prompt.Asked.Count | Should -Be 1 -Because 'etkileşimli kipte atlama sorulur (yanıt yok = hayır)'
+        $s = ([BackupStore]::new($g.Ctx.Backup.Root)).Load($g.Id)
+        $s.IsUndone() | Should -BeFalse
+        $s.IsEntryUndone(0) | Should -BeTrue
+        $s.IsEntryUndone(1) | Should -BeFalse
+        $s.IsEntryUndone(2) | Should -BeTrue
+
+        # Geri alınan değerler sonradan değişirse ikinci deneme onlara dokunmamalı.
+        $g.Ctx.Registry.Seed($script:Key, 'A', 5, 'DWord')
+        $g.Ctx.Registry.Seed($script:Key, 'C', 5, 'DWord')
+        $g.Ctx.Registry.FailOnName = ''
+        $u2 = Invoke-FaiEngine -Undo -Context (Copy-Env $g.Ctx) -Catalog $g.Cat 6>$null
+        $u2.HasFailures() | Should -BeFalse
+        @($u2.Items | Where-Object { $_.Status -eq 'Reverted' }).Count | Should -Be 1
+        $u2.Find('(oturum)').Reason | Should -Be '2 kayıt'
+        $g.Ctx.Registry.GetValue($script:Key, 'B') | Should -Be 1
+        $g.Ctx.Registry.GetValue($script:Key, 'A') | Should -Be 5
+        $g.Ctx.Registry.GetValue($script:Key, 'C') | Should -Be 5
+        ([BackupStore]::new($g.Ctx.Backup.Root)).GetLatest() | Should -BeNullOrEmpty
+    }
+
+    It '-Unattended: soru sorulmaz, atlanmaz, oturum açık kalır' {
+        $g = New-ThreeEnv
+        $g.Ctx.Registry.FailOnName = 'B'
+        $uctx = Copy-Env $g.Ctx -Unattended
+        $r = Invoke-FaiEngine -Undo -Context $uctx -Catalog $g.Cat 6>$null
+        $r.HasFailures() | Should -BeTrue
+        $uctx.Prompt.Asked.Count | Should -Be 0
+        ([BackupStore]::new($g.Ctx.Backup.Root)).GetLatest().Id | Should -Be $g.Id
+    }
+
+    It '-SkipFailed hatalıyı atlar, oturumu kapatır, atlananı raporda gösterir' {
+        $g = New-ThreeEnv
+        $g.Ctx.Registry.FailOnName = 'B'
+        $uctx = Copy-Env $g.Ctx -Unattended
+        $r = Invoke-FaiEngine -Undo -SkipFailed -Context $uctx -Catalog $g.Cat 6>$null
+        $r.HasFailures() | Should -BeFalse
+        $uctx.Prompt.Asked.Count | Should -Be 0
+        $row = @($r.Items | Where-Object { $_.TweakId -eq 'test.three' -and $_.Status -eq 'Skipped' })
+        $row.Count | Should -Be 1
+        $row[0].Title | Should -Be '2. eylem'
+        $row[0].Reason | Should -BeLike 'geri alınamadı, atlandı: *Sahte yazma hatası*'
+        @($r.Items | Where-Object { $_.Title -like 'Hatalı kayıtlar atlandı*' }).Count | Should -Be 1
+        $s = ([BackupStore]::new($g.Ctx.Backup.Root)).Load($g.Id)
+        $s.IsUndone() | Should -BeTrue
+        [string]$s.Entries[1]['UndoSkippedAt'] | Should -Not -BeNullOrEmpty
+        $g.Ctx.Registry.GetValue($script:Key, 'A') | Should -Be 1
+        $g.Ctx.Registry.GetValue($script:Key, 'C') | Should -Be 1
+    }
+
+    It 'etkileşimli onay (E) hatalıları atlar ve oturumu kapatır' {
+        $g = New-ThreeEnv
+        $g.Ctx.Registry.FailOnName = 'B'
+        $uctx = Copy-Env $g.Ctx -Answers @('e')
+        $r = Invoke-FaiEngine -Undo -Context $uctx -Catalog $g.Cat 6>$null
+        $uctx.Prompt.Asked[0].Message | Should -BeLike '*1 kayıt geri alınamadı (test.three)*'
+        $r.HasFailures() | Should -BeFalse
+        ([BackupStore]::new($g.Ctx.Backup.Root)).GetLatest() | Should -BeNullOrEmpty
+    }
+
+    It 'oturum dosyası eylem başına bir kez yazılır (snapshot uygulamadan önce, ikinci tam yazım yok)' {
+        $ctx = New-Env
+        $cat = New-Catalog (New-Tweak -Id 'test.two' -Actions @((RegSet 'X' 1), (RegSet 'Y' 1)))
+        $engine = [Engine]::new($ctx, $cat)
+        [void]$engine.Run((New-Profile @('test.two')))
+        $engine.Session.SaveCount | Should -Be 3 -Because 'oturum açılışı + eylem başına bir kayıt'
+    }
+
+    It 'devam: -Session ile aynı oturuma yazar, tek -Undo hepsini geri alır, devam komutuna kimlik eklenir' {
+        $ctx = New-Env
+        $ctx.Registry.Seed($script:Key, 'A', 1, 'DWord')
+        $ctx.Registry.Seed($script:Key, 'B', 1, 'DWord')
+        $before = Get-State $ctx
+        $cat = New-ResumeCatalog
+        $c1 = Copy-Env $ctx
+        $c1.ResumeCommand = 'powershell.exe -File "x.ps1" -Profile "p"'
+        [void](Invoke-FaiEngine -Profile (New-Profile @('test.r1')) -Context $c1 -Catalog $cat 6>$null)
+        $id = $ctx.Backup.ListSessionIds()[0]
+        $c1.ResumeCommand | Should -Be ('powershell.exe -File "x.ps1" -Profile "p" -Session "{0}"' -f $id)
+
+        $c2 = Copy-Env $ctx
+        $c2.ResumeCommand = $c1.ResumeCommand
+        [void](Invoke-FaiEngine -Profile (New-Profile @('test.r2')) -Context $c2 -Catalog $cat -Session $id 6>$null)
+        $c2.Backup.SessionsOpened | Should -Be 0
+        $ctx.Backup.ListSessionIds() | Should -Be @($id)
+        ([regex]::Matches($c2.ResumeCommand, '-Session')).Count | Should -Be 1
+        ([BackupStore]::new($ctx.Backup.Root)).Load($id).Entries.Count | Should -Be 2
+
+        $r = Invoke-FaiEngine -Undo -Context (Copy-Env $ctx) -Catalog $cat 6>$null
+        $r.HasFailures() | Should -BeFalse
+        Get-State $ctx | Should -Be $before
+    }
+
+    It 'devam: <Case> oturuma yazılmaz; yeni oturum, raporda uyarı' -ForEach @(
+        @{ Case = 'geri alınmış' }, @{ Case = 'güvenilmeyen' }, @{ Case = 'olmayan' }
+    ) {
+        $ctx = New-Env
+        $cat = New-ResumeCatalog
+        [void](Invoke-FaiEngine -Profile (New-Profile @('test.r1')) -Context $ctx -Catalog $cat 6>$null)
+        $id = $ctx.Backup.ListSessionIds()[0]
+        $c2 = Copy-Env $ctx
+        if ($Case -eq 'geri alınmış') { [void](Invoke-FaiEngine -Undo -Context (Copy-Env $ctx) -Catalog $cat 6>$null) }
+        if ($Case -eq 'güvenilmeyen') {
+            $sec = [FakeFileSecurityProvider]::new()
+            $sec.SeedFile((Join-Path $ctx.Backup.Root ($id + '.json')), 'S-1-5-21-1000-1000-1000-1001')
+            $c2.Backup.Security = $sec
+        }
+        $want = $id
+        if ($Case -eq 'olmayan') { $want = '20990101-000000-000-00' }
+        $r = Invoke-FaiEngine -Profile (New-Profile @('test.r2')) -Context $c2 -Catalog $cat -Session $want 6>$null
+        $c2.Backup.SessionsOpened | Should -Be 1
+        $ctx.Backup.ListSessionIds().Count | Should -Be 2
+        $r.Find('(yedek)').Title | Should -Be 'Devam oturumu kullanılmadı'
+        $r.Find('test.r2').Status | Should -Be 'Applied'
+    }
+}

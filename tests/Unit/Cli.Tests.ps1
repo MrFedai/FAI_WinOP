@@ -161,6 +161,9 @@ Describe 'Invoke-FaiCli' {
         @{ B = @{ List = $true; Undo = $true } }
         @{ B = @{ Unattended = $true } }
         @{ B = @{ Session = 'abc' } }
+        @{ B = @{ Session = 'abc'; UpdatesOn = $true } }
+        @{ B = @{ SkipFailed = $true } }
+        @{ B = @{ SkipFailed = $true; Profile = 'x' } }
         @{ B = @{ Skip = @('ui.alpha') } }
     ) {
         $code = Invoke-Quiet { Invoke-FaiCli -Bound $B -Context (New-Env) -Catalog (New-TestCatalog) }
@@ -195,6 +198,34 @@ Describe 'Invoke-FaiCli' {
         $ctx.Registry.ValueExists($script:Key, 'Beta') | Should -BeFalse
         Invoke-Quiet { Invoke-FaiCli -Bound @{ Undo = $true } -Context $ctx -Catalog $cat } | Should -Be 0
         $ctx.Registry.ValueExists($script:Key, 'Alpha') | Should -BeFalse
+    }
+
+    It '-Undo hatada oturumu açık bırakır (-Unattended soru sormaz); -Undo -SkipFailed kapatır' {
+        $ctx = New-Env
+        $ctx.Registry.Seed($script:Key, 'Alpha', 0, 'DWord')
+        $cat = New-TestCatalog
+        $path = Write-Profile 'skip' @('ui.alpha', 'ui.beta')
+        Invoke-Quiet { Invoke-FaiCli -Bound @{ Profile = $path } -Context $ctx -Catalog $cat } | Should -Be 0
+        $ctx.Registry.FailOnName = 'Alpha'
+        Invoke-Quiet { Invoke-FaiCli -Bound @{ Undo = $true; Unattended = $true } -Context $ctx -Catalog $cat } | Should -Be 1
+        $ctx.Prompt.Asked.Count | Should -Be 0
+        $ctx.Backup.GetLatest() | Should -Not -BeNullOrEmpty
+        $ctx.Registry.ValueExists($script:Key, 'Beta') | Should -BeFalse
+        Invoke-Quiet { Invoke-FaiCli -Bound @{ Undo = $true; SkipFailed = $true; Unattended = $true } -Context $ctx -Catalog $cat } | Should -Be 0
+        $ctx.Backup.GetLatest() | Should -BeNullOrEmpty
+    }
+
+    It '-Profile -Session: devam aynı oturuma yazar' {
+        $ctx = New-Env
+        $cat = New-TestCatalog
+        Invoke-Quiet { Invoke-FaiCli -Bound @{ Profile = (Write-Profile 'd1' @('ui.alpha')) } -Context $ctx -Catalog $cat } | Should -Be 0
+        $id = $ctx.Backup.ListSessionIds()[0]
+        Invoke-Quiet { Invoke-FaiCli -Bound @{ Profile = (Write-Profile 'd2' @('ui.beta')); Session = $id } -Context $ctx -Catalog $cat } | Should -Be 0
+        $ctx.Backup.ListSessionIds() | Should -Be @($id)
+        $ctx.Backup.Load($id).Entries.Count | Should -Be 2
+        Invoke-Quiet { Invoke-FaiCli -Bound @{ Undo = $true } -Context $ctx -Catalog $cat } | Should -Be 0
+        $ctx.Registry.ValueExists($script:Key, 'Alpha') | Should -BeFalse
+        $ctx.Registry.ValueExists($script:Key, 'Beta') | Should -BeFalse
     }
 
     It '-Only profil olmadan yalnız verilenleri çalıştırır ve araçlara izin verir (onaylı)' {
