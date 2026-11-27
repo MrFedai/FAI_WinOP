@@ -9,7 +9,8 @@ BeforeAll {
     function Invoke-ProfileDoc([string[]] $Arguments) {
         # 5.1: 2>&1 ile gelen stderr satırı ErrorRecord olur; Stop altında testi düşürmesin
         $ErrorActionPreference = 'Continue'
-        $out = & pwsh -NoProfile -File $script:Script @Arguments 2>&1
+        # O anki kabuk (CI'da pwsh 7 ve powershell.exe 5.1; Windows'ta pwsh kurulu olmayabilir)
+        $out = & (Get-Process -Id $PID).Path -NoProfile -NonInteractive -File $script:Script @Arguments 2>&1
         return @{ Exit = $LASTEXITCODE; Out = ($out -join "`n") }
     }
 }
