@@ -65,4 +65,11 @@ class ScheduledTaskAction : ActionBase {
         if (-not $now) { return ('{0} [görev yok, atlanır]' -f $this.Describe()) }
         return ('{0} [şu an: {1}]' -f $this.Describe(), $now)
     }
+
+    [string] PreviewRevert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
+        if (-not $Snapshot['Exists']) { return ('Zamanlanmış görev {0}: kayıtta yoktu, geri alınca dokunulmaz' -f $this.TaskPath()) }
+        $now = $Ctx.Tasks.GetTaskState($this.TaskPath())
+        if (-not $now) { return ('Zamanlanmış görev {0}: şu an yok, geri alma atlanır' -f $this.TaskPath()) }
+        return ('Zamanlanmış görev {0}: şu an {1} → geri alınca {2}' -f $this.TaskPath(), $now, $Snapshot['State'])
+    }
 }

@@ -142,6 +142,24 @@ class PowerAction : ActionBase {
         }
         return ('{0} [şu an: {1}]' -f $this.Describe(), ($parts -join ', '))
     }
+
+    [string] PreviewRevert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
+        if ($this.IsSchemeSwitch()) {
+            return ('Güç planı: şu an etkin {0} → geri alınca etkin {1}' -f $Ctx.Power.GetActiveScheme(), $Snapshot['Active'])
+        }
+        $g = [string]$Snapshot['Scheme']
+        $parts = New-Object 'System.Collections.Generic.List[string]'
+        foreach ($side in $this.Sides()) {
+            if (-not $Snapshot.ContainsKey($side)) { continue }
+            $label = 'pilde'
+            if ($side -eq 'AC') { $label = 'prizde' }
+            $now = 'bilinmiyor'
+            if ($Ctx.Power.ResolveScheme($g)) { $now = [string]$Ctx.Power.GetValue($g, [string]$this.Definition['Subgroup'], [string]$this.Definition['Setting'], ($side -eq 'AC')) }
+            $parts.Add(('{0}: şu an {1} → geri alınca {2}' -f $label, $now, $Snapshot[$side]))
+        }
+        if ($parts.Count -eq 0) { return ('Güç ayarı {0}/{1}: snapshot alanı yok' -f $this.Definition['Subgroup'], $this.Definition['Setting']) }
+        return ('Güç ayarı {0}/{1} — {2}' -f $this.Definition['Subgroup'], $this.Definition['Setting'], ($parts -join '; '))
+    }
 }
 
 # PowerSchemeAction: aracın kendi güç planı. Yoksa Base'den kopyalanır (Base kopyalanamazsa — ör. Balanced silinmiş —
@@ -213,6 +231,12 @@ class PowerSchemeAction : ActionBase {
         if ($Ctx.Power.ResolveScheme($this.Guid())) { $state = 'plan var' }
         return ('{0} [şu an: {1}, etkin {2}]' -f $this.Describe(), $state, $Ctx.Power.GetActiveScheme())
     }
+
+    [string] PreviewRevert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
+        $will = 'etkin plan {0} olacak' -f $Snapshot['Active']
+        if (-not $Snapshot['Existed']) { $will += ', aracın planı silinecek' }
+        return ('Güç planı {0}: şu an etkin {1} → geri alınca {2}' -f $this.Guid(), $Ctx.Power.GetActiveScheme(), $will)
+    }
 }
 
 # HibernateAction: hazırda bekletme (powercfg /hibernate). Kapalıyken pil planındaki "hazırda beklet" ayarı işlemez.
@@ -249,5 +273,13 @@ class HibernateAction : ActionBase {
         $now = 'kapalı'
         if ($Ctx.Power.GetHibernate()) { $now = 'açık' }
         return ('{0} [şu an: {1}]' -f $this.Describe(), $now)
+    }
+
+    [string] PreviewRevert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
+        $now = 'kapalı'
+        if ($Ctx.Power.GetHibernate()) { $now = 'açık' }
+        $was = 'kapalı'
+        if ($Snapshot['Enabled']) { $was = 'açık' }
+        return ('Hazırda bekletme: şu an {0} → geri alınca {1}' -f $now, $was)
     }
 }

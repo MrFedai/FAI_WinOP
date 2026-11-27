@@ -518,6 +518,21 @@ Describe 'Dry-run' {
         $dry.Backup.SessionsOpened | Should -Be 0
         (Copy-Env $ctx).Backup.GetLatest() | Should -Not -BeNullOrEmpty
     }
+
+    It 'Undo -DryRun: önizleme snapshot''taki önceki değeri gösterir (dönülecek durum), sıfır yazma' {
+        $ctx = New-Env
+        $ctx.Registry.Seed($script:Key, 'Existing', 7, 'DWord')
+        $cat = New-Catalog (New-Tweak -Id 'test.one' -Actions @((RegSet 'Existing' 2), (RegSet 'New' 1)))
+        [void](Invoke-FaiEngine -Profile (New-Profile @('test.one')) -Context $ctx -Catalog $cat)
+        $writes = Get-FakeWriteCount $ctx
+
+        $dry = Copy-Env $ctx -DryRun
+        $r = Invoke-FaiEngine -Context $dry -Catalog $cat -Undo
+        $text = ($r.Items | ForEach-Object { $_.Lines }) -join "`n"
+        $text | Should -Match 'geri alınca değer 7 \(DWord\) geri yazılacak'
+        $text | Should -Match 'geri alınca değer silinecek'
+        Get-FakeWriteCount $dry | Should -Be $writes
+    }
 }
 
 Describe 'Motor — diğer davranışlar' {

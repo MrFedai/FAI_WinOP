@@ -88,4 +88,11 @@ class ServiceAction : ActionBase {
         if (-not $Ctx.Services.ServiceExists($name)) { return ('{0} [servis yok, atlanır]' -f $this.Describe()) }
         return ('{0} [şu an: başlangıç = {1}, durum = {2}]' -f $this.Describe(), $Ctx.Services.GetStartType($name), $Ctx.Services.GetStatus($name))
     }
+
+    [string] PreviewRevert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
+        $name = $this.ServiceName()
+        if (-not $Snapshot['Exists']) { return ('Servis {0}: kayıtta yoktu, geri alınca dokunulmaz' -f $name) }
+        if (-not $Ctx.Services.ServiceExists($name)) { return ('Servis {0}: şu an yok, geri alma atlanır' -f $name) }
+        return ('Servis {0}: şu an başlangıç = {1} → geri alınca {2}, durum {3}' -f $name, $Ctx.Services.GetStartType($name), $Snapshot['StartType'], $Snapshot['Status'])
+    }
 }

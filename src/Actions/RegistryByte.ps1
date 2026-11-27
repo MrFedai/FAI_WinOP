@@ -103,4 +103,11 @@ class RegistryByteAction : ActionBase {
         if ($cur -ge 0) { $now = '0x{0:X2}' -f $cur }
         return ('{0} [şu an: {1}]' -f $this.Describe(), $now)
     }
+
+    [string] PreviewRevert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
+        $cur = $this.Current($Ctx)
+        $now = 'yok'
+        if ($cur -ge 0) { $now = '0x{0:X2}' -f $cur }
+        return ('Kayıt defteri: {0} [{1}. bayt] — şu an {2} → geri alınca 0x{3:X2}' -f $this.Target(), $this.Definition['Offset'], $now, [int]$Snapshot['Byte'])
+    }
 }

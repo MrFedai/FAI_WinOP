@@ -211,6 +211,51 @@ Describe 'ServiceAction' {
     }
 }
 
+Describe 'PreviewRevert (geri alma önizlemesi)' {
+    It 'Registry: var olan değer → "şu an X → geri alınca Y", yazma yok' {
+        $ctx = New-Ctx
+        $ctx.Registry.Seed($script:Key, 'V', 2, 'DWord')
+        $a = New-Reg @{ Path = $script:Key; Name = 'V'; Value = 2; Kind = 'DWord' }
+        $line = $a.PreviewRevert($ctx, @{ Exists = $true; Value = 5; Kind = 'DWord' })
+        $line | Should -Match 'şu an 2 → geri alınca değer 5 \(DWord\) geri yazılacak'
+        $ctx.Registry.WriteCount | Should -Be 0
+    }
+
+    It 'Registry: önceden yok olan değer → değer silinecek; MissingFrom → anahtar da silinecek' {
+        $ctx = New-Ctx
+        $ctx.Registry.Seed($script:Key, 'V', 2, 'DWord')
+        $a = New-Reg @{ Path = $script:Key; Name = 'V'; Value = 2; Kind = 'DWord' }
+        $a.PreviewRevert($ctx, @{ Exists = $false }) | Should -Match 'geri alınca değer silinecek$'
+        $a.PreviewRevert($ctx, @{ Exists = $false; MissingFrom = 'HKCU:\Software\X' }) | Should -Match 'oluşturulan anahtar da silinecek \(HKCU:\\Software\\X\)'
+        $ctx.Registry.WriteCount | Should -Be 0
+    }
+
+    It 'Registry: Raw tür → ham tür numarası ve bayt sayısı' {
+        $ctx = New-Ctx
+        $a = New-Reg @{ Path = $script:Key; Name = 'V'; Value = 2; Kind = 'DWord' }
+        $a.PreviewRevert($ctx, @{ Exists = $true; Kind = 'Raw'; RawType = 0; Bytes = @(1, 2, 3) }) | Should -Match 'ham tür 0, 3 bayt geri yazılacak'
+        $ctx.Registry.WriteCount | Should -Be 0
+    }
+
+    It 'Varsayılan (ActionBase): Describe + snapshot özeti, uzun dizi kısaltılır, 120 karakteri geçmez' {
+        $ctx = New-Ctx
+        $a = [MMAgentAction]::new(@{ Type = 'MMAgent'; Feature = 'PageCombining'; Enabled = $false })
+        $line = $a.PreviewRevert($ctx, @{ Enabled = $true })
+        $line | Should -Match '^geri alınacak: .+ → önceki duruma \[Enabled=True\]$'
+        $sum = [ActionBase]::SnapshotSummary(@{ Exists = $true; Bytes = (1..50) })
+        $sum | Should -Match 'Bytes=\[1,2,3,4,… 50 öğe\]'
+        $long = [ActionBase]::SnapshotSummary(@{ A = ('x' * 200); B = ('y' * 200); C = ('z' * 200) })
+        $long.Length | Should -BeLessOrEqual 120
+    }
+
+    It 'Servis: şu an başlangıç → geri alınca snapshot başlangıcı' {
+        $ctx = New-Ctx
+        $ctx.Services.Seed('Svc', 'Disabled', 'Stopped')
+        $a = [ServiceAction]::new(@{ Type = 'Service'; Name = 'Svc'; StartType = 'Disabled' })
+        $a.PreviewRevert($ctx, @{ Exists = $true; StartType = 'Automatic'; Status = 'Running' }) | Should -Match 'şu an başlangıç = Disabled → geri alınca Automatic'
+    }
+}
+
 Describe 'Eylem fabrikası' {
     It 'Type alanına göre doğru sınıfı üretir; bilinmeyen tür hata verir' {
         (New-FaiAction @{ Type = 'Registry'; Path = 'HKCU:\a'; Name = 'n'; Value = 1; Kind = 'DWord' }).GetType().Name | Should -Be 'RegistryAction'

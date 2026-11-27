@@ -327,7 +327,7 @@ class Engine {
             try {
                 $action = New-FaiAction -Definition ([hashtable]$e['Action'])
                 if ($cx.DryRun) {
-                    [void]$report.Add($id, $title, 'Planned', 'geri alınacak', [string[]]@($action.Preview($cx)))
+                    [void]$report.Add($id, $title, 'Planned', 'geri alınacak', [string[]]@($action.PreviewRevert($cx, [hashtable]$e['Snapshot'])))
                 }
                 else {
                     $this.AddRefresh([string[]]@($e['Refresh'] | Where-Object { $_ }))

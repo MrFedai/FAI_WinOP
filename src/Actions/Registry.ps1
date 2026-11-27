@@ -189,6 +189,27 @@ class RegistryAction : ActionBase {
         }
         return ('{0} [şu an: {1}]' -f $this.Describe(), $now)
     }
+
+    [string] PreviewRevert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
+        $path = [string]$this.Definition['Path']
+        $name = [string]$this.Definition['Name']
+        $now = 'yok'
+        if ($Ctx.Registry.ValueExists($path, $name)) {
+            $now = (@($Ctx.Registry.GetValue($path, $name)) | ForEach-Object { [string]$_ }) -join ','
+        }
+        $will = ''
+        if (-not $Snapshot['Exists']) {
+            $will = 'değer silinecek'
+            if ($Snapshot['MissingFrom']) { $will += (', oluşturulan anahtar da silinecek (' + [string]$Snapshot['MissingFrom'] + ')') }
+        }
+        elseif ([string]$Snapshot['Kind'] -ceq 'Raw') {
+            $will = 'ham tür {0}, {1} bayt geri yazılacak' -f $Snapshot['RawType'], @($Snapshot['Bytes']).Count
+        }
+        else {
+            $will = 'değer {0} ({1}) geri yazılacak' -f ((@($Snapshot['Value']) | ForEach-Object { [string]$_ }) -join ','), $Snapshot['Kind']
+        }
+        return ('Kayıt defteri: {0} — şu an {1} → geri alınca {2}' -f $this.Target(), $now, $will)
+    }
 }
 
 # RegistryEachAction: Path'in her doğrudan alt anahtarına aynı değeri yazar; Exclude kalıplarına (-like, büyük/küçük harf
@@ -378,5 +399,12 @@ class RegistryEachAction : ActionBase {
         $list = $shown -join ', '
         if ($pending.Count -gt $shown.Count) { $list += (', … +{0}' -f ($pending.Count - $shown.Count)) }
         return ('{0} [değişecek {1} alt anahtar: {2}]' -f $this.Describe(), $pending.Count, $list)
+    }
+
+    [string] PreviewRevert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
+        $keys = @($Snapshot['Keys'] | Where-Object { $null -ne $_ })
+        $del = @($keys | Where-Object { -not $_['Exists'] }).Count
+        $write = $keys.Count - $del
+        return ('Kayıt defteri: {0}\*\{1} — {2} anahtar; geri alınca {3} anahtara önceki değer yazılacak, {4} anahtarda değer silinecek' -f ([string]$this.Definition['Path']).TrimEnd('\'), $this.Definition['Name'], $keys.Count, $write, $del)
     }
 }

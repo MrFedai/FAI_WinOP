@@ -88,4 +88,15 @@ class AppxAction : ActionBase {
         if ($state.Count -eq 0) { $state.Add('yok') }
         return ('{0} [şu an: {1}]' -f $this.Describe(), ($state -join ', '))
     }
+
+    [string] PreviewRevert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
+        $state = New-Object 'System.Collections.Generic.List[string]'
+        if ($this.IsInstalled($Ctx)) { $state.Add('kullanıcıda kurulu') }
+        if ($this.IsProvisioned($Ctx)) { $state.Add('provisioned') }
+        if ($state.Count -eq 0) { $state.Add('yok') }
+        $will = 'dokunulmaz'
+        if ($Snapshot['Installed'] -and -not $this.IsInstalled($Ctx)) { $will = 'kullanıcı paketi geri kaydedilecek' }
+        if ($Snapshot['Provisioned'] -and -not $this.IsProvisioned($Ctx)) { $will += ' (provisioned kopya geri gelmez, Store gerekir)' }
+        return ('Appx {0}: şu an {1} → geri alınca {2}' -f $this.PackageName(), ($state -join ', '), $will)
+    }
 }

@@ -137,4 +137,17 @@ class FileAction : ActionBase {
         if ($size -ge 0) { $now = '{0} bayt' -f $size }
         return ('{0} [şu an: {1}]' -f $this.Describe(), $now)
     }
+
+    [string] PreviewRevert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
+        $size = $Ctx.Files.GetSize($this.FullPath())
+        $now = 'yok'
+        if ($size -ge 0) { $now = '{0} bayt' -f $size }
+        $will = 'dosya silinecek (önceden yoktu)'
+        if ($Snapshot['Exists']) {
+            $len = 0
+            try { $len = [Convert]::FromBase64String([string]$Snapshot['Bytes']).Length } catch { $len = 0 }
+            $will = 'önceki içerik ({0} bayt) geri yazılacak' -f $len
+        }
+        return ('Dosya: {0} — şu an {1} → geri alınca {2}' -f $this.Definition['Path'], $now, $will)
+    }
 }
