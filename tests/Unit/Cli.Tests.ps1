@@ -499,3 +499,57 @@ Describe 'Veri klasörü (Initialize-FaiRunStorage)' {
     }
 }
 
+Describe 'Kenar durumları (3.5)' {
+    It 'a) -Version: V büyük harfle kırpılır; biçim hatalıysa kullanım hatası (2)' {
+        Mock Get-FaiVerifiedScript { $script:BaseUrlSeen = $BaseUrl; return 'C:\t\install.ps1' }
+        Mock Start-Process { return [pscustomobject]@{ ExitCode = 0 } }
+        $oldTemp = $env:TEMP
+        $env:TEMP = $TestDrive
+        try {
+            $code = Invoke-Quiet { Invoke-FaiCli -Bound @{ Version = 'V9.8.7' } -Context (New-Env) -Catalog (New-TestCatalog) }
+            $code | Should -Be 0
+            $script:BaseUrlSeen | Should -BeLike '*/releases/download/v9.8.7'
+        }
+        finally { $env:TEMP = $oldTemp }
+        foreach ($bad in @('vv1.2.3', '1.2', 'v1.2.3-x', 'abc')) {
+            Invoke-Quiet { Invoke-FaiCli -Bound @{ Version = $bad } -Context (New-Env) -Catalog (New-TestCatalog) } | Should -Be 2
+        }
+    }
+
+    It 'b) -ExportLayout ile -Only / -Skip kullanım hatası; -Profile ile korunur' {
+        Invoke-Quiet { Invoke-FaiCli -Bound @{ ExportLayout = $true; Only = @('ui.alpha') } -Context (New-Env) -Catalog (New-TestCatalog) } | Should -Be 2
+        Invoke-Quiet { Invoke-FaiCli -Bound @{ ExportLayout = $true; Skip = @('ui.alpha') } -Context (New-Env) -Catalog (New-TestCatalog) } | Should -Be 2
+        $path = Write-Profile 'dis-duzen' @('ui.alpha')
+        Invoke-Quiet { Invoke-FaiCli -Bound @{ ExportLayout = $true; Profile = $path } -Context (New-Env) -Catalog (New-TestCatalog) } | Should -Not -Be 2
+    }
+
+    It 'c) menüden çalışan iş hatalıysa çıkış 1, yoksa 0' {
+        $path = Write-Profile 'menu-hata' @('privacy.gamma')
+        $ctx = New-Env -Answers @('1', 'd', $path, 'u', '0')
+        $ctx.Registry.FailOnName = 'Gamma'
+        Invoke-Quiet { Invoke-FaiMenu -Context $ctx -Catalog (New-TestCatalog) } | Should -Be 1
+        $ctx2 = New-Env -Answers @('1', 'd', $path, 'u', '0')
+        Invoke-Quiet { Invoke-FaiMenu -Context $ctx2 -Catalog (New-TestCatalog) } | Should -Be 0
+    }
+
+    It 'd) -ExportProfile: denetlenemeyen tweak uyarılır, profile alınmaz' {
+        $ctx = New-Env
+        $ctx.Registry.Seed($script:Key, 'Alpha', 1, 'DWord')
+        $cat = New-TestCatalog
+        # Motor, Test istisna atan tweak'i 'Failed' raporlar (Engine: 'eylem N (...) denetlenemedi').
+        Mock Invoke-FaiEngine {
+            $r = [Reporter]::new()
+            [void]$r.Add('ui.alpha', 'A', 'UpToDate', '', [string[]]@())
+            [void]$r.Add('ui.beta', 'B', 'Failed', 'eylem 1 (Registry) denetlenemedi: erişim yok', [string[]]@())
+            return $r
+        }
+        $data = Invoke-Quiet { Export-FaiProfile -Context $ctx -Catalog $cat -Name 'disa' }
+        @($data['tweaks']) | Should -Be @('ui.alpha')
+        @($ctx.Logger.Entries | Where-Object { $_.Message -match 'ui\.beta denetlenemedi, profile alınmadı: ' }).Count | Should -Be 1
+    }
+
+    It 'e) devam kopyası başarısızsa Get-FaiResumeCommand hata verir (RunOnce yazılmaz)' {
+        { Get-FaiResumeCommand -ScriptPath (Join-Path $TestDrive 'yok.ps1') -Bound @{ Profile = 'x' } -DataDir (Join-Path $TestDrive 'resume-yok') } | Should -Throw
+    }
+}
+

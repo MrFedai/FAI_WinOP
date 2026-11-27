@@ -187,6 +187,17 @@ Describe 'AppxCleanupAction (bloat.persistence)' {
         $a.Test($ctx) | Should -BeTrue
     }
 
+    It 'üretilen betikte damga yalnız hatasız bitişte yazılır (3.4)' {
+        $text = Get-FaiBloatCleanupScript -Names @('Microsoft.Todos')
+        $text | Should -Match 'Get-AppxProvisionedPackage -Online -ErrorAction Stop'
+        $text | Should -Not -Match 'Get-AppxProvisionedPackage[^\r\n]*SilentlyContinue'
+        ([regex]::Matches($text, '\$failed = \$true')).Count | Should -Be 3
+        $text | Should -Match 'if \(\$failed\) \{[^\r\n]*damga yazılmadı, sonraki açılışta yinelenir'
+        $text | Should -Match '(?s)else \{\s*Set-Content -LiteralPath \$stamp'
+        ([regex]::Matches($text, 'Set-Content -LiteralPath \$stamp')).Count | Should -Be 1
+        (Test-FaiScriptText $text).Count | Should -Be 0
+    }
+
     It 'geri alma görevi ve betiği siler, provisioned için uyarır' {
         $ctx = New-BloatContext
         $ctx.Appx.Seed([string[]]@(), [string[]]@('Microsoft.BingNews'))

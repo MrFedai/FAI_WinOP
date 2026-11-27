@@ -478,6 +478,12 @@ function Export-FaiProfile {
     $tweaks = New-Object 'System.Collections.Generic.List[string]'
     $apps = New-Object 'System.Collections.Generic.List[string]'
     foreach ($item in $report.Items) {
+        if ($item.Status -eq 'Failed' -and ($item.TweakId -like 'app.*' -or $Catalog.ContainsKey($item.TweakId))) {
+            $msg = '{0} denetlenemedi, profile alınmadı: {1}' -f $item.TweakId, $item.Reason
+            $Context.Logger.Warn($msg)
+            Write-Host ('UYARI: {0}' -f $msg) -ForegroundColor Yellow
+            continue
+        }
         if ($item.Status -ne 'UpToDate') { continue }
         if ($item.TweakId -like 'app.*') { $apps.Add($item.TweakId.Substring(4)) }
         elseif ($Catalog.ContainsKey($item.TweakId)) { $tweaks.Add($item.TweakId) }
@@ -555,7 +561,7 @@ function Get-FaiResumeCommand {
     $target = Join-Path $sharedDir 'install.ps1'
     if (-not (Test-Path -LiteralPath $sharedDir)) { [void](New-Item -ItemType Directory -Path $sharedDir -Force) }
     if ([System.IO.Path]::GetFullPath($ScriptPath) -ne [System.IO.Path]::GetFullPath($target)) {
-        Copy-Item -LiteralPath $ScriptPath -Destination $target -Force
+        Copy-Item -LiteralPath $ScriptPath -Destination $target -Force -ErrorAction Stop
     }
     $args2 = ConvertTo-FaiArgumentString -Bound (ConvertTo-FaiAbsoluteBound -Bound $Bound) -Exclude @('Version')
     return ('powershell.exe -NoProfile -ExecutionPolicy Bypass -File "{0}" {1}' -f $target, $args2).TrimEnd()
@@ -637,6 +643,12 @@ function Invoke-FaiCli {
     $problem = ''
     if ($modes.Count -gt 1) { $problem = 'Birlikte kullanılamaz: ' + ($modes -join ', ') }
     elseif ((& $flag 'UpdatesOn') -and (& $flag 'UpdatesOff')) { $problem = '-UpdatesOn ve -UpdatesOff birlikte kullanılamaz' }
+    elseif ((& $flag 'ExportLayout') -and ($only.Count -gt 0 -or $skip.Count -gt 0)) {
+        $problem = '-ExportLayout ile -Only / -Skip kullanılamaz'
+    }
+    elseif ((& $text 'Version') -and (& $text 'Version') -notmatch '^[vV]?\d+\.\d+\.\d+$') {
+        $problem = "Geçersiz sürüm: $(& $text 'Version') (vX.Y.Z)"
+    }
     elseif ($modes.Count -eq 1 -and $modes[0] -ne '-ExportLayout' -and ($profileSpec -or $only.Count -gt 0 -or $skip.Count -gt 0)) {
         $problem = "$($modes[0]) ile -Profile / -Only / -Skip kullanılamaz"
     }
@@ -657,9 +669,8 @@ function Invoke-FaiCli {
     try {
         # Başka sürüm: indir, doğrula, onunla çalıştır (kendi yükseltmesini kendisi yapar).
         $wanted = & $text 'Version'
-        if ($wanted -and $wanted.TrimStart('v') -ne ([string]$script:FaiWinOPVersion).TrimStart('v')) {
-            if ($wanted -notmatch '^v?\d+\.\d+\.\d+$') { Write-Host "Geçersiz sürüm: $wanted (vX.Y.Z)" -ForegroundColor Red; return 2 }
-            $tag = 'v' + $wanted.TrimStart('v')
+        if ($wanted -and $wanted.TrimStart('v', 'V') -ne ([string]$script:FaiWinOPVersion).TrimStart('v', 'V')) {
+            $tag = 'v' + $wanted.TrimStart('v', 'V')
             $dest = Join-Path $env:TEMP ('FAI_WinOP\install-{0}.ps1' -f $tag)
             $path = Get-FaiVerifiedScript -BaseUrl ('{0}/releases/download/{1}' -f (Get-FaiRepoUrl), $tag) -Destination $dest
             $argLine = ConvertTo-FaiArgumentString -Bound (ConvertTo-FaiAbsoluteBound -Bound $o) -Exclude @('Version')
@@ -768,7 +779,12 @@ function Invoke-FaiCli {
                 # -Session'ı motor ekler (açtığı ya da devam ettiği oturumun kimliği).
                 # Yol argümanlarını Get-FaiResumeCommand mutlak yapar.
                 foreach ($k in $o.Keys) { if ($k -ne 'Session') { $resume[$k] = $o[$k] } }
-                $Context.ResumeCommand = Get-FaiResumeCommand -ScriptPath $ScriptPath -Bound $resume
+                try { $Context.ResumeCommand = Get-FaiResumeCommand -ScriptPath $ScriptPath -Bound $resume }
+                catch {
+                    $Context.ResumeCommand = ''
+                    $Context.Logger.Warn(('Devam komutu yazılamadı: {0}' -f $_.Exception.Message))
+                    Write-Host 'UYARI: devam komutu yazılamadı: yeniden başlatma sonrası elle çalıştırın' -ForegroundColor Yellow
+                }
             }
             $report = Invoke-FaiEngine -FaiProfile $fp -Session (& $text 'Session') -Context $Context -Catalog $Catalog -AppCatalog $AppCatalog -AllowTools:($only.Count -gt 0)
         }

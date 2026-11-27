@@ -139,6 +139,16 @@ function Invoke-FaiMenuChecklist {
     }
 }
 
+function Write-FaiMenuReport {
+    <#
+    .SYNOPSIS  Uygulanan işin raporunu yazar; hata varsa menü çıkış kodu için işaretler ($script:FaiMenuFailed).
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)] $Report, [Parameter(Mandatory = $true)] $Logger)
+    Write-FaiReport -Report $Report -Logger $Logger
+    if ($Report.HasFailures()) { $script:FaiMenuFailed = $true }
+}
+
 function Invoke-FaiMenuRun {
     <#
     .SYNOPSIS
@@ -164,8 +174,8 @@ function Invoke-FaiMenuRun {
             continue
         }
         if ($answer -eq 'u') {
-            try { Write-FaiReport -Report (& $Action $Context) -Logger $Context.Logger }
-            catch { Write-Host ('HATA: {0}' -f $_.Exception.Message) -ForegroundColor Red }
+            try { Write-FaiMenuReport -Report (& $Action $Context) -Logger $Context.Logger }
+            catch { Write-Host ('HATA: {0}' -f $_.Exception.Message) -ForegroundColor Red; $script:FaiMenuFailed = $true }
             return
         }
         return
@@ -176,7 +186,7 @@ function Invoke-FaiMenu {
     <#
     .SYNOPSIS
         Ana menü: 1 profil · 2 tweak seç ve çalıştır · 3 son oturumu geri al · 4 Windows Update · 5 araçlar · 0 çıkış.
-        Çıkış kodu döndürür (0).
+        Çıkış kodu: uygulanan işlerden biri hatalıysa 1, yoksa 0.
     #>
     [CmdletBinding()]
     param(
@@ -185,6 +195,7 @@ function Invoke-FaiMenu {
         [hashtable] $AppCatalog = @{}
     )
 
+    $script:FaiMenuFailed = $false
     $selected = New-Object 'System.Collections.Generic.HashSet[string]'
     $categories = Get-FaiMenuCategory -Catalog $Catalog
     $empty = 0
@@ -200,13 +211,13 @@ function Invoke-FaiMenu {
         $answer = ([string]$Context.Prompt.ReadLine('Seçim')).Trim().ToLowerInvariant()
         if ($answer -eq '') {
             $empty++
-            if ($empty -ge 5) { Write-Host 'Girdi yok; çıkılıyor.'; return 0 }
+            if ($empty -ge 5) { Write-Host 'Girdi yok; çıkılıyor.'; return [int]$script:FaiMenuFailed }
             continue
         }
         $empty = 0
         switch ($answer) {
-            '0' { return 0 }
-            'q' { return 0 }
+            '0' { return [int]$script:FaiMenuFailed }
+            'q' { return [int]$script:FaiMenuFailed }
             '1' {
                 $names = @(Get-FaiEmbeddedProfileName)
                 Write-Host ''
@@ -255,8 +266,8 @@ function Invoke-FaiMenu {
             }
             '3' {
                 if ($Context.Prompt.Confirm('Geri alınmamış son oturum geri alınacak.')) {
-                    try { Write-FaiReport -Report (Invoke-FaiEngine -Undo -Context $Context -Catalog $Catalog -AppCatalog $AppCatalog) -Logger $Context.Logger }
-                    catch { Write-Host ('HATA: {0}' -f $_.Exception.Message) -ForegroundColor Red }
+                    try { Write-FaiMenuReport -Report (Invoke-FaiEngine -Undo -Context $Context -Catalog $Catalog -AppCatalog $AppCatalog) -Logger $Context.Logger }
+                    catch { Write-Host ('HATA: {0}' -f $_.Exception.Message) -ForegroundColor Red; $script:FaiMenuFailed = $true }
                 }
             }
             '4' {
