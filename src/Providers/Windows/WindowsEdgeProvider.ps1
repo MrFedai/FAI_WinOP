@@ -76,7 +76,7 @@ class WindowsEdgeProvider : IEdgeProvider {
             if ($createdDir) { [void](New-Item -ItemType Directory -Path $legacyDir -Force) }
             if ($createdExe) { [void](New-Item -ItemType File -Path $legacyExe -Force) }
             $argList = '--uninstall --msedge --channel=stable --system-level --force-uninstall --verbose-logging'
-            [void](Start-Process -FilePath $setup -ArgumentList $argList -Wait -PassThru -WindowStyle Hidden)
+            [void][ExternalProcess]::Run($setup, $argList, [ExternalProcess]::EdgeSetupTimeoutSeconds, 'Edge kurucusu (setup.exe)', $false)
             $deadline = (Get-Date).AddSeconds(90)
             while ($this.EdgeExe() -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 2 }
         }

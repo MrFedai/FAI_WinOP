@@ -414,3 +414,25 @@ Describe 'DefaultBrowser eylemi' {
         ($e -join "`n") | Should -Match 'Scope: Machine ya da User'
     }
 }
+
+Describe 'ExternalProcess: zaman aşımı sabitleri, argüman kurma, ileti' {
+    It 'süre sabitleri: winget list 2 dk, install/uninstall 30 dk, Edge setup 10 dk, kaldırıcı 15 dk' {
+        [ExternalProcess]::WingetListTimeoutSeconds | Should -Be 120
+        [ExternalProcess]::WingetChangeTimeoutSeconds | Should -Be 1800
+        [ExternalProcess]::EdgeSetupTimeoutSeconds | Should -Be 600
+        [ExternalProcess]::UninstallerTimeoutSeconds | Should -Be 900
+    }
+
+    It 'BuildArguments: boşluk / tırnak içeren argüman tırnaklanır, boş argüman ""' {
+        [ExternalProcess]::BuildArguments([string[]]@('install', '--id', 'Spotify.Spotify', '--silent')) | Should -Be 'install --id Spotify.Spotify --silent'
+        [ExternalProcess]::BuildArguments([string[]]@('list', '--id', 'a b')) | Should -Be 'list --id "a b"'
+        [ExternalProcess]::BuildArguments([string[]]@('x', '')) | Should -Be 'x ""'
+        [ExternalProcess]::BuildArguments([string[]]@('say "hi"')) | Should -Be '"say \"hi\""'
+    }
+
+    It 'TimeoutMessage: "<ne> <n> dk içinde bitmedi, süreç ağacı sonlandırıldı"' {
+        [ExternalProcess]::TimeoutMessage('winget install', 1800) | Should -Be 'winget install 30 dk içinde bitmedi, süreç ağacı sonlandırıldı'
+        [ExternalProcess]::TimeoutMessage('winget list', 120) | Should -Be 'winget list 2 dk içinde bitmedi, süreç ağacı sonlandırıldı'
+        [ExternalProcess]::TimeoutMessage('x', 90) | Should -Be 'x 1.5 dk içinde bitmedi, süreç ağacı sonlandırıldı'
+    }
+}
