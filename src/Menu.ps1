@@ -1,21 +1,21 @@
 ﻿# Etkileşimli menü (profil verilmeden çalıştırılınca). Girdi yalnız $Context.Prompt.ReadLine'dan gelir (testte
-# FakePromptProvider kuyruğu). Seçim söz dizimi: '1 3 5', '1,3', '2-4'; 'h' hepsi, 'y' hiçbiri, Enter tamam.
-# Çalıştırmadan önce Ö (önizle: dry-run) / U (uygula) / G (geri) sorulur; önizleme sonrası aynı soru tekrar gelir.
+# FakePromptProvider kuyruğu). Seçim söz dizimi: '1 3 5', '1,3', '2-4'; 'a' hepsi (all), 'n' hiçbiri (none), Enter tamam.
+# Çalıştırmadan önce P (preview: dry-run) / A (apply) / B (back) sorulur; önizleme sonrası aynı soru tekrar gelir.
 # Boş yanıt ana menüde yeniden çizer; art arda çok boş yanıt (kapalı girdi) menüyü kapatır.
 
 function Get-FaiCategoryLabel {
-    <# .SYNOPSIS  Kategori adı → Türkçe başlık (bilinmeyen ad kendisi). Sıra: menüdeki sıra. #>
+    <# .SYNOPSIS  Kategori adı → başlık (bilinmeyen ad kendisi). Sıra: menüdeki sıra. #>
     return [ordered]@{
-        setup    = 'Kurulum'
-        ui       = 'Arayüz'
+        setup    = 'Setup'
+        ui       = 'Interface'
         bloat    = 'Bloatware'
-        privacy  = 'Gizlilik'
-        sound    = 'Ses'
-        power    = 'Güç'
-        graphics = 'Grafik'
-        gaming   = 'Oyun'
-        system   = 'Sistem'
-        refresh  = 'Araçlar'
+        privacy  = 'Privacy'
+        sound    = 'Sound'
+        power    = 'Power'
+        graphics = 'Graphics'
+        gaming   = 'Gaming'
+        system   = 'System'
+        refresh  = 'Tools'
     }
 }
 
@@ -75,15 +75,15 @@ function ConvertFrom-FaiSelection {
             $a = [int]$Matches[1]
             $b = [int]$Matches[2]
             if ($a -gt $b) { $tmp = $a; $a = $b; $b = $tmp }
-            if ($a -lt 1 -or $b -gt $Count) { throw "Aralık dışı: $part (1-$Count)" }
+            if ($a -lt 1 -or $b -gt $Count) { throw "Out of range: $part (1-$Count)" }
             for ($i = $a; $i -le $b; $i++) { [void]$set.Add($i) }
         }
         elseif ($part -match '^\d+$') {
             $n = [int]$part
-            if ($n -lt 1 -or $n -gt $Count) { throw "Aralık dışı: $part (1-$Count)" }
+            if ($n -lt 1 -or $n -gt $Count) { throw "Out of range: $part (1-$Count)" }
             [void]$set.Add($n)
         }
-        else { throw "Anlaşılmadı: $part" }
+        else { throw "Not understood: $part" }
     }
     $out = New-Object 'System.Collections.Generic.List[int]'
     foreach ($n in $set) { $out.Add($n) }
@@ -99,8 +99,8 @@ function Show-FaiMenuTweakList {
         $box = '[ ]'
         if ($Selected.Contains([string]$t.Id)) { $box = '[x]' }
         $tags = @($t.Risk)
-        if ($t.Tool) { $tags += 'araç' }
-        if ($t.AlwaysConfirm) { $tags += 'her seferinde sorar' }
+        if ($t.Tool) { $tags += 'tool' }
+        if ($t.AlwaysConfirm) { $tags += 'asks every time' }
         Write-Host ('  {0} {1,2}. {2}  ({3})  {4}' -f $box, ($i + 1), $t.Title, $t.Id, ($tags -join ', ')) -ForegroundColor (Get-FaiRiskColor $t.Risk)
     }
 }
@@ -108,7 +108,7 @@ function Show-FaiMenuTweakList {
 function Invoke-FaiMenuChecklist {
     <#
     .SYNOPSIS
-        Bir kategorinin onay kutulu listesi: numaralar seçimi tersine çevirir; 'h' hepsi, 'y' hiçbiri, Enter / 't' tamam.
+        Bir kategorinin onay kutulu listesi: numaralar seçimi tersine çevirir; 'a' hepsi, 'n' hiçbiri, Enter / 'd' tamam.
         Selected (HashSet[string]) yerinde güncellenir.
     #>
     [CmdletBinding()]
@@ -123,10 +123,10 @@ function Invoke-FaiMenuChecklist {
         Write-Host ''
         Write-Host $Title -ForegroundColor White
         Show-FaiMenuTweakList -Tweaks $Tweaks -Selected $Selected
-        $answer = ([string]$Context.Prompt.ReadLine('Numara(lar) seç / kaldır, h: hepsi, y: hiçbiri, Enter: tamam')).Trim().ToLowerInvariant()
-        if ($answer -eq '' -or $answer -eq 't') { return }
-        if ($answer -eq 'h') { foreach ($t in $Tweaks) { [void]$Selected.Add([string]$t.Id) }; continue }
-        if ($answer -eq 'y') { foreach ($t in $Tweaks) { [void]$Selected.Remove([string]$t.Id) }; continue }
+        $answer = ([string]$Context.Prompt.ReadLine('Number(s) to select / clear, a: all, n: none, Enter: done')).Trim().ToLowerInvariant()
+        if ($answer -eq '' -or $answer -eq 'd') { return }
+        if ($answer -eq 'a') { foreach ($t in $Tweaks) { [void]$Selected.Add([string]$t.Id) }; continue }
+        if ($answer -eq 'n') { foreach ($t in $Tweaks) { [void]$Selected.Remove([string]$t.Id) }; continue }
         try { $nums = ConvertFrom-FaiSelection -Text $answer -Count $Tweaks.Count }
         catch {
             Write-Host $_.Exception.Message -ForegroundColor Red
@@ -152,7 +152,7 @@ function Write-FaiMenuReport {
 function Invoke-FaiMenuRun {
     <#
     .SYNOPSIS
-        Ö: önizle (dry-run, sonra yine sorar) · U: uygula · G: geri. Uygulanırsa (ya da işlem yapılmazsa) döner.
+        P: önizle (dry-run, sonra yine sorar) · A: uygula · B: geri. Uygulanırsa (ya da işlem yapılmazsa) döner.
         Action: bağlamı alıp Reporter döndüren betik bloğu. Kapanış (GetNewClosure) kullanılmaz: dinamik modül
         betik kapsamındaki fonksiyonları göremez; blok çağıranın değişkenlerini dinamik kapsamla bulur.
     #>
@@ -164,18 +164,18 @@ function Invoke-FaiMenuRun {
     )
 
     while ($true) {
-        $answer = ([string]$Context.Prompt.ReadLine(("{0} — Ö: önizle, U: uygula, G: geri" -f $Title))).Trim().ToLowerInvariant()
-        if ($answer -eq 'ö' -or $answer -eq 'o') {
+        $answer = ([string]$Context.Prompt.ReadLine(("{0} — P: preview, A: apply, B: back" -f $Title))).Trim().ToLowerInvariant()
+        if ($answer -eq 'p') {
             $was = $Context.DryRun
             $Context.DryRun = $true
             try { Write-FaiReport -Report (& $Action $Context) -Logger $Context.Logger }
-            catch { Write-Host ('HATA: {0}' -f $_.Exception.Message) -ForegroundColor Red }
+            catch { Write-Host ('ERROR: {0}' -f $_.Exception.Message) -ForegroundColor Red }
             finally { $Context.DryRun = $was }
             continue
         }
-        if ($answer -eq 'u') {
+        if ($answer -eq 'a') {
             try { Write-FaiMenuReport -Report (& $Action $Context) -Logger $Context.Logger }
-            catch { Write-Host ('HATA: {0}' -f $_.Exception.Message) -ForegroundColor Red; $script:FaiMenuFailed = $true }
+            catch { Write-Host ('ERROR: {0}' -f $_.Exception.Message) -ForegroundColor Red; $script:FaiMenuFailed = $true }
             return
         }
         return
@@ -201,17 +201,17 @@ function Invoke-FaiMenu {
     $empty = 0
     while ($true) {
         Write-Host ''
-        Write-Host 'FAI_WinOP — ana menü' -ForegroundColor White
-        Write-Host '  1  Profil uygula'
-        Write-Host ('  2  Tweak seç ve çalıştır (seçili: {0})' -f $selected.Count)
-        Write-Host '  3  Son oturumu geri al'
-        Write-Host '  4  Windows Update: duraklat / aç'
-        Write-Host '  5  Araçlar'
-        Write-Host '  0  Çıkış'
-        $answer = ([string]$Context.Prompt.ReadLine('Seçim')).Trim().ToLowerInvariant()
+        Write-Host 'FAI_WinOP — main menu' -ForegroundColor White
+        Write-Host '  1  Apply a profile'
+        Write-Host ('  2  Select and run tweaks (selected: {0})' -f $selected.Count)
+        Write-Host '  3  Undo the last session'
+        Write-Host '  4  Windows Update: pause / resume'
+        Write-Host '  5  Tools'
+        Write-Host '  0  Exit'
+        $answer = ([string]$Context.Prompt.ReadLine('Choice')).Trim().ToLowerInvariant()
         if ($answer -eq '') {
             $empty++
-            if ($empty -ge 5) { Write-Host 'Girdi yok; çıkılıyor.'; return [int]$script:FaiMenuFailed }
+            if ($empty -ge 5) { Write-Host 'No input; exiting.'; return [int]$script:FaiMenuFailed }
             continue
         }
         $empty = 0
@@ -222,36 +222,36 @@ function Invoke-FaiMenu {
                 $names = @(Get-FaiEmbeddedProfileName)
                 Write-Host ''
                 for ($i = 0; $i -lt $names.Count; $i++) { Write-Host ('  {0}  {1}' -f ($i + 1), $names[$i]) }
-                Write-Host '  d  Dosya yolu ya da https URL gir'
-                $pick = ([string]$Context.Prompt.ReadLine('Profil (Enter: geri)')).Trim()
+                Write-Host '  f  Enter a file path or https URL'
+                $pick = ([string]$Context.Prompt.ReadLine('Profile (Enter: back)')).Trim()
                 if (-not $pick) { break }
                 $spec = ''
-                if ($pick.ToLowerInvariant() -eq 'd') { $spec = ([string]$Context.Prompt.ReadLine('Yol / URL')).Trim() }
+                if ($pick.ToLowerInvariant() -eq 'f') { $spec = ([string]$Context.Prompt.ReadLine('Path / URL')).Trim() }
                 elseif ($pick -match '^\d+$' -and [int]$pick -ge 1 -and [int]$pick -le $names.Count) { $spec = $names[[int]$pick - 1] }
                 else { $spec = $pick }
                 if (-not $spec) { break }
                 try { $fp = Resolve-FaiProfile -Spec $spec }
-                catch { Write-Host ('HATA: {0}' -f $_.Exception.Message) -ForegroundColor Red; break }
-                Invoke-FaiMenuRun -Context $Context -Title ("Profil '{0}'" -f $fp.Name) -Action {
+                catch { Write-Host ('ERROR: {0}' -f $_.Exception.Message) -ForegroundColor Red; break }
+                Invoke-FaiMenuRun -Context $Context -Title ("Profile '{0}'" -f $fp.Name) -Action {
                     param($cx) Invoke-FaiEngine -FaiProfile $fp -Context $cx -Catalog $Catalog -AppCatalog $AppCatalog
                 }
             }
             '2' {
                 while ($true) {
                     Write-Host ''
-                    Write-Host 'Kategoriler' -ForegroundColor White
+                    Write-Host 'Categories' -ForegroundColor White
                     for ($i = 0; $i -lt $categories.Count; $i++) {
                         $c = $categories[$i]
                         $n = @($c.Tweaks | Where-Object { $selected.Contains([string]$_.Id) }).Count
                         Write-Host ('  {0,2}  {1}  ({2}/{3})' -f ($i + 1), $c.Label, $n, $c.Tweaks.Count)
                     }
-                    $pick = ([string]$Context.Prompt.ReadLine(('Kategori numarası, c: seçilenleri çalıştır ({0}), Enter: geri' -f $selected.Count))).Trim().ToLowerInvariant()
+                    $pick = ([string]$Context.Prompt.ReadLine(('Category number, r: run selected ({0}), Enter: back' -f $selected.Count))).Trim().ToLowerInvariant()
                     if ($pick -eq '') { break }
-                    if ($pick -eq 'c') {
-                        if ($selected.Count -eq 0) { Write-Host 'Seçili tweak yok.' -ForegroundColor Yellow; continue }
+                    if ($pick -eq 'r') {
+                        if ($selected.Count -eq 0) { Write-Host 'No tweaks selected.' -ForegroundColor Yellow; continue }
                         $ids = @($selected | Sort-Object)
                         $fp = New-FaiSelectionProfile -Ids $ids -Catalog $Catalog -AppCatalog $AppCatalog
-                        Invoke-FaiMenuRun -Context $Context -Title ('{0} tweak' -f $ids.Count) -Action {
+                        Invoke-FaiMenuRun -Context $Context -Title ('{0} tweaks' -f $ids.Count) -Action {
                             param($cx) Invoke-FaiEngine -FaiProfile $fp -Context $cx -Catalog $Catalog -AppCatalog $AppCatalog -AllowTools
                         }
                         continue
@@ -261,35 +261,35 @@ function Invoke-FaiMenu {
                         Invoke-FaiMenuChecklist -Context $Context -Title $c.Label -Tweaks $c.Tweaks -Selected $selected
                         continue
                     }
-                    Write-Host "Anlaşılmadı: $pick" -ForegroundColor Red
+                    Write-Host "Not understood: $pick" -ForegroundColor Red
                 }
             }
             '3' {
-                if ($Context.Prompt.Confirm('Geri alınmamış son oturum geri alınacak.')) {
+                if ($Context.Prompt.Confirm('The last session that has not been undone will be reverted.')) {
                     try { Write-FaiMenuReport -Report (Invoke-FaiEngine -Undo -Context $Context -Catalog $Catalog -AppCatalog $AppCatalog) -Logger $Context.Logger }
-                    catch { Write-Host ('HATA: {0}' -f $_.Exception.Message) -ForegroundColor Red; $script:FaiMenuFailed = $true }
+                    catch { Write-Host ('ERROR: {0}' -f $_.Exception.Message) -ForegroundColor Red; $script:FaiMenuFailed = $true }
                 }
             }
             '4' {
-                $pick = ([string]$Context.Prompt.ReadLine('d: 365 gün duraklat, a: aç, Enter: geri')).Trim().ToLowerInvariant()
-                if ($pick -eq 'd') { Invoke-FaiMenuRun -Context $Context -Title 'Güncellemeleri duraklat' -Action { param($cx) Invoke-FaiUpdatesSwitch -Context $cx -Off } }
-                elseif ($pick -eq 'a') { Invoke-FaiMenuRun -Context $Context -Title 'Güncellemeleri aç' -Action { param($cx) Invoke-FaiUpdatesSwitch -Context $cx -On } }
+                $pick = ([string]$Context.Prompt.ReadLine('p: pause for 365 days, r: resume, Enter: back')).Trim().ToLowerInvariant()
+                if ($pick -eq 'p') { Invoke-FaiMenuRun -Context $Context -Title 'Pause updates' -Action { param($cx) Invoke-FaiUpdatesSwitch -Context $cx -Off } }
+                elseif ($pick -eq 'r') { Invoke-FaiMenuRun -Context $Context -Title 'Resume updates' -Action { param($cx) Invoke-FaiUpdatesSwitch -Context $cx -On } }
             }
             '5' {
                 $tools = @($Catalog.Values | Where-Object { $_.Tool } | Sort-Object Id)
-                if ($tools.Count -eq 0) { Write-Host 'Araç yok.'; break }
+                if ($tools.Count -eq 0) { Write-Host 'No tools.'; break }
                 Write-Host ''
                 for ($i = 0; $i -lt $tools.Count; $i++) {
                     Write-Host ('  {0}  {1}  ({2})' -f ($i + 1), $tools[$i].Title, $tools[$i].Id) -ForegroundColor (Get-FaiRiskColor $tools[$i].Risk)
                 }
-                $pick = ([string]$Context.Prompt.ReadLine('Araç numarası (Enter: geri)')).Trim()
+                $pick = ([string]$Context.Prompt.ReadLine('Tool number (Enter: back)')).Trim()
                 if (-not ($pick -match '^\d+$' -and [int]$pick -ge 1 -and [int]$pick -le $tools.Count)) { break }
-                $fp = New-FaiSelectionProfile -Ids @([string]$tools[[int]$pick - 1].Id) -Catalog $Catalog -Name 'arac'
+                $fp = New-FaiSelectionProfile -Ids @([string]$tools[[int]$pick - 1].Id) -Catalog $Catalog -Name 'tool'
                 Invoke-FaiMenuRun -Context $Context -Title $tools[[int]$pick - 1].Title -Action {
                     param($cx) Invoke-FaiEngine -FaiProfile $fp -Context $cx -Catalog $Catalog -AllowTools
                 }
             }
-            default { Write-Host "Anlaşılmadı: $answer" -ForegroundColor Red }
+            default { Write-Host "Not understood: $answer" -ForegroundColor Red }
         }
     }
 }

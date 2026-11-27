@@ -253,7 +253,7 @@ function Test-FaiSha256 {
     )
 
     $expected = ([string]$HashText).Trim().Split([char[]]@(' ', "`t", "`r", "`n"), [StringSplitOptions]::RemoveEmptyEntries)
-    if ($expected.Count -lt 1 -or $expected[0] -notmatch '^[0-9a-fA-F]{64}$') { throw 'SHA-256 dosyası geçersiz.' }
+    if ($expected.Count -lt 1 -or $expected[0] -notmatch '^[0-9a-fA-F]{64}$') { throw 'Invalid SHA-256 file.' }
     $actual = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
     return ($actual.ToLowerInvariant() -eq $expected[0].ToLowerInvariant())
 }
@@ -273,7 +273,7 @@ function Get-FaiVerifiedScript {
     $base = $BaseUrl.TrimEnd('/')
     $dir = Split-Path -Parent $Destination
     if ($dir -and -not (Test-Path -LiteralPath $dir)) { [void](New-Item -ItemType Directory -Path $dir -Force) }
-    Write-Host ("İndiriliyor: {0}/install.ps1" -f $base)
+    Write-Host ("Downloading: {0}/install.ps1" -f $base)
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
     $wc = New-Object System.Net.WebClient
     try { $wc.DownloadFile($base + '/install.ps1', $Destination) }
@@ -281,9 +281,9 @@ function Get-FaiVerifiedScript {
     $hashText = Get-FaiWebText -Url ($base + '/install.ps1.sha256')
     if (-not (Test-FaiSha256 -Path $Destination -HashText $hashText)) {
         Remove-Item -LiteralPath $Destination -Force -ErrorAction SilentlyContinue
-        throw 'SHA-256 doğrulaması BAŞARISIZ: indirilen install.ps1 yayımlanan özetle eşleşmiyor; çalıştırılmadı.'
+        throw 'SHA-256 check FAILED: the downloaded install.ps1 does not match the published hash; not run.'
     }
-    Write-Host 'SHA-256 doğrulandı.' -ForegroundColor Green
+    Write-Host 'SHA-256 verified.' -ForegroundColor Green
     return $Destination
 }
 
@@ -300,7 +300,7 @@ function Resolve-FaiProfile {
         $text = Get-FaiWebText -Url $Spec
         return [Profile]::FromHashtable((ConvertFrom-JsonText -Json $text.TrimStart([char]0xFEFF)), $Spec)
     }
-    if ($Spec -match '^[a-zA-Z][a-zA-Z0-9+.-]*://') { throw "Profil URL'si yalnız https olabilir: $Spec" }
+    if ($Spec -match '^[a-zA-Z][a-zA-Z0-9+.-]*://') { throw "Profile URL must be https: $Spec" }
     if ((Test-Path -LiteralPath $Spec -PathType Leaf) -or $Spec -like '*.json') { return Import-FaiProfileFile -Path $Spec }
     return Import-FaiEmbeddedProfile -Name $Spec
 }
@@ -343,14 +343,14 @@ function Test-FaiKeepId {
 function New-FaiSelectionProfile {
     <#
     .SYNOPSIS
-        Kimlik listesinden geçici profil ('secim'): 'app.<id>' uygulama, diğerleri tweak. Bilinmeyen kimlik hata.
+        Kimlik listesinden geçici profil ('selection'): 'app.<id>' uygulama, diğerleri tweak. Bilinmeyen kimlik hata.
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)] [string[]] $Ids,
         [Parameter(Mandatory = $true)] [hashtable] $Catalog,
         [hashtable] $AppCatalog = @{},
-        [string] $Name = 'secim'
+        [string] $Name = 'selection'
     )
 
     $tweaks = New-Object 'System.Collections.Generic.List[hashtable]'
@@ -365,7 +365,7 @@ function New-FaiSelectionProfile {
         elseif ($Catalog.ContainsKey($id)) { $tweaks.Add(@{ Id = $id; Params = @{} }) }
         else { $unknown.Add($id) }
     }
-    if ($unknown.Count -gt 0) { throw ('Bilinmeyen kimlik: {0} (-List ile bakın)' -f ($unknown -join ', ')) }
+    if ($unknown.Count -gt 0) { throw ('Unknown ID: {0} (see -List)' -f ($unknown -join ', ')) }
     $p = [Profile]::new()
     $p.Name = $Name
     $p.Tweaks = $tweaks.ToArray()
@@ -422,20 +422,20 @@ function Show-FaiList {
         Write-Host ('{0} ({1})' -f $cat.Label, $cat.Name) -ForegroundColor White
         foreach ($t in $cat.Tweaks) {
             $tags = @($t.Risk)
-            if ($t.Tool) { $tags += 'araç' }
-            if ($t.AlwaysConfirm) { $tags += 'her seferinde sorar' }
+            if ($t.Tool) { $tags += 'tool' }
+            if ($t.AlwaysConfirm) { $tags += 'asks every time' }
             Write-Host ('  {0,-28} {1}  [{2}]' -f $t.Id, $t.Title, ($tags -join ', ')) -ForegroundColor (Get-FaiRiskColor $t.Risk)
         }
     }
     if ($AppCatalog.Count -gt 0) {
         Write-Host ''
-        Write-Host 'Uygulamalar (app.<id>)' -ForegroundColor White
+        Write-Host 'Apps (app.<id>)' -ForegroundColor White
         foreach ($k in @($AppCatalog.Keys | Sort-Object)) {
             Write-Host ('  app.{0,-24} {1}  [{2}]' -f $k, $AppCatalog[$k]['name'], $AppCatalog[$k]['source'])
         }
     }
     Write-Host ''
-    Write-Host ('Gömülü profiller: {0}' -f ((Get-FaiEmbeddedProfileName) -join ', ')) -ForegroundColor White
+    Write-Host ('Embedded profiles: {0}' -f ((Get-FaiEmbeddedProfileName) -join ', ')) -ForegroundColor White
 }
 
 function Export-FaiProfile {
@@ -478,9 +478,9 @@ function Export-FaiProfile {
     $apps = New-Object 'System.Collections.Generic.List[string]'
     foreach ($item in $report.Items) {
         if ($item.Status -eq 'Failed' -and ($item.TweakId -like 'app.*' -or $Catalog.ContainsKey($item.TweakId))) {
-            $msg = '{0} denetlenemedi, profile alınmadı: {1}' -f $item.TweakId, $item.Reason
+            $msg = '{0} could not be checked, not added to the profile: {1}' -f $item.TweakId, $item.Reason
             $Context.Logger.Warn($msg)
-            Write-Host ('UYARI: {0}' -f $msg) -ForegroundColor Yellow
+            Write-Host ('WARNING: {0}' -f $msg) -ForegroundColor Yellow
             continue
         }
         if ($item.Status -ne 'UpToDate') { continue }
@@ -490,11 +490,11 @@ function Export-FaiProfile {
 
     $layout = @{}
     try { $layout = (Export-FaiLayout -Context $Context).Layout }
-    catch { Write-Host ('UYARI: düzen okunamadı, profile girmedi: {0}' -f $_.Exception.Message) -ForegroundColor Yellow }
+    catch { Write-Host ('WARNING: layout could not be read, not added to the profile: {0}' -f $_.Exception.Message) -ForegroundColor Yellow }
 
     $data = [ordered]@{
         name        = $Name
-        description = ('FAI_WinOP -ExportProfile ile {0} tarihinde dışa aktarıldı.' -f (Get-Date -Format 'yyyy-MM-dd'))
+        description = ('Exported with FAI_WinOP -ExportProfile on {0}.' -f (Get-Date -Format 'yyyy-MM-dd'))
         tweaks      = $tweaks.ToArray()
         autoConfirm = @()
         apps        = $apps.ToArray()
@@ -504,7 +504,7 @@ function Export-FaiProfile {
     $check = @{}
     foreach ($k in $data.Keys) { $check[$k] = $data[$k] }
     $errors = @(Get-FaiProfileError -Data $check)
-    if ($errors.Count -gt 0) { throw ("Dışa aktarılan profil geçersiz:`n  " + ($errors -join "`n  ")) }
+    if ($errors.Count -gt 0) { throw ("Exported profile is invalid:`n  " + ($errors -join "`n  ")) }
 
     if ($Path) {
         $full = [System.IO.Path]::GetFullPath($Path)
@@ -536,7 +536,7 @@ function Resolve-FaiExportTarget {
         $path = Join-Path $DefaultDir ($Spec + '.json')
     }
     $name = ($base.ToLowerInvariant() -replace '[^a-z0-9-]', '-').Trim('-')
-    if (-not $name -or $name -notmatch '^[a-z0-9][a-z0-9-]*$') { throw "Geçersiz profil adı: $Spec" }
+    if (-not $name -or $name -notmatch '^[a-z0-9][a-z0-9-]*$') { throw "Invalid profile name: $Spec" }
     return @{ Name = $name; Path = $path }
 }
 
@@ -578,13 +578,13 @@ function Invoke-FaiElevated {
     )
 
     $argLine = '-NoProfile -ExecutionPolicy Bypass -NoExit -File "{0}" {1}' -f $ScriptPath, (ConvertTo-FaiArgumentString -Bound (ConvertTo-FaiAbsoluteBound -Bound $Bound))
-    Write-Host 'Yönetici izni isteniyor (UAC)...' -ForegroundColor Yellow
+    Write-Host 'Requesting administrator rights (UAC)...' -ForegroundColor Yellow
     try { Start-Process -FilePath 'powershell.exe' -ArgumentList $argLine -Verb RunAs | Out-Null }
     catch {
-        Write-Host ('Yükseltme reddedildi ya da başarısız: {0}' -f $_.Exception.Message) -ForegroundColor Red
+        Write-Host ('Elevation declined or failed: {0}' -f $_.Exception.Message) -ForegroundColor Red
         return 3
     }
-    Write-Host 'Yönetici penceresinde sürüyor.'
+    Write-Host 'Continuing in the administrator window.'
     return 0
 }
 
@@ -639,28 +639,28 @@ function Invoke-FaiCli {
     if (& $text 'ExportProfile') { $modes += '-ExportProfile' }
     if (& $flag 'ExportLayout') { $modes += '-ExportLayout' }
     $problem = ''
-    if ($modes.Count -gt 1) { $problem = 'Birlikte kullanılamaz: ' + ($modes -join ', ') }
-    elseif ((& $flag 'UpdatesOn') -and (& $flag 'UpdatesOff')) { $problem = '-UpdatesOn ve -UpdatesOff birlikte kullanılamaz' }
+    if ($modes.Count -gt 1) { $problem = 'Cannot be used together: ' + ($modes -join ', ') }
+    elseif ((& $flag 'UpdatesOn') -and (& $flag 'UpdatesOff')) { $problem = '-UpdatesOn and -UpdatesOff cannot be used together' }
     elseif ((& $flag 'ExportLayout') -and ($only.Count -gt 0 -or $skip.Count -gt 0)) {
-        $problem = '-ExportLayout ile -Only / -Skip kullanılamaz'
+        $problem = '-ExportLayout cannot be used with -Only / -Skip'
     }
     elseif ((& $text 'Version') -and (& $text 'Version') -notmatch '^[vV]?\d+\.\d+\.\d+$') {
-        $problem = "Geçersiz sürüm: $(& $text 'Version') (vX.Y.Z)"
+        $problem = "Invalid version: $(& $text 'Version') (vX.Y.Z)"
     }
     elseif ($modes.Count -eq 1 -and $modes[0] -ne '-ExportLayout' -and ($profileSpec -or $only.Count -gt 0 -or $skip.Count -gt 0)) {
-        $problem = "$($modes[0]) ile -Profile / -Only / -Skip kullanılamaz"
+        $problem = "$($modes[0]) cannot be used with -Profile / -Only / -Skip"
     }
     elseif ((& $text 'Session') -and -not (& $flag 'Undo') -and -not $profileSpec -and $only.Count -eq 0) {
-        $problem = '-Session yalnız -Undo ya da -Profile / -Only (devam) ile'
+        $problem = '-Session only works with -Undo or -Profile / -Only (resume)'
     }
-    elseif ((& $flag 'SkipFailed') -and -not (& $flag 'Undo')) { $problem = '-SkipFailed yalnız -Undo ile' }
-    elseif ($skip.Count -gt 0 -and -not $profileSpec) { $problem = '-Skip yalnız -Profile ile' }
+    elseif ((& $flag 'SkipFailed') -and -not (& $flag 'Undo')) { $problem = '-SkipFailed only works with -Undo' }
+    elseif ($skip.Count -gt 0 -and -not $profileSpec) { $problem = '-Skip only works with -Profile' }
     elseif ($modes.Count -eq 0 -and -not $profileSpec -and $only.Count -eq 0 -and (& $flag 'Unattended')) {
-        $problem = 'Menü -Unattended ile açılamaz: -Profile ya da -Only verin'
+        $problem = 'The menu cannot open with -Unattended: give -Profile or -Only'
     }
     if ($problem) {
         Write-Host $problem -ForegroundColor Red
-        Write-Host 'Yardım: Get-Help .\install.ps1 -Detailed'
+        Write-Host 'Help: Get-Help .\install.ps1 -Detailed'
         return 2
     }
 
@@ -691,7 +691,7 @@ function Invoke-FaiCli {
         $needsAdmin = Test-FaiNeedsAdmin -Options $o
         if ($needsAdmin -and -not $injected -and -not (Test-FaiIsAdmin)) {
             if ($ScriptPath) { return (Invoke-FaiElevated -ScriptPath $ScriptPath -Bound $o) }
-            Write-Host 'Yönetici yetkisi gerekiyor. Yönetici PowerShell açın ya da doğrulamalı tek satırı kullanın:' -ForegroundColor Red
+            Write-Host 'Administrator rights required. Open an administrator PowerShell or use the verified one-liner:' -ForegroundColor Red
             Write-Host ('  & ([scriptblock]::Create((irm {0}/releases/latest/download/get.ps1)))' -f (Get-FaiRepoUrl))
             return 3
         }
@@ -704,17 +704,17 @@ function Invoke-FaiCli {
                 $who = Test-FaiSessionUser -Provider $SessionUser
                 if ($who['Status'] -eq 'Other') {
                     if (-not (& $flag 'AllowOtherUser')) {
-                        Write-Host ("DURDU: araç '{0}' hesabıyla yükseltilmiş çalışıyor, masaüstü oturumunun sahibi '{1}'." -f $who['Process'], $who['Owner']) -ForegroundColor Red
-                        Write-Host ("HKCU ayarları, masaüstü ve görev çubuğu / Başlat sabitlemeleri '{0}' profiline yazılır (önizleme de onun HKCU'sunu okur); '{1}' için uygulanmaz." -f $who['Process'], $who['Owner']) -ForegroundColor Red
-                        Write-Host ("Çözüm: '{0}' hesabını yönetici yapıp onunla çalıştırın. Bilerek '{1}' profiline uygulamak için: -AllowOtherUser" -f $who['Owner'], $who['Process'])
+                        Write-Host ("STOPPED: the tool is running elevated as '{0}', but the desktop session belongs to '{1}'." -f $who['Process'], $who['Owner']) -ForegroundColor Red
+                        Write-Host ("HKCU settings, the desktop and taskbar / Start pins would be written to the '{0}' profile (the preview also reads its HKCU); they would not apply to '{1}'." -f $who['Process'], $who['Owner']) -ForegroundColor Red
+                        Write-Host ("Fix: make '{0}' an administrator and run as that account. To apply to the '{1}' profile on purpose: -AllowOtherUser" -f $who['Owner'], $who['Process'])
                         return 3
                     }
-                    $sessionWarning = "-AllowOtherUser: '{0}' oturumunda '{1}' hesabıyla sürüyor; HKCU, masaüstü ve sabitlemeler '{1}' profiline gider" -f $who['Owner'], $who['Process']
+                    $sessionWarning = "-AllowOtherUser: running as '{1}' in the '{0}' session; HKCU, desktop and pins go to the '{1}' profile" -f $who['Owner'], $who['Process']
                 }
                 elseif ($who['Status'] -eq 'Unknown') {
-                    $sessionWarning = "masaüstü oturumunun sahibi bulunamadı; '{0}' hesabıyla sürüyor (oturum sahibi bu hesap değilse HKCU, masaüstü ve sabitlemeler yanlış profile gider)" -f $who['Process']
+                    $sessionWarning = "desktop session owner not found; running as '{0}' (if the session owner is a different account, HKCU, desktop and pins go to the wrong profile)" -f $who['Process']
                 }
-                if ($sessionWarning) { Write-Host ('UYARI: ' + $sessionWarning) -ForegroundColor Yellow }
+                if ($sessionWarning) { Write-Host ('WARNING: ' + $sessionWarning) -ForegroundColor Yellow }
             }
         }
 
@@ -726,33 +726,33 @@ function Invoke-FaiCli {
             if (-not (Test-Path -LiteralPath $logDir)) { [void](New-Item -ItemType Directory -Path $logDir -Force) }
             $logPath = Join-Path $logDir ((Get-Date -Format 'yyyyMMdd-HHmmss') + '.log')
             $Context = New-FaiWindowsContext -LogPath $logPath -BackupRoot $storage['BackupRoot']
-            Write-Host ('Günlük: {0}' -f $logPath) -ForegroundColor DarkGray
+            Write-Host ('Log: {0}' -f $logPath) -ForegroundColor DarkGray
             foreach ($dir in $storage['AclFixed']) {
-                Write-Host ('Veri klasörünün izni düzeltildi (yalnız SYSTEM + Administrators): {0}' -f $dir) -ForegroundColor Yellow
-                $Context.Logger.Warn("veri klasörü: izin düzeltildi: $dir")
+                Write-Host ('Data folder permissions fixed (SYSTEM + Administrators only): {0}' -f $dir) -ForegroundColor Yellow
+                $Context.Logger.Warn("data folder: permissions fixed: $dir")
             }
             foreach ($q in $storage['Quarantined']) {
-                Write-Host ('UYARI: sahibi SYSTEM / Administrators olmayan ya da bağlantı olan öğe kenara alındı, kullanılmayacak: {0}' -f $q) -ForegroundColor Yellow
-                $Context.Logger.Warn("veri klasörü: güvenilmeyen öğe kenara alındı: $q")
+                Write-Host ('WARNING: item not owned by SYSTEM / Administrators, or a link, was moved aside and will not be used: {0}' -f $q) -ForegroundColor Yellow
+                $Context.Logger.Warn("data folder: untrusted item moved aside: $q")
             }
         }
         $Context.DryRun = (& $flag 'DryRun')
         $Context.Unattended = (& $flag 'Unattended')
-        if ($sessionWarning) { $Context.Logger.Warn('oturum: ' + $sessionWarning) }
+        if ($sessionWarning) { $Context.Logger.Warn('session: ' + $sessionWarning) }
 
         $exportName = & $text 'ExportProfile'
         if ($exportName) {
             $target = Resolve-FaiExportTarget -Spec $exportName
             $data = Export-FaiProfile -Context $Context -Catalog $Catalog -AppCatalog $AppCatalog -Name $target.Name -Path $target.Path
-            Write-Host ('Profil yazıldı: {0}' -f $target.Path) -ForegroundColor Green
-            Write-Host ('  {0} tweak, {1} uygulama, düzen: {2}' -f @($data['tweaks']).Count, @($data['apps']).Count, ($data['layout'].Count -gt 0))
+            Write-Host ('Profile written: {0}' -f $target.Path) -ForegroundColor Green
+            Write-Host ('  {0} tweaks, {1} apps, layout: {2}' -f @($data['tweaks']).Count, @($data['apps']).Count, ($data['layout'].Count -gt 0))
             return 0
         }
 
         if (& $flag 'ExportLayout') {
             $layoutPath = Join-Path (Get-FaiDocumentsDir) 'layout.json'
             if ($profileSpec) {
-                if ($profileSpec -notlike '*.json') { Write-Host '-ExportLayout ile -Profile bir .json yolu olmalı' -ForegroundColor Red; return 2 }
+                if ($profileSpec -notlike '*.json') { Write-Host 'With -ExportLayout, -Profile must be a .json path' -ForegroundColor Red; return 2 }
                 $layoutPath = [System.IO.Path]::GetFullPath($profileSpec)
             }
             [void](Invoke-FaiExportLayout -ProfilePath $layoutPath -Context $Context)
@@ -780,8 +780,8 @@ function Invoke-FaiCli {
                 try { $Context.ResumeCommand = Get-FaiResumeCommand -ScriptPath $ScriptPath -Bound $resume }
                 catch {
                     $Context.ResumeCommand = ''
-                    $Context.Logger.Warn(('Devam komutu yazılamadı: {0}' -f $_.Exception.Message))
-                    Write-Host 'UYARI: devam komutu yazılamadı: yeniden başlatma sonrası elle çalıştırın' -ForegroundColor Yellow
+                    $Context.Logger.Warn(('Resume command could not be written: {0}' -f $_.Exception.Message))
+                    Write-Host 'WARNING: resume command could not be written: run it again manually after a restart' -ForegroundColor Yellow
                 }
             }
             $report = Invoke-FaiEngine -FaiProfile $fp -Session (& $text 'Session') -Context $Context -Catalog $Catalog -AppCatalog $AppCatalog -AllowTools:($only.Count -gt 0)
@@ -795,7 +795,7 @@ function Invoke-FaiCli {
         return 0
     }
     catch {
-        Write-Host ('HATA: {0}' -f $_.Exception.Message) -ForegroundColor Red
+        Write-Host ('ERROR: {0}' -f $_.Exception.Message) -ForegroundColor Red
         return 1
     }
 }

@@ -42,7 +42,7 @@ function Get-FaiLayoutError {
     param([Parameter(Position = 0)] [AllowNull()] [object] $Layout)
 
     $errs = New-Object 'System.Collections.Generic.List[string]'
-    if ($Layout -isnot [System.Collections.IDictionary]) { $errs.Add('layout: nesne olmalı'); return $errs.ToArray() }
+    if ($Layout -isnot [System.Collections.IDictionary]) { $errs.Add('layout: must be an object'); return $errs.ToArray() }
     $sections = @{
         taskbar      = @('alignment', 'autoHide', 'pins')
         desktopIcons = @((Get-FaiDesktopIconMap).Keys)
@@ -51,28 +51,28 @@ function Get-FaiLayoutError {
     }
     foreach ($k in @($Layout.Keys)) {
         $key = [string]$k
-        if (-not $sections.ContainsKey($key)) { $errs.Add("layout.${key}: bilinmeyen alan (izin verilenler: " + (@($sections.Keys | Sort-Object) -join ', ') + ')'); continue }
+        if (-not $sections.ContainsKey($key)) { $errs.Add("layout.${key}: unknown field (allowed: " + (@($sections.Keys | Sort-Object) -join ', ') + ')'); continue }
         $sec = $Layout[$k]
-        if ($sec -isnot [System.Collections.IDictionary]) { $errs.Add("layout.${key}: nesne olmalı"); continue }
+        if ($sec -isnot [System.Collections.IDictionary]) { $errs.Add("layout.${key}: must be an object"); continue }
         foreach ($sk in @($sec.Keys)) {
-            if ($sections[$key] -cnotcontains [string]$sk) { $errs.Add("layout.${key}.${sk}: bilinmeyen alan (izin verilenler: " + ($sections[$key] -join ', ') + ')') }
+            if ($sections[$key] -cnotcontains [string]$sk) { $errs.Add("layout.${key}.${sk}: unknown field (allowed: " + ($sections[$key] -join ', ') + ')') }
         }
     }
     if ($errs.Count -gt 0) { return $errs.ToArray() }
 
     if ($Layout.Contains('taskbar')) {
         $tb = $Layout['taskbar']
-        if ($tb.Contains('alignment') -and @('center', 'left') -cnotcontains $tb['alignment']) { $errs.Add('layout.taskbar.alignment: center ya da left olmalı') }
-        if ($tb.Contains('autoHide') -and $tb['autoHide'] -isnot [bool]) { $errs.Add('layout.taskbar.autoHide: true ya da false olmalı') }
+        if ($tb.Contains('alignment') -and @('center', 'left') -cnotcontains $tb['alignment']) { $errs.Add('layout.taskbar.alignment: must be center or left') }
+        if ($tb.Contains('autoHide') -and $tb['autoHide'] -isnot [bool]) { $errs.Add('layout.taskbar.autoHide: must be true or false') }
         if ($tb.Contains('pins')) {
-            if (-not (Test-FaiIsList $tb['pins']) -and $null -ne $tb['pins']) { $errs.Add('layout.taskbar.pins: dizi olmalı') }
+            if (-not (Test-FaiIsList $tb['pins']) -and $null -ne $tb['pins']) { $errs.Add('layout.taskbar.pins: must be an array') }
             else {
                 $i = 0
                 foreach ($p in @($tb['pins'])) {
                     $keys = @()
                     if ($p -is [System.Collections.IDictionary]) { $keys = @($p.Keys | ForEach-Object { [string]$_ }) }
                     if ($keys.Count -ne 1 -or @('appId', 'link', 'aumid') -cnotcontains $keys[0] -or $p[$keys[0]] -isnot [string]) {
-                        $errs.Add("layout.taskbar.pins[$i]: { appId | link | aumid: metin } nesnesi olmalı")
+                        $errs.Add("layout.taskbar.pins[$i]: must be an { appId | link | aumid: string } object")
                     }
                     $i++
                 }
@@ -81,18 +81,18 @@ function Get-FaiLayoutError {
     }
     if ($Layout.Contains('desktopIcons')) {
         foreach ($k in @($Layout['desktopIcons'].Keys)) {
-            if ($Layout['desktopIcons'][$k] -isnot [bool]) { $errs.Add("layout.desktopIcons.${k}: true ya da false olmalı") }
+            if ($Layout['desktopIcons'][$k] -isnot [bool]) { $errs.Add("layout.desktopIcons.${k}: must be true or false") }
         }
     }
     if ($Layout.Contains('desktop')) {
         $d = $Layout['desktop']
         foreach ($k in @('flags', 'iconSize')) {
-            if ($d.Contains($k) -and -not (Test-FaiIsInteger $d[$k])) { $errs.Add("layout.desktop.${k}: tamsayı olmalı") }
+            if ($d.Contains($k) -and -not (Test-FaiIsInteger $d[$k])) { $errs.Add("layout.desktop.${k}: must be an integer") }
         }
-        if ($d.Contains('iconLayouts') -and -not (Test-FaiIsBase64 $d['iconLayouts'])) { $errs.Add('layout.desktop.iconLayouts: base64 metni olmalı') }
+        if ($d.Contains('iconLayouts') -and -not (Test-FaiIsBase64 $d['iconLayouts'])) { $errs.Add('layout.desktop.iconLayouts: must be a base64 string') }
     }
     if ($Layout.Contains('start') -and $Layout['start'].Contains('start2') -and -not (Test-FaiIsBase64 $Layout['start']['start2'])) {
-        $errs.Add('layout.start.start2: base64 metni olmalı')
+        $errs.Add('layout.start.start2: must be a base64 string')
     }
     if ($errs.Count -gt 0) { return $errs.ToArray() }
 
@@ -163,12 +163,12 @@ function ConvertTo-FaiLayoutTweak {
         }
         $actions.Add(@{ Type = 'TaskbarPins'; Pins = $pins.ToArray() })
     }
-    if ($actions.Count -eq 0) { throw 'layout boş: uygulanacak alan yok' }
+    if ($actions.Count -eq 0) { throw 'layout is empty: nothing to apply' }
 
     $data = @{
         Id          = 'layout.profile'
-        Title       = 'Profil düzeni (görev çubuğu, masaüstü, Başlat)'
-        Description = 'Profilin layout bölümü (-ExportLayout ile yakalanır): görev çubuğu hizası / otomatik gizleme / sabitlemeler, masaüstü simgeleri ve konumları, Başlat sabitlemeleri.'
+        Title       = 'Profile layout (taskbar, desktop, Start)'
+        Description = 'The profile layout section (captured with -ExportLayout): taskbar alignment / auto-hide / pins, desktop icons and their positions, Start pins.'
         Category    = 'ui'
         Risk        = 'Safe'
         Refresh     = @('StartMenu', 'Shell')
@@ -217,7 +217,7 @@ function Export-FaiLayout {
     $tb['alignment'] = $al
     $byte = ([RegistryByteAction]::new(@{ Type = 'RegistryByte'; Path = $p.StuckRects; Name = 'Settings'; Offset = 8; Mask = 1; Value = 1 })).Current($cx)
     if ($byte -ge 0) { $tb['autoHide'] = (($byte -band 1) -eq 1) }
-    else { $warn.Add('StuckRects3 yok: otomatik gizleme okunamadı') }
+    else { $warn.Add('StuckRects3 not found: auto-hide could not be read') }
 
     $menuLinks = @()
     foreach ($folder in @('CommonPrograms', 'Programs')) {
@@ -239,7 +239,7 @@ function Export-FaiLayout {
             $sc = $cx.Shortcuts.ReadShortcut($l)
             if ($target -and $null -ne $sc -and $sc['TargetPath'] -and [TaskbarPinsAction]::NormTarget([string]$sc['TargetPath']) -eq $target) { $match = $l; break }
         }
-        if ($null -eq $match) { $warn.Add(('Sabitleme alınamadı (Başlat menüsünde aynı hedefli kısayol yok): {0}' -f $cur['Label'])); continue }
+        if ($null -eq $match) { $warn.Add(('Pin not captured (no Start menu shortcut with the same target): {0}' -f $cur['Label'])); continue }
         [void]$pins.Add([ordered]@{ link = (ConvertTo-FaiPortablePath $match) })
     }
     $tb['pins'] = $pins.ToArray()
@@ -261,7 +261,7 @@ function Export-FaiLayout {
     if ($cx.Registry.ValueExists($p.DesktopBag, 'IconSize')) { $desk['iconSize'] = [long][int]$cx.Registry.GetValue($p.DesktopBag, 'IconSize') }
     if ($cx.Registry.ValueExists($p.DesktopBag, 'IconLayouts')) {
         $desk['iconLayouts'] = [Convert]::ToBase64String([byte[]](ConvertTo-FaiRegistryValue -Value $cx.Registry.GetValue($p.DesktopBag, 'IconLayouts') -Kind 'Binary'))
-        $warn.Add('desktop.iconLayouts masaüstündeki öğe adlarını içerir: açık repoya koymadan önce gözden geçir')
+        $warn.Add('desktop.iconLayouts contains the names of items on your desktop: review it before putting it in a public repo')
     }
     if ($desk.Count -gt 0) { $layout['desktop'] = $desk }
 
@@ -269,9 +269,9 @@ function Export-FaiLayout {
     $start2 = Expand-FaiPath $p.Start2
     if ($cx.Files.FileExists($start2)) {
         $layout['start'] = [ordered]@{ start2 = [Convert]::ToBase64String($cx.Files.ReadBytes($start2)) }
-        $warn.Add('start.start2 Başlat sabitlemelerini içerir (ikili): açık repoya koymadan önce gözden geçir')
+        $warn.Add('start.start2 contains your Start pins (binary): review it before putting it in a public repo')
     }
-    else { $warn.Add('start2.bin yok: Başlat düzeni alınmadı') }
+    else { $warn.Add('start2.bin not found: Start layout not captured') }
 
     return @{ Layout = $layout; Warnings = $warn.ToArray() }
 }
@@ -296,7 +296,7 @@ function Save-FaiProfileLayout {
     }
     $data['layout'] = $Layout
     $errors = @(Get-FaiProfileError -Data (ConvertFrom-JsonText -Json ($data | ConvertTo-Json -Depth 20)))
-    if ($errors.Count -gt 0) { throw ("Profil geçersiz, yazılmadı ({0}):`n  {1}" -f $Path, ($errors -join "`n  ")) }
+    if ($errors.Count -gt 0) { throw ("Invalid profile, not written ({0}):`n  {1}" -f $Path, ($errors -join "`n  ")) }
     $ordered = [ordered]@{}
     foreach ($k in (Get-FaiProfileKey)) { if ($data.Contains($k)) { $ordered[$k] = $data[$k] } }
     $json = ($ordered | ConvertTo-Json -Depth 20) -replace "`r`n", "`n"
@@ -322,9 +322,9 @@ function Invoke-FaiExportLayout {
     Save-FaiProfileLayout -Path $ProfilePath -Layout $result.Layout
     $tb = $result.Layout['taskbar']
     $pinText = (@($tb['pins']) | ForEach-Object { @($_.Values)[0] }) -join ', '
-    Write-Host ('Düzen yazıldı: {0}' -f $ProfilePath)
-    Write-Host ('  görev çubuğu: {0}, otomatik gizle: {1}, sabitlemeler: {2}' -f $tb['alignment'], $tb['autoHide'], $pinText)
-    Write-Host ('  masaüstü simgeleri: {0}' -f ((@($result.Layout['desktopIcons'].Keys) | Where-Object { $result.Layout['desktopIcons'][$_] }) -join ', '))
-    foreach ($w in $result.Warnings) { Write-Host ('  UYARI: {0}' -f $w) -ForegroundColor Yellow }
+    Write-Host ('Layout written: {0}' -f $ProfilePath)
+    Write-Host ('  taskbar: {0}, auto-hide: {1}, pins: {2}' -f $tb['alignment'], $tb['autoHide'], $pinText)
+    Write-Host ('  desktop icons: {0}' -f ((@($result.Layout['desktopIcons'].Keys) | Where-Object { $result.Layout['desktopIcons'][$_] }) -join ', '))
+    foreach ($w in $result.Warnings) { Write-Host ('  WARNING: {0}' -f $w) -ForegroundColor Yellow }
     return $result.Layout
 }

@@ -49,7 +49,7 @@ Describe 'Tweak şeması — geçerli fixture''lar' {
     It 'koşulları Condition nesnesine çevirir' {
         $t = Import-FaiTweakFile -Path (Join-Path $TweakValid 'service-demo.psd1')
         $t.Conditions.Count | Should -Be 2
-        $t.Conditions[0].Describe() | Should -Be 'değil: IsLaptop'
+        $t.Conditions[0].Describe() | Should -Be 'not: IsLaptop'
         $t.Actions[0].GetType().Name | Should -Be 'ServiceAction'
     }
 
@@ -63,9 +63,9 @@ Describe 'Tweak şeması — geçerli fixture''lar' {
 Describe 'Tweak şeması — geçersiz fixture''lar (alan yolu + neden)' {
     It 'eksik zorunlu alanları listeler' {
         $e = @(Get-FaiTweakError (Import-PowerShellDataFile (Join-Path $TweakInvalid 'missing-fields.psd1')))
-        Test-HasError $e 'Title: zorunlu alan eksik' | Should -BeTrue -Because ($e -join '; ')
-        Test-HasError $e 'Description: zorunlu alan eksik' | Should -BeTrue
-        Test-HasError $e 'Actions: zorunlu alan eksik' | Should -BeTrue
+        Test-HasError $e 'Title: required field missing' | Should -BeTrue -Because ($e -join '; ')
+        Test-HasError $e 'Description: required field missing' | Should -BeTrue
+        Test-HasError $e 'Actions: required field missing' | Should -BeTrue
         $e.Count | Should -Be 3
     }
 
@@ -80,11 +80,11 @@ Describe 'Tweak şeması — geçersiz fixture''lar (alan yolu + neden)' {
 
     It 'bilinmeyen alan, geçersiz Risk, geçersiz koşul ve tanımsız yer tutucuyu yakalar' {
         $e = @(Get-FaiTweakError (Import-PowerShellDataFile (Join-Path $TweakInvalid 'unknown-key-bad-risk.psd1')))
-        Test-HasError $e 'Descripton: bilinmeyen alan' | Should -BeTrue -Because ($e -join '; ')
-        Test-HasError $e 'Risk: ''Dangerous'' geçersiz' | Should -BeTrue
-        Test-HasError $e 'Conditions[0]: bilinmeyen koşul ''HasQuantumGpu''' | Should -BeTrue
+        Test-HasError $e 'Descripton: unknown field' | Should -BeTrue -Because ($e -join '; ')
+        Test-HasError $e 'Risk: ''Dangerous'' is invalid' | Should -BeTrue
+        Test-HasError $e 'Conditions[0]: unknown condition ''HasQuantumGpu''' | Should -BeTrue
         Test-HasError $e 'Conditions[1]: MinBuild' | Should -BeTrue
-        Test-HasError $e 'Actions[0]: ''{{seviye}}'' yer tutucusu Params içinde tanımlı değil' | Should -BeTrue
+        Test-HasError $e 'Actions[0]: placeholder ''{{seviye}}'' is not defined in Params' | Should -BeTrue
     }
 
     It 'Import-FaiTweakFile geçersiz dosyada dosya yolu + alan yoluyla hata fırlatır' {
@@ -93,7 +93,7 @@ Describe 'Tweak şeması — geçersiz fixture''lar (alan yolu + neden)' {
         try { Import-FaiTweakFile -Path $path } catch { $err = $_.Exception.Message }
         $err | Should -Not -BeNullOrEmpty
         $err | Should -Match 'missing-fields\.psd1'
-        $err | Should -Match 'Title: zorunlu alan eksik'
+        $err | Should -Match 'Title: required field missing'
     }
 
     It 'Import-FaiTweakCatalog bütün geçersiz dosyaları tek hatada listeler' {
@@ -109,14 +109,14 @@ Describe 'Tweak şeması — geçersiz fixture''lar (alan yolu + neden)' {
         New-Item -ItemType Directory -Path $dir | Out-Null
         Copy-Item (Join-Path $TweakValid 'registry-demo.psd1') (Join-Path $dir 'a.psd1')
         Copy-Item (Join-Path $TweakValid 'registry-demo.psd1') (Join-Path $dir 'b.psd1')
-        { Import-FaiTweakCatalog -Path $dir } | Should -Throw '*birden çok dosyada*'
+        { Import-FaiTweakCatalog -Path $dir } | Should -Throw '*in more than one file*'
     }
 }
 
 Describe 'Tweak şeması — tek tek kurallar' {
     It 'kök hashtable değilse hata verir' {
-        @(Get-FaiTweakError 'metin')[0] | Should -Match '^\(kök\):'
-        @(Get-FaiTweakError $null)[0] | Should -Match '^\(kök\):'
+        @(Get-FaiTweakError 'metin')[0] | Should -Match '^\(root\):'
+        @(Get-FaiTweakError $null)[0] | Should -Match '^\(root\):'
     }
 
     It 'geçerli en küçük tweak hatasızdır' {
@@ -139,8 +139,8 @@ Describe 'Tweak şeması — tek tek kurallar' {
     }
 
     It 'Actions dizi, boş olmayan ve hashtable elemanlı olmalı' {
-        Test-HasError @(Get-FaiTweakError (New-TweakData @{ Actions = @() })) 'Actions: en az bir eylem' | Should -BeTrue
-        Test-HasError @(Get-FaiTweakError (New-TweakData @{ Actions = @{ Type = 'Registry' } })) 'Actions: dizi olmalı' | Should -BeTrue
+        Test-HasError @(Get-FaiTweakError (New-TweakData @{ Actions = @() })) 'Actions: at least one action' | Should -BeTrue
+        Test-HasError @(Get-FaiTweakError (New-TweakData @{ Actions = @{ Type = 'Registry' } })) 'Actions: must be an array' | Should -BeTrue
         Test-HasError @(Get-FaiTweakError (New-TweakData @{ Actions = @('x') })) 'Actions[0]: eylem hashtable olmalı' | Should -BeTrue
         Test-HasError @(Get-FaiTweakError (New-TweakData @{ Actions = @(@{ Name = 'x' }) })) 'Actions[0].Type: zorunlu alan eksik' | Should -BeTrue
     }
@@ -184,7 +184,7 @@ Describe 'Tweak şeması — tek tek kurallar' {
 
     It 'Tweak.WithParams: tanımsız parametreyi ve tür uyuşmazlığını reddeder' {
         $t = Import-FaiTweakFile -Path (Join-Path $TweakValid 'params-demo.psd1')
-        { $t.WithParams(@{ nope = 1 }) } | Should -Throw '*tanımsız parametre*'
+        { $t.WithParams(@{ nope = 1 }) } | Should -Throw '*undefined parameter*'
         { $t.WithParams(@{ level = 'yüksek' }) } | Should -Throw '*DWord*'
         $t2 = $t.WithParams(@{ level = 30 })
         $t2.Actions[0].Definition['Value'] | Should -Be 30
@@ -219,30 +219,30 @@ Describe 'Profil şeması' {
     It 'invalid-many.json: her hata alan yoluyla listelenir' {
         $data = Read-JsonFile (Join-Path $ProfileDir 'invalid-many.json')
         $e = @(Get-FaiProfileError $data)
-        Test-HasError $e 'nam: bilinmeyen alan' | Should -BeTrue -Because ($e -join '; ')
-        Test-HasError $e 'name: zorunlu alan eksik' | Should -BeTrue
-        Test-HasError $e 'tweaks[1]: ''fixture.registry-demo'' birden çok kez listelenmiş' | Should -BeTrue
-        Test-HasError $e 'tweaks[2]: ''Büyük Harf'' geçerli bir tweak kimliği değil' | Should -BeTrue
-        Test-HasError $e 'tweaks[3].id: metin olmalı' | Should -BeTrue
-        Test-HasError $e 'tweaks[4].extra: bilinmeyen alan' | Should -BeTrue
-        Test-HasError $e 'tweaks[4].params: nesne olmalı' | Should -BeTrue
+        Test-HasError $e 'nam: unknown field' | Should -BeTrue -Because ($e -join '; ')
+        Test-HasError $e 'name: required field missing' | Should -BeTrue
+        Test-HasError $e 'tweaks[1]: ''fixture.registry-demo'' is listed more than once' | Should -BeTrue
+        Test-HasError $e 'tweaks[2]: ''Büyük Harf'' is not a valid tweak ID' | Should -BeTrue
+        Test-HasError $e 'tweaks[3].id: must be a string' | Should -BeTrue
+        Test-HasError $e 'tweaks[4].extra: unknown field' | Should -BeTrue
+        Test-HasError $e 'tweaks[4].params: must be an object' | Should -BeTrue
         Test-HasError $e 'tweaks[5]:' | Should -BeTrue
-        Test-HasError $e 'autoConfirm[0]: ''fixture.service-demo'' tweaks listesinde yok' | Should -BeTrue
-        Test-HasError $e 'autoConfirm[1]: metin olmalı' | Should -BeTrue
-        Test-HasError $e 'apps: dizi olmalı' | Should -BeTrue
-        Test-HasError $e 'layout: nesne olmalı' | Should -BeTrue
+        Test-HasError $e 'autoConfirm[0]: ''fixture.service-demo'' is not in the tweaks list' | Should -BeTrue
+        Test-HasError $e 'autoConfirm[1]: must be a string' | Should -BeTrue
+        Test-HasError $e 'apps: must be an array' | Should -BeTrue
+        Test-HasError $e 'layout: must be an object' | Should -BeTrue
     }
 
     It 'Import-FaiProfileFile geçersiz dosyada dosya yolu + alan yoluyla hata fırlatır' {
         $err = $null
         try { Import-FaiProfileFile -Path (Join-Path $ProfileDir 'invalid-many.json') } catch { $err = $_.Exception.Message }
         $err | Should -Match 'invalid-many\.json'
-        $err | Should -Match 'name: zorunlu alan eksik'
+        $err | Should -Match 'name: required field missing'
     }
 
     It 'kök nesne değilse (dizi) hata verir' {
         $e = @(Get-FaiProfileError (ConvertFrom-JsonText '[1]'))
-        $e[0] | Should -Match '^\(kök\):'
+        $e[0] | Should -Match '^\(root\):'
     }
 
     It 'eskimiş exceptions alanı kabul edilir ve yok sayılır (geriye uyum)' {
@@ -253,8 +253,8 @@ Describe 'Profil şeması' {
     }
 
     It 'tweaks eksik / dizi değil ise hata verir' {
-        Test-HasError @(Get-FaiProfileError @{ name = 'x' }) 'tweaks: zorunlu alan eksik' | Should -BeTrue
-        Test-HasError @(Get-FaiProfileError @{ name = 'x'; tweaks = 'a.b' }) 'tweaks: dizi olmalı' | Should -BeTrue
+        Test-HasError @(Get-FaiProfileError @{ name = 'x' }) 'tweaks: required field missing' | Should -BeTrue
+        Test-HasError @(Get-FaiProfileError @{ name = 'x'; tweaks = 'a.b' }) 'tweaks: must be an array' | Should -BeTrue
     }
 
     It 'boş tweaks dizisi geçerli bir profildir' {

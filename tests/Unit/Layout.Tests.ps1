@@ -304,7 +304,7 @@ Describe 'Profil düzeni (layout)' {
             layout = @{ taskbar = @{ alignment = 'right'; autoHide = 'evet'; pins = @(@{ exe = 'a' }) }; desktop = @{ iconLayouts = '!!' }; extra = @{} }
         }
         $e = @(Get-FaiProfileError -Data $bad) -join "`n"
-        $e | Should -Match 'layout\.extra: bilinmeyen'
+        $e | Should -Match 'layout\.extra: unknown'
         $bad.layout.Remove('extra')
         $e = @(Get-FaiProfileError -Data $bad) -join "`n"
         $e | Should -Match 'layout\.taskbar\.alignment'

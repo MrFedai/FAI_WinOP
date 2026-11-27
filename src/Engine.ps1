@@ -42,8 +42,8 @@ class Engine {
 
     [Reporter] Run([Profile] $FaiProfile) {
         $report = [Reporter]::new()
-        if ($this.Ctx.DryRun) { $report.Heading = "Profil '$($FaiProfile.Name)' — ÖNİZLEME (dry-run, hiçbir şey değişmedi)" }
-        else { $report.Heading = "Profil '$($FaiProfile.Name)' — uygulama" }
+        if ($this.Ctx.DryRun) { $report.Heading = "Profile '$($FaiProfile.Name)' — PREVIEW (dry run, nothing changed)" }
+        else { $report.Heading = "Profile '$($FaiProfile.Name)' — apply" }
         $this.Ctx.Logger.Info($report.Heading)
         $this.Session = $null
         $this.PendingRefresh.Clear()
@@ -64,7 +64,7 @@ class Engine {
             $id = 'app.' + [string]$app['Id']
             try {
                 if (-not $this.AppCatalog.ContainsKey([string]$app['Id'])) {
-                    [void]$report.Add($id, $id, 'Failed', 'Uygulama kataloğunda yok', [string[]]@())
+                    [void]$report.Add($id, $id, 'Failed', 'Not in the app catalog', [string[]]@())
                     continue
                 }
                 $appTweak = ConvertTo-FaiAppTweak -App $this.AppCatalog[[string]$app['Id']] -KeepAutostart ([bool]$app['KeepAutostart'])
@@ -113,7 +113,7 @@ class Engine {
     # yedek oturumu ('Name' adıyla), rapor, kabuk yenilemesi. -Undo bu oturumu da geri alır.
     [Reporter] RunTweaks([string] $Name, [Tweak[]] $Tweaks) {
         $report = [Reporter]::new()
-        if ($this.Ctx.DryRun) { $report.Heading = "$Name — ÖNİZLEME (dry-run, hiçbir şey değişmedi)" }
+        if ($this.Ctx.DryRun) { $report.Heading = "$Name — PREVIEW (dry run, nothing changed)" }
         else { $report.Heading = $Name }
         $this.Ctx.Logger.Info($report.Heading)
         $this.Session = $null
@@ -143,11 +143,11 @@ class Engine {
             if (-not $this.PendingRefresh.Contains($kind)) { continue }
             try {
                 $this.Ctx.Desktop.Refresh($kind)
-                $this.Ctx.Logger.Info("kabuk yenilendi: $kind")
+                $this.Ctx.Logger.Info("shell refreshed: $kind")
             }
             catch {
-                [void]$Report.Add('refresh.' + $kind.ToLowerInvariant(), "Kabuk yenileme: $kind", 'Failed', $_.Exception.Message, [string[]]@())
-                $this.Ctx.Logger.Error("kabuk yenilenemedi (${kind}): $($_.Exception.Message)")
+                [void]$Report.Add('refresh.' + $kind.ToLowerInvariant(), "Shell refresh: $kind", 'Failed', $_.Exception.Message, [string[]]@())
+                $this.Ctx.Logger.Error("shell refresh failed (${kind}): $($_.Exception.Message)")
             }
         }
         $this.PendingRefresh.Clear()
@@ -167,7 +167,7 @@ class Engine {
 
     hidden [void] ProcessTweak([Profile] $FaiProfile, [string] $Id, [hashtable] $Overrides, [Reporter] $Report) {
         if (-not $this.Catalog.ContainsKey($Id)) {
-            [void]$Report.Add($Id, $Id, 'Failed', 'Katalogda böyle bir tweak yok', [string[]]@())
+            [void]$Report.Add($Id, $Id, 'Failed', 'No such tweak in the catalog', [string[]]@())
             return
         }
         # 1) çöz: parametre geçersiz kılmaları uygulanır, eylemler yeniden doğrulanır
@@ -180,16 +180,16 @@ class Engine {
         $Id = $tweak.Id
 
         if ($tweak.Tool -and -not $this.AllowTools) {
-            [void]$Report.Add($Id, $tweak.Title, 'Skipped', 'Araç: profille otomatik çalışmaz (menüden / -Only ile)', [string[]]@())
-            $cx.Logger.Info("${Id}: atlandı (araç)")
+            [void]$Report.Add($Id, $tweak.Title, 'Skipped', 'Tool: does not run automatically with a profile (use the menu / -Only)', [string[]]@())
+            $cx.Logger.Info("${Id}: skipped (tool)")
             return
         }
 
         # 2) koşullar
         $failedCondition = $tweak.FirstFailedCondition($cx.SystemInfo)
         if ($failedCondition) {
-            [void]$Report.Add($Id, $tweak.Title, 'Skipped', "Koşul sağlanmadı: $failedCondition", [string[]]@())
-            $cx.Logger.Info("${Id}: atlandı, koşul sağlanmadı ($failedCondition)")
+            [void]$Report.Add($Id, $tweak.Title, 'Skipped', "Condition not met: $failedCondition", [string[]]@())
+            $cx.Logger.Info("${Id}: skipped, condition not met ($failedCondition)")
             return
         }
 
@@ -200,7 +200,7 @@ class Engine {
             if (-not $tweak.Actions[$i].Applies($cx.SystemInfo)) { continue }
             # Hata iletisinde hangi eylemin denetiminde patladığı görünsün (gerçek makinede teşhis için).
             try { $ok = $tweak.Actions[$i].Test($cx) }
-            catch { throw ('eylem {0} ({1}) denetlenemedi: {2}' -f ($i + 1), $tweak.Actions[$i].Type, $_.Exception.Message) }
+            catch { throw ('action {0} ({1}) could not be checked: {2}' -f ($i + 1), $tweak.Actions[$i].Type, $_.Exception.Message) }
             if (-not $ok) { $pending.Add($i) }
         }
         if ($pending.Count -eq 0) {
@@ -215,15 +215,15 @@ class Engine {
         }
         # AlwaysConfirm: autoConfirm işlemez; etkileşimsiz kipte soru sorulamayacağı için atlanır.
         if ($tweak.AlwaysConfirm -and $tweak.Risk -ne 'Safe' -and $cx.Unattended) {
-            [void]$Report.Add($Id, $tweak.Title, 'Skipped', 'Her çalıştırmada onay ister: -Unattended kipte uygulanmaz (autoConfirm işlemez)', [string[]]@())
-            $cx.Logger.Info("${Id}: atlandı (her çalıştırmada onay, Unattended)")
+            [void]$Report.Add($Id, $tweak.Title, 'Skipped', 'Asks every run: not applied in -Unattended mode (autoConfirm does not apply)', [string[]]@())
+            $cx.Logger.Info("${Id}: skipped (asks every run, Unattended)")
             return
         }
         $autoConfirm = $FaiProfile.IsAutoConfirmed($Id) -and -not $tweak.AlwaysConfirm
         $decision = [RiskPolicy]::Decide($cx, $tweak.Risk, $tweak.Title, $tweak.Confirm, $autoConfirm, $details.ToArray())
         if (-not $decision.Apply) {
             [void]$Report.Add($Id, $tweak.Title, 'Skipped', $decision.Reason, [string[]]@())
-            $cx.Logger.Info("${Id}: atlandı ($($decision.Reason))")
+            $cx.Logger.Info("${Id}: skipped ($($decision.Reason))")
             return
         }
 
@@ -259,7 +259,7 @@ class Engine {
             $lines.Add($action.Describe())
         }
         [void]$Report.Add($Id, $tweak.Title, 'Applied', '', $lines.ToArray())
-        $cx.Logger.Info("${Id}: uygulandı ($($lines.Count) eylem)")
+        $cx.Logger.Info("${Id}: applied ($($lines.Count) actions)")
     }
 
     # Uygulama oturumu: devam kimliği güvenilir ve geri alınmamış oturumu gösteriyorsa o, yoksa yeni oturum.
@@ -271,15 +271,15 @@ class Engine {
             $why = ''
             try {
                 $found = $cx.Backup.Load($this.ResumeSessionId)
-                if ($found.IsUndone()) { $why = 'geri alınmış' }
+                if ($found.IsUndone()) { $why = 'already reverted' }
                 else { $opened = $found }
             }
             catch { $why = $_.Exception.Message }
-            if ($null -ne $opened) { $cx.Logger.Info("devam: kayıtlar oturum $($opened.Id) içine ekleniyor") }
+            if ($null -ne $opened) { $cx.Logger.Info("resume: adding entries to session $($opened.Id)") }
             else {
-                $msg = "devam oturumu $($this.ResumeSessionId) kullanılmadı ($why); yeni oturum açıldı"
+                $msg = "resume session $($this.ResumeSessionId) not used ($why); new session opened"
                 $cx.Logger.Warn($msg)
-                [void]$Report.Add('(yedek)', 'Devam oturumu kullanılmadı', 'Skipped', $msg, [string[]]@())
+                [void]$Report.Add('(backup)', 'Resume session not used', 'Skipped', $msg, [string[]]@())
             }
         }
         if ($null -eq $opened) { $opened = $cx.Backup.BeginSession($Name) }
@@ -303,16 +303,16 @@ class Engine {
         else { $sess = $cx.Backup.GetLatest() }
         foreach ($w in $cx.Backup.Warnings) {
             $cx.Logger.Warn($w)
-            [void]$report.Add('(yedek)', 'Yedek oturumu kullanılmadı (güvenilmez ya da bozuk)', 'Skipped', $w, [string[]]@())
+            [void]$report.Add('(backup)', 'Backup session not used (untrusted or corrupt)', 'Skipped', $w, [string[]]@())
         }
 
         if ($null -eq $sess) {
-            $report.Heading = 'Geri alma'
-            [void]$report.Add('(oturum)', 'Geri alınacak oturum yok', 'Skipped', '', [string[]]@())
+            $report.Heading = 'Undo'
+            [void]$report.Add('(session)', 'No session to undo', 'Skipped', '', [string[]]@())
             return $report
         }
-        if ($cx.DryRun) { $report.Heading = "Oturum $($sess.Id) — geri alma ÖNİZLEME (dry-run, hiçbir şey değişmedi)" }
-        else { $report.Heading = "Oturum $($sess.Id) — geri alma (ters sırada)" }
+        if ($cx.DryRun) { $report.Heading = "Session $($sess.Id) — undo PREVIEW (dry run, nothing changed)" }
+        else { $report.Heading = "Session $($sess.Id) — undo (in reverse order)" }
         $cx.Logger.Info($report.Heading)
 
         $doneBefore = 0
@@ -323,27 +323,27 @@ class Engine {
             # Önceki denemede geri alınan kayıt yeniden denenmez.
             if ($sess.IsEntryUndone($i)) { $doneBefore++; continue }
             $id = [string]$e['TweakId']
-            $title = '{0}. eylem' -f ([int]$e['ActionIndex'] + 1)
+            $title = 'action {0}' -f ([int]$e['ActionIndex'] + 1)
             try {
                 $action = New-FaiAction -Definition ([hashtable]$e['Action'])
                 if ($cx.DryRun) {
-                    [void]$report.Add($id, $title, 'Planned', 'geri alınacak', [string[]]@($action.PreviewRevert($cx, [hashtable]$e['Snapshot'])))
+                    [void]$report.Add($id, $title, 'Planned', 'will revert', [string[]]@($action.PreviewRevert($cx, [hashtable]$e['Snapshot'])))
                 }
                 else {
                     $this.AddRefresh([string[]]@($e['Refresh'] | Where-Object { $_ }))
                     $action.Revert($cx, [hashtable]$e['Snapshot'])
                     $sess.MarkEntryUndone($i)
-                    [void]$report.Add($id, $title, 'Reverted', '', [string[]]@('önceki duruma döndürüldü: ' + $action.Describe()))
+                    [void]$report.Add($id, $title, 'Reverted', '', [string[]]@('restored previous state: ' + $action.Describe()))
                 }
             }
             catch {
                 $failed.Add($i)
                 [void]$failedRows.Add($report.Add($id, $title, 'Failed', $_.Exception.Message, [string[]]@()))
-                $cx.Logger.Error("${id}: geri alınamadı: $($_.Exception.Message)")
+                $cx.Logger.Error("${id}: could not revert: $($_.Exception.Message)")
             }
         }
         if ($doneBefore -gt 0) {
-            [void]$report.Add('(oturum)', 'Önceki denemede geri alınan kayıtlar atlandı', 'Skipped', ('{0} kayıt' -f $doneBefore), [string[]]@())
+            [void]$report.Add('(session)', 'Entries reverted in an earlier attempt were skipped', 'Skipped', ('{0} entries' -f $doneBefore), [string[]]@())
         }
 
         $this.RunRefresh($report)
@@ -354,19 +354,19 @@ class Engine {
                 $skip = $SkipFailed
                 if (-not $skip -and -not $cx.Unattended) {
                     $names = @($failedRows | ForEach-Object { $_.TweakId } | Select-Object -Unique) -join ', '
-                    $skip = $cx.Prompt.Confirm(('{0} kayıt geri alınamadı ({1}). Hatalıları atla ve oturumu kapat? (Hayır: oturum açık kalır, -Undo yeniden yalnız kalanları dener)' -f $failed.Count, $names))
+                    $skip = $cx.Prompt.Confirm(('Entries not reverted: {0} ({1}). Skip the failed ones and close the session? (No: the session stays open, running -Undo again retries only the rest)' -f $failed.Count, $names))
                 }
                 if ($skip) {
                     $sess.CloseSkipping($failed.ToArray())
                     foreach ($row in $failedRows) {
                         $row.Status = 'Skipped'
-                        $row.Reason = 'geri alınamadı, atlandı: ' + $row.Reason
+                        $row.Reason = 'could not revert, skipped: ' + $row.Reason
                     }
-                    [void]$report.Add('(oturum)', 'Hatalı kayıtlar atlandı, oturum kapatıldı', 'Skipped', ('{0} kayıt geri alınmadan atlandı' -f $failed.Count), [string[]]@())
-                    $cx.Logger.Warn(('oturum {0} kapatıldı: {1} kayıt geri alınmadan atlandı' -f $sess.Id, $failed.Count))
+                    [void]$report.Add('(session)', 'Failed entries skipped, session closed', 'Skipped', ('{0} entries skipped without reverting' -f $failed.Count), [string[]]@())
+                    $cx.Logger.Warn(('session {0} closed: {1} entries skipped without reverting' -f $sess.Id, $failed.Count))
                 }
                 else {
-                    $cx.Logger.Warn(('oturum {0} açık kaldı: {1} kayıt geri alınamadı; yeniden -Undo yalnız onları dener, atlamak için -Undo -SkipFailed' -f $sess.Id, $failed.Count))
+                    $cx.Logger.Warn(('session {0} left open: {1} entries could not be reverted; running -Undo again retries only those, to skip them use -Undo -SkipFailed' -f $sess.Id, $failed.Count))
                 }
             }
         }
@@ -412,7 +412,7 @@ function Invoke-FaiEngine {
     $engine.AllowTools = $AllowTools.IsPresent
     if ($Undo.IsPresent) { return $engine.Undo($Session, $SkipFailed.IsPresent) }
     $engine.ResumeSessionId = $Session
-    if ($null -eq $FaiProfile) { throw 'Profil verilmedi.' }
+    if ($null -eq $FaiProfile) { throw 'No profile given.' }
     return $engine.Run($FaiProfile)
 }
 

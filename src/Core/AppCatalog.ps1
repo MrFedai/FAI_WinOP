@@ -22,12 +22,12 @@ function Get-FaiAppCatalogError {
     param([Parameter(Position = 0)] [AllowNull()] [object] $Data)
 
     $errs = New-Object 'System.Collections.Generic.List[string]'
-    if ($Data -isnot [System.Collections.IDictionary]) { $errs.Add('(kök): katalog JSON nesnesi olmalı'); return $errs.ToArray() }
+    if ($Data -isnot [System.Collections.IDictionary]) { $errs.Add('(root): catalog must be a JSON object'); return $errs.ToArray() }
     foreach ($k in @($Data.Keys)) {
-        if (@('$schema', 'apps') -cnotcontains [string]$k) { $errs.Add("${k}: bilinmeyen alan (izin verilenler: `$schema, apps)") }
+        if (@('$schema', 'apps') -cnotcontains [string]$k) { $errs.Add("${k}: unknown field (allowed: `$schema, apps)") }
     }
-    if (-not $Data.Contains('apps')) { $errs.Add('apps: zorunlu alan eksik'); return $errs.ToArray() }
-    if (-not (Test-FaiIsList $Data['apps'])) { $errs.Add('apps: dizi olmalı'); return $errs.ToArray() }
+    if (-not $Data.Contains('apps')) { $errs.Add('apps: required field missing'); return $errs.ToArray() }
+    if (-not (Test-FaiIsList $Data['apps'])) { $errs.Add('apps: must be an array'); return $errs.ToArray() }
 
     $ids = @{}
     $packages = @{}
@@ -35,66 +35,66 @@ function Get-FaiAppCatalogError {
     foreach ($app in $Data['apps']) {
         $at = "apps[$i]"
         $i++
-        if ($app -isnot [System.Collections.IDictionary]) { $errs.Add("${at}: nesne olmalı"); continue }
+        if ($app -isnot [System.Collections.IDictionary]) { $errs.Add("${at}: must be an object"); continue }
         foreach ($k in @($app.Keys)) {
-            if ((Get-FaiAppKey) -cnotcontains [string]$k) { $errs.Add("${at}.${k}: bilinmeyen alan (izin verilenler: " + ((Get-FaiAppKey) -join ', ') + ')') }
+            if ((Get-FaiAppKey) -cnotcontains [string]$k) { $errs.Add("${at}.${k}: unknown field (allowed: " + ((Get-FaiAppKey) -join ', ') + ')') }
         }
         foreach ($req in @('id', 'name', 'source', 'packageId')) {
-            if (-not $app.Contains($req)) { $errs.Add("${at}.${req}: zorunlu alan eksik") }
-            elseif ($app[$req] -isnot [string] -or [string]::IsNullOrWhiteSpace($app[$req])) { $errs.Add("${at}.${req}: boş olmayan metin olmalı") }
+            if (-not $app.Contains($req)) { $errs.Add("${at}.${req}: required field missing") }
+            elseif ($app[$req] -isnot [string] -or [string]::IsNullOrWhiteSpace($app[$req])) { $errs.Add("${at}.${req}: must be a non-empty string") }
         }
         if ($app['id'] -is [string]) {
-            if ($app['id'] -cnotmatch (Get-FaiAppIdPattern)) { $errs.Add("${at}.id: '$($app['id'])' geçersiz (küçük harf, rakam, tire)") }
-            elseif ($ids.ContainsKey($app['id'])) { $errs.Add("${at}.id: '$($app['id'])' birden çok kez tanımlı") }
+            if ($app['id'] -cnotmatch (Get-FaiAppIdPattern)) { $errs.Add("${at}.id: '$($app['id'])' is invalid (lowercase letters, digits, hyphens)") }
+            elseif ($ids.ContainsKey($app['id'])) { $errs.Add("${at}.id: '$($app['id'])' is defined more than once") }
             else { $ids[$app['id']] = $true }
         }
-        if ($app['source'] -is [string] -and @('winget', 'msstore') -cnotcontains $app['source']) { $errs.Add("${at}.source: winget ya da msstore olmalı") }
+        if ($app['source'] -is [string] -and @('winget', 'msstore') -cnotcontains $app['source']) { $errs.Add("${at}.source: must be winget or msstore") }
         if ($app['packageId'] -is [string]) {
-            if ($app['packageId'] -notmatch '^[A-Za-z0-9][A-Za-z0-9.\-_+]*$') { $errs.Add("${at}.packageId: paket kimliği olmalı (boşluk yok)") }
-            elseif ($packages.ContainsKey($app['packageId'].ToLowerInvariant())) { $errs.Add("${at}.packageId: '$($app['packageId'])' başka uygulamada da var") }
+            if ($app['packageId'] -notmatch '^[A-Za-z0-9][A-Za-z0-9.\-_+]*$') { $errs.Add("${at}.packageId: must be a package ID (no spaces)") }
+            elseif ($packages.ContainsKey($app['packageId'].ToLowerInvariant())) { $errs.Add("${at}.packageId: '$($app['packageId'])' is also used by another app") }
             else { $packages[$app['packageId'].ToLowerInvariant()] = $true }
         }
-        if ($app.Contains('notes') -and $app['notes'] -isnot [string]) { $errs.Add("${at}.notes: metin olmalı") }
+        if ($app.Contains('notes') -and $app['notes'] -isnot [string]) { $errs.Add("${at}.notes: must be a string") }
         if ($app.Contains('appxNames')) {
             $an = $app['appxNames']
-            if ($an -is [string] -or $an -isnot [System.Collections.IEnumerable] -or @($an).Count -eq 0) { $errs.Add("${at}.appxNames: boş olmayan paket adı listesi olmalı") }
+            if ($an -is [string] -or $an -isnot [System.Collections.IEnumerable] -or @($an).Count -eq 0) { $errs.Add("${at}.appxNames: must be a non-empty list of package names") }
             else {
                 foreach ($n in @($an)) {
-                    if ($n -isnot [string] -or $n -notmatch '^[A-Za-z0-9][A-Za-z0-9.\-]*$') { $errs.Add("${at}.appxNames: '$n' birebir Appx paket adı olmalı") }
+                    if ($n -isnot [string] -or $n -notmatch '^[A-Za-z0-9][A-Za-z0-9.\-]*$') { $errs.Add("${at}.appxNames: '$n' must be an exact Appx package name") }
                 }
             }
         }
         if ($app.Contains('quietUninstall')) {
             $qu = $app['quietUninstall']
-            if ($qu -isnot [System.Collections.IDictionary]) { $errs.Add("${at}.quietUninstall: nesne olmalı ({ path, args })") }
+            if ($qu -isnot [System.Collections.IDictionary]) { $errs.Add("${at}.quietUninstall: must be an object ({ path, args })") }
             else {
-                foreach ($k in @($qu.Keys)) { if (@('path', 'args') -cnotcontains [string]$k) { $errs.Add("${at}.quietUninstall.${k}: bilinmeyen alan (izin verilenler: path, args)") } }
-                if (-not $qu.Contains('path')) { $errs.Add("${at}.quietUninstall.path: zorunlu alan eksik") }
-                elseif (-not (Test-FaiWindowsPath $qu['path'])) { $errs.Add("${at}.quietUninstall.path: mutlak yol olmalı (%ProgramFiles%\... gibi)") }
-                if ($qu.Contains('args') -and $qu['args'] -isnot [string]) { $errs.Add("${at}.quietUninstall.args: metin olmalı") }
+                foreach ($k in @($qu.Keys)) { if (@('path', 'args') -cnotcontains [string]$k) { $errs.Add("${at}.quietUninstall.${k}: unknown field (allowed: path, args)") } }
+                if (-not $qu.Contains('path')) { $errs.Add("${at}.quietUninstall.path: required field missing") }
+                elseif (-not (Test-FaiWindowsPath $qu['path'])) { $errs.Add("${at}.quietUninstall.path: must be an absolute path (e.g. %ProgramFiles%\...)") }
+                if ($qu.Contains('args') -and $qu['args'] -isnot [string]) { $errs.Add("${at}.quietUninstall.args: must be a string") }
             }
         }
         if (-not $app.Contains('postInstall')) { continue }
         $pi = $app['postInstall']
-        if ($pi -isnot [System.Collections.IDictionary]) { $errs.Add("${at}.postInstall: nesne olmalı"); continue }
+        if ($pi -isnot [System.Collections.IDictionary]) { $errs.Add("${at}.postInstall: must be an object"); continue }
         foreach ($k in @($pi.Keys)) {
             if ((Get-FaiAppPostInstallKey) -cnotcontains [string]$k) {
-                $errs.Add("${at}.postInstall.${k}: bilinmeyen alan (izin verilenler: " + ((Get-FaiAppPostInstallKey) -join ', ') + ')')
+                $errs.Add("${at}.postInstall.${k}: unknown field (allowed: " + ((Get-FaiAppPostInstallKey) -join ', ') + ')')
             }
         }
         foreach ($k in @('removeAutostart', 'removeDesktopShortcut', 'flattenStartMenu')) {
-            if ($pi.Contains($k) -and $pi[$k] -isnot [bool]) { $errs.Add("${at}.postInstall.${k}: true ya da false olmalı") }
+            if ($pi.Contains($k) -and $pi[$k] -isnot [bool]) { $errs.Add("${at}.postInstall.${k}: must be true or false") }
         }
         foreach ($k in @('startupRegistryNames', 'startupFolderNames', 'startupTaskNames', 'desktopShortcutNames', 'startMenuFolders')) {
             if (-not $pi.Contains($k)) { continue }
-            if (-not (Test-FaiIsList $pi[$k])) { $errs.Add("${at}.postInstall.${k}: dizi olmalı"); continue }
+            if (-not (Test-FaiIsList $pi[$k])) { $errs.Add("${at}.postInstall.${k}: must be an array"); continue }
             $j = 0
             foreach ($item in $pi[$k]) {
                 $p = "${at}.postInstall.${k}[$j]"
                 $j++
-                if ($item -isnot [string] -or [string]::IsNullOrWhiteSpace($item)) { $errs.Add("${p}: boş olmayan metin olmalı"); continue }
-                if ($k -eq 'startupFolderNames' -and $item -notlike '*.lnk') { $errs.Add("${p}: .lnk dosya adı olmalı") }
-                if ($k -eq 'startupRegistryNames' -and $item -like '*.lnk') { $errs.Add("${p}: Run değeri adı olmalı (.lnk startupFolderNames'e)") }
+                if ($item -isnot [string] -or [string]::IsNullOrWhiteSpace($item)) { $errs.Add("${p}: must be a non-empty string"); continue }
+                if ($k -eq 'startupFolderNames' -and $item -notlike '*.lnk') { $errs.Add("${p}: must be a .lnk file name") }
+                if ($k -eq 'startupRegistryNames' -and $item -like '*.lnk') { $errs.Add("${p}: must be a Run value name (.lnk files go in startupFolderNames)") }
             }
         }
     }
@@ -155,7 +155,7 @@ function ConvertTo-FaiAppTweak {
     )
 
     $def = ConvertTo-FaiAppActionDefinition -App $App -KeepAutostart $KeepAutostart
-    $desc = 'Kurulum: {0} {1} (sessiz).' -f $App['source'], $App['packageId']
+    $desc = 'Install: {0} {1} (silent).' -f $App['source'], $App['packageId']
     if ($App.Contains('notes') -and $App['notes']) { $desc += ' ' + [string]$App['notes'] }
     $data = @{
         Id          = 'app.' + [string]$App['id']

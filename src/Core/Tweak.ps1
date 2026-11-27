@@ -16,13 +16,13 @@ function Expand-FaiParam {
         $whole = [regex]::Match($Value, '^\s*' + $pattern + '\s*$')
         if ($whole.Success) {
             $name = $whole.Groups[1].Value
-            if (-not $Params.ContainsKey($name)) { throw "Tanımsız parametre: $name" }
+            if (-not $Params.ContainsKey($name)) { throw "Undefined parameter: $name" }
             return , $Params[$name]
         }
         $expanded = $Value
         foreach ($m in [regex]::Matches($Value, $pattern)) {
             $name = $m.Groups[1].Value
-            if (-not $Params.ContainsKey($name)) { throw "Tanımsız parametre: $name" }
+            if (-not $Params.ContainsKey($name)) { throw "Undefined parameter: $name" }
             $expanded = $expanded.Replace($m.Value, [string]$Params[$name])
         }
         return $expanded
@@ -94,7 +94,7 @@ class Tweak {
     static [Tweak] FromHashtable([hashtable] $Data, [string] $Source) {
         $errors = @(Get-FaiTweakError -Data $Data)
         if ($errors.Count -gt 0) {
-            throw ("Tweak geçersiz ({0}):`n  {1}" -f $Source, ($errors -join "`n  "))
+            throw ("Invalid tweak ({0}):`n  {1}" -f $Source, ($errors -join "`n  "))
         }
         $t = [Tweak]::new()
         $t.Id = [string]$Data['Id']
@@ -128,7 +128,7 @@ class Tweak {
             $expanded = [hashtable](Expand-FaiParam -Value $def -Params $ParamValues)
             $errors = @(Get-FaiActionError -Definition $expanded -Path ("Actions[{0}]" -f $i))
             if ($errors.Count -gt 0) {
-                throw ("Tweak '{0}' parametreleriyle geçersiz:`n  {1}" -f $this.Id, ($errors -join "`n  "))
+                throw ("Tweak '{0}' is invalid with these parameters:`n  {1}" -f $this.Id, ($errors -join "`n  "))
             }
             $list.Add((New-FaiAction -Definition $expanded))
             $i++
@@ -143,7 +143,7 @@ class Tweak {
         if ($null -ne $Overrides) {
             foreach ($k in @($Overrides.Keys)) {
                 if (-not $this.Params.ContainsKey($k)) {
-                    throw ("Tweak '{0}' için tanımsız parametre: {1} (tanımlılar: {2})" -f $this.Id, $k, (@($this.Params.Keys) -join ', '))
+                    throw ("Undefined parameter for tweak '{0}': {1} (defined: {2})" -f $this.Id, $k, (@($this.Params.Keys) -join ', '))
                 }
                 $merged[$k] = $Overrides[$k]
             }

@@ -36,18 +36,18 @@ function ConvertFrom-FaiPsd1Text {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)] [AllowEmptyString()] [string] $Text,
-        [string] $Source = '<metin>'
+        [string] $Source = '<text>'
     )
 
     $tokens = $null
     $errors = $null
     $ast = [System.Management.Automation.Language.Parser]::ParseInput($Text.TrimStart([char]0xFEFF), [ref]$tokens, [ref]$errors)
-    if ($errors -and $errors.Count -gt 0) { throw ("{0}: ayrıştırılamadı: {1}" -f $Source, $errors[0].Message) }
+    if ($errors -and $errors.Count -gt 0) { throw ("{0}: could not be parsed: {1}" -f $Source, $errors[0].Message) }
     # İlk (en dıştaki) tablo; Import-PowerShellDataFile de böyle okur.
     $table = $ast.Find({ param($n) $n -is [System.Management.Automation.Language.HashtableAst] }, $false)
-    if ($null -eq $table) { throw "${Source}: @{ } veri tablosu yok" }
+    if ($null -eq $table) { throw "${Source}: no @{ } data table" }
     try { $value = $table.SafeGetValue() }
-    catch { throw ("{0}: yalnız sabit değer içerebilir: {1}" -f $Source, $_.Exception.Message) }
+    catch { throw ("{0}: may contain only constant values: {1}" -f $Source, $_.Exception.Message) }
     return $value
 }
 
@@ -64,12 +64,12 @@ function ConvertTo-FaiTweakCatalog {
     foreach ($src in @($Sources.Keys | Sort-Object)) {
         try {
             $t = [Tweak]::FromHashtable($Sources[$src], [string]$src)
-            if ($catalog.ContainsKey($t.Id)) { $problems.Add("${src}: Id '$($t.Id)' birden çok dosyada") }
+            if ($catalog.ContainsKey($t.Id)) { $problems.Add("${src}: Id '$($t.Id)' is in more than one file") }
             else { $catalog[$t.Id] = $t }
         }
         catch { $problems.Add($_.Exception.Message) }
     }
-    if ($problems.Count -gt 0) { throw ("Tweak kataloğu geçersiz:`n" + ($problems -join "`n")) }
+    if ($problems.Count -gt 0) { throw ("Invalid tweak catalog:`n" + ($problems -join "`n")) }
     return $catalog
 }
 
@@ -79,14 +79,14 @@ function Import-FaiEmbeddedTweakCatalog {
     param()
 
     $files = Get-FaiDataFile -Prefix 'tweaks/'
-    if ($files.Count -eq 0) { throw 'Gömülü tweak verisi yok (bundle build/Bundle.ps1 ile üretilmeli).' }
+    if ($files.Count -eq 0) { throw 'No embedded tweak data (build the bundle with build/Bundle.ps1).' }
     $sources = @{}
     $problems = New-Object 'System.Collections.Generic.List[string]'
     foreach ($k in @($files.Keys)) {
         try { $sources[[string]$k] = ConvertFrom-FaiPsd1Text -Text $files[$k] -Source ([string]$k) }
         catch { $problems.Add($_.Exception.Message) }
     }
-    if ($problems.Count -gt 0) { throw ("Tweak kataloğu geçersiz:`n" + ($problems -join "`n")) }
+    if ($problems.Count -gt 0) { throw ("Invalid tweak catalog:`n" + ($problems -join "`n")) }
     return ConvertTo-FaiTweakCatalog -Sources $sources
 }
 
@@ -99,7 +99,7 @@ function ConvertTo-FaiAppCatalog {
     )
 
     $errors = @(Get-FaiAppCatalogError -Data $Data)
-    if ($errors.Count -gt 0) { throw ("Uygulama kataloğu geçersiz ({0}):`n  {1}" -f $Source, ($errors -join "`n  ")) }
+    if ($errors.Count -gt 0) { throw ("Invalid app catalog ({0}):`n  {1}" -f $Source, ($errors -join "`n  ")) }
     $catalog = @{}
     foreach ($app in $Data['apps']) { $catalog[[string]$app['id']] = $app }
     return $catalog
@@ -136,7 +136,7 @@ function Import-FaiEmbeddedProfile {
     $key = 'profiles/' + $Name.ToLowerInvariant() + '.json'
     $files = Get-FaiDataFile -Prefix 'profiles/'
     if (-not $files.ContainsKey($key)) {
-        throw ("Profil bulunamadı: '{0}'. Gömülü profiller: {1}" -f $Name, ((Get-FaiEmbeddedProfileName) -join ', '))
+        throw ("Profile not found: '{0}'. Embedded profiles: {1}" -f $Name, ((Get-FaiEmbeddedProfileName) -join ', '))
     }
     return [Profile]::FromHashtable((ConvertFrom-JsonText -Json $files[$key]), $key)
 }

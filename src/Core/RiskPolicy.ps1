@@ -31,7 +31,7 @@ class RiskPolicy {
         if ($rows.Count -eq 0) { return '' }
         $width = ([string]$rows.Count).Length
         $lines = New-Object 'System.Collections.Generic.List[string]'
-        $lines.Add(('  Yapılacaklar ({0}):' -f $rows.Count))
+        $lines.Add(('  To do ({0}):' -f $rows.Count))
         for ($i = 0; $i -lt $rows.Count; $i++) { $lines.Add(('  {0}. {1}' -f ([string]($i + 1)).PadLeft($width), $rows[$i])) }
         return (($lines -join "`n") + "`n")
     }
@@ -41,40 +41,40 @@ class RiskPolicy {
         if ($Risk -eq 'Safe') { return [RiskDecision]::new($true, 'Safe') }
 
         if ($Risk -eq 'Caution') {
-            if ($AutoConfirm) { return [RiskDecision]::new($true, 'Caution: profilde autoConfirm') }
-            if ($Ctx.Unattended) { return [RiskDecision]::new($false, 'Unattended modda Caution için profilde autoConfirm yok') }
+            if ($AutoConfirm) { return [RiskDecision]::new($true, 'Caution: autoConfirm in profile') }
+            if ($Ctx.Unattended) { return [RiskDecision]::new($false, 'Unattended mode: Caution needs autoConfirm in the profile') }
             if ($Ctx.DryRun) {
-                $d = [RiskDecision]::new($true, 'Caution: çalışınca onay (E/H) istenecek')
+                $d = [RiskDecision]::new($true, 'Caution: will ask to confirm (Y/N) when run')
                 $d.Prompted = $true
                 return $d
             }
-            if ($null -eq $Ctx.Prompt) { return [RiskDecision]::new($false, 'Onay sağlayıcısı yok') }
+            if ($null -eq $Ctx.Prompt) { return [RiskDecision]::new($false, 'No prompt provider') }
             $text = '⚠ {0}' -f $Title
             if ($ConfirmText) { $text = '{0} — {1}' -f $text, $ConfirmText }
-            $yes = $Ctx.Prompt.Confirm($table + $text + ' Uygulansın mı? (E/H)')
-            $r = [RiskDecision]::new($yes, 'Caution: kullanıcı onayladı')
-            if (-not $yes) { $r.Reason = 'Caution: kullanıcı reddetti' }
+            $yes = $Ctx.Prompt.Confirm($table + $text + ' Apply? (Y/N)')
+            $r = [RiskDecision]::new($yes, 'Caution: confirmed by user')
+            if (-not $yes) { $r.Reason = 'Caution: declined by user' }
             $r.Prompted = $true
             return $r
         }
 
         if ($Risk -eq 'Risk') {
-            if ($Ctx.Unattended) { return [RiskDecision]::new($false, 'Unattended modda Risk asla uygulanmaz') }
+            if ($Ctx.Unattended) { return [RiskDecision]::new($false, 'Unattended mode: Risk is never applied') }
             if ($Ctx.DryRun) {
-                $d = [RiskDecision]::new($true, 'Risk: çalışınca "EVET" yazılması istenecek')
+                $d = [RiskDecision]::new($true, 'Risk: will ask you to type "YES" when run')
                 $d.Prompted = $true
                 return $d
             }
-            if ($null -eq $Ctx.Prompt) { return [RiskDecision]::new($false, 'Onay sağlayıcısı yok') }
-            $text = '⛔ RİSKLİ: {0}' -f $Title
+            if ($null -eq $Ctx.Prompt) { return [RiskDecision]::new($false, 'No prompt provider') }
+            $text = '⛔ RISKY: {0}' -f $Title
             if ($ConfirmText) { $text = '{0} — {1}' -f $text, $ConfirmText }
-            $yes = $Ctx.Prompt.ConfirmExact($table + $text + ' Devam etmek için EVET yazın.', 'EVET')
-            $r = [RiskDecision]::new($yes, 'Risk: "EVET" yazıldı')
-            if (-not $yes) { $r.Reason = 'Risk: onay verilmedi' }
+            $yes = $Ctx.Prompt.ConfirmExact($table + $text + ' Type YES to continue.', 'YES')
+            $r = [RiskDecision]::new($yes, 'Risk: "YES" typed')
+            if (-not $yes) { $r.Reason = 'Risk: not confirmed' }
             $r.Prompted = $true
             return $r
         }
 
-        return [RiskDecision]::new($false, "Bilinmeyen risk düzeyi: $Risk")
+        return [RiskDecision]::new($false, "Unknown risk level: $Risk")
     }
 }

@@ -36,9 +36,9 @@ function Get-FaiAffinityMask {
         [switch] $ExcludeCore0
     )
 
-    if ($Logical -lt 1 -or $Cores -lt 1) { throw "İşlemci sayısı geçersiz: $Logical mantıksal, $Cores çekirdek" }
-    if ($Logical -gt 64) { throw "64'ten fazla mantıksal işlemci desteklenmiyor (işlemci grupları): $Logical" }
-    if ($Cores -gt $Logical -or $Logical -gt 2 * $Cores) { throw "Mantıksal / çekirdek oranı tanınmıyor: $Logical / $Cores" }
+    if ($Logical -lt 1 -or $Cores -lt 1) { throw "Invalid processor count: $Logical logical, $Cores cores" }
+    if ($Logical -gt 64) { throw "More than 64 logical processors is not supported (processor groups): $Logical" }
+    if ($Cores -gt $Logical -or $Logical -gt 2 * $Cores) { throw "Unrecognized logical / core ratio: $Logical / $Cores" }
     $smtCores = $Logical - $Cores
     [long]$mask = 0
     for ($lp = 0; $lp -lt $Logical; $lp++) {
@@ -50,7 +50,7 @@ function Get-FaiAffinityMask {
         }
         $mask = $mask -bor ([long]1 -shl $lp)
     }
-    if ($mask -eq 0) { throw 'Benzeşim maskesi boş kaldı (çekirdek sayısı çok az)' }
+    if ($mask -eq 0) { throw 'Affinity mask is empty (too few cores)' }
     return $mask
 }
 
@@ -61,7 +61,7 @@ function Get-FaiGameError {
 
     $errs = New-Object 'System.Collections.Generic.List[string]'
     if (-not (Test-FaiIsList $Games)) {
-        $errs.Add('games: dizi olmalı')
+        $errs.Add('games: must be an array')
         return $errs.ToArray()
     }
     $allowed = @('exe', 'priority', 'smtOff', 'excludeCore0')
@@ -70,27 +70,27 @@ function Get-FaiGameError {
     foreach ($g in @($Games)) {
         $path = "games[$i]"
         $i++
-        if ($g -isnot [System.Collections.IDictionary]) { $errs.Add("${path}: { exe, priority, smtOff, excludeCore0 } nesnesi olmalı"); continue }
+        if ($g -isnot [System.Collections.IDictionary]) { $errs.Add("${path}: must be an { exe, priority, smtOff, excludeCore0 } object"); continue }
         foreach ($k in @($g.Keys)) {
-            if ($allowed -cnotcontains [string]$k) { $errs.Add("${path}.${k}: bilinmeyen alan (izin verilenler: " + ($allowed -join ', ') + ')') }
+            if ($allowed -cnotcontains [string]$k) { $errs.Add("${path}.${k}: unknown field (allowed: " + ($allowed -join ', ') + ')') }
         }
-        if (-not $g.Contains('exe')) { $errs.Add("${path}.exe: zorunlu alan eksik") }
+        if (-not $g.Contains('exe')) { $errs.Add("${path}.exe: required field missing") }
         elseif ($g['exe'] -isnot [string] -or $g['exe'] -notmatch (Get-FaiGameExePattern)) {
-            $errs.Add("${path}.exe: yalnız dosya adı olmalı (ör. cs2.exe; yol değil)")
+            $errs.Add("${path}.exe: must be a file name only (e.g. cs2.exe; not a path)")
         }
         else {
             $key = ([string]$g['exe']).ToLowerInvariant()
-            if ($seen.ContainsKey($key)) { $errs.Add("${path}.exe: '$($g['exe'])' birden çok kez listelenmiş") }
+            if ($seen.ContainsKey($key)) { $errs.Add("${path}.exe: '$($g['exe'])' is listed more than once") }
             $seen[$key] = $true
         }
         if ($g.Contains('priority') -and ($g['priority'] -isnot [string] -or @((Get-FaiGamePriorityMap).Keys) -cnotcontains $g['priority'])) {
-            $errs.Add("${path}.priority: " + (@((Get-FaiGamePriorityMap).Keys) -join ', ') + ' değerlerinden biri olmalı')
+            $errs.Add("${path}.priority: must be one of " + (@((Get-FaiGamePriorityMap).Keys) -join ', '))
         }
         foreach ($b in @('smtOff', 'excludeCore0')) {
-            if ($g.Contains($b) -and $g[$b] -isnot [bool]) { $errs.Add("${path}.${b}: true ya da false olmalı") }
+            if ($g.Contains($b) -and $g[$b] -isnot [bool]) { $errs.Add("${path}.${b}: must be true or false") }
         }
         if (-not $g.Contains('priority') -and -not [bool]$g['smtOff'] -and -not [bool]$g['excludeCore0']) {
-            $errs.Add("${path}: en az bir ayar gerekir (priority, smtOff ya da excludeCore0)")
+            $errs.Add("${path}: at least one setting is required (priority, smtOff or excludeCore0)")
         }
     }
     return $errs.ToArray()
@@ -113,13 +113,13 @@ function Get-FaiGameAffinityScript {
     $where = New-Object 'System.Collections.Generic.List[string]'
     foreach ($g in $Games) {
         $exe = ([string]$g['Exe']).ToLowerInvariant()
-        if ($exe -notmatch (Get-FaiGameExePattern)) { throw "Oyun dosya adı geçersiz: $exe" }
+        if ($exe -notmatch (Get-FaiGameExePattern)) { throw "Invalid game file name: $exe" }
         $rows.Add(("    '{0}' = [long]{1}" -f $exe, [long]$g['Mask']))
         $where.Add(("ProcessName='{0}'" -f $exe))
     }
     $lines = @(
-        '# FAI_WinOP gaming.per-game: oyun süreci başlayınca işlemci benzeşimini (affinity) ayarlar.'
-        '# Otomatik üretildi; elle düzenlemeyin. Kaldırmak için FAI_WinOP -Undo (görev ve betik birlikte gider).'
+        '# FAI_WinOP gaming.per-game: sets processor affinity when a game process starts.'
+        '# Generated automatically; do not edit. To remove, run FAI_WinOP -Undo (the task and script go together).'
         '$ErrorActionPreference = ''Continue'''
         '$games = @{'
         ($rows -join "`r`n")
@@ -132,16 +132,16 @@ function Get-FaiGameAffinityScript {
         '    try {'
         '        $p = Get-Process -Id $ProcessId -ErrorAction Stop'
         '        $p.ProcessorAffinity = [IntPtr]$mask'
-        '        Write-AffinityLog (''{0} ({1}): benzeşim 0x{2:X}'' -f $Name, $ProcessId, $mask)'
+        '        Write-AffinityLog (''{0} ({1}): affinity 0x{2:X}'' -f $Name, $ProcessId, $mask)'
         '    }'
-        '    catch { Write-AffinityLog (''{0} ({1}): ayarlanamadı: {2}'' -f $Name, $ProcessId, $_.Exception.Message) }'
+        '    catch { Write-AffinityLog (''{0} ({1}): could not set: {2}'' -f $Name, $ProcessId, $_.Exception.Message) }'
         '}'
         'foreach ($n in @($games.Keys)) {'
         '    foreach ($p in @(Get-Process -Name ([IO.Path]::GetFileNameWithoutExtension($n)) -ErrorAction SilentlyContinue)) { Set-GameAffinity $p.Id $n }'
         '}'
         ('$query = "SELECT * FROM Win32_ProcessStartTrace WHERE {0}"' -f ($where -join ' OR '))
         'Register-CimIndicationEvent -Query $query -SourceIdentifier ''FaiGameStart'' | Out-Null'
-        'Write-AffinityLog ''izleme başladı'''
+        'Write-AffinityLog ''watching started'''
         'while ($true) {'
         '    $e = Wait-Event -SourceIdentifier ''FaiGameStart'''
         '    $name = [string]$e.SourceEventArgs.NewEvent.ProcessName'
@@ -171,7 +171,7 @@ function ConvertTo-FaiGamesTweak {
     )
 
     $errors = @(Get-FaiGameError -Games $Games)
-    if ($errors.Count -gt 0) { throw ("games geçersiz:`n  " + ($errors -join "`n  ")) }
+    if ($errors.Count -gt 0) { throw ("Invalid games:`n  " + ($errors -join "`n  ")) }
     $ifeo = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options'
     $prio = Get-FaiGamePriorityMap
     $actions = New-Object 'System.Collections.Generic.List[hashtable]'
@@ -192,11 +192,11 @@ function ConvertTo-FaiGamesTweak {
 
     $data = @{
         Id          = 'gaming.per-game'
-        Title       = 'Oyun başına öncelik ve işlemci benzeşimi'
-        Description = ('Profilin games listesi ({0} oyun): IFEO CpuPriorityClass; SMT kapalı / çekirdek 0 hariç maskeleri bu makineden ({1} mantıksal, {2} çekirdek) hesaplanır ve açılış görevi oyun başlayınca uygular.' -f @($Games).Count, $Logical, $Cores)
+        Title       = 'Per-game priority and processor affinity'
+        Description = ('Profile games list ({0} games): IFEO CpuPriorityClass; SMT-off / exclude-core-0 masks are computed for this machine ({1} logical, {2} cores) and a startup task applies them when a game starts.' -f @($Games).Count, $Logical, $Cores)
         Category    = 'gaming'
         Risk        = 'Safe'
         Actions     = $actions.ToArray()
     }
-    return [Tweak]::FromHashtable($data, 'profil games')
+    return [Tweak]::FromHashtable($data, 'profile games')
 }

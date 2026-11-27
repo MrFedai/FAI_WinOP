@@ -49,12 +49,12 @@ class Reporter {
     static [string] StatusLabel([string] $Status) {
         $label = $Status
         switch ($Status) {
-            'Applied' { $label = 'UYGULANDI' }
-            'Planned' { $label = 'ÖNİZLEME' }
-            'UpToDate' { $label = 'ZATEN UYGUN' }
-            'Skipped' { $label = 'ATLANDI' }
-            'Failed' { $label = 'HATA' }
-            'Reverted' { $label = 'GERİ ALINDI' }
+            'Applied' { $label = 'APPLIED' }
+            'Planned' { $label = 'PREVIEW' }
+            'UpToDate' { $label = 'ALREADY SET' }
+            'Skipped' { $label = 'SKIPPED' }
+            'Failed' { $label = 'ERROR' }
+            'Reverted' { $label = 'REVERTED' }
         }
         return $label
     }
@@ -79,7 +79,7 @@ class Reporter {
             $n = $this.Count($s)
             if ($n -gt 0) { $parts.Add(('{0}: {1}' -f [Reporter]::StatusLabel($s), $n)) }
         }
-        if ($parts.Count -eq 0) { return 'Özet: kayıt yok' }
-        return 'Özet: ' + ($parts -join ' · ')
+        if ($parts.Count -eq 0) { return 'Summary: no entries' }
+        return 'Summary: ' + ($parts -join ' · ')
     }
 }

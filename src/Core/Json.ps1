@@ -61,11 +61,11 @@ function ConvertFrom-JsonText {
         [string] $Json
     )
 
-    if ([string]::IsNullOrWhiteSpace($Json)) { throw 'JSON metni boş.' }
+    if ([string]::IsNullOrWhiteSpace($Json)) { throw 'JSON text is empty.' }
     # En üst düzey diziyi ConvertFrom-Json açmasın diye bir nesneye sarılır.
     $parsed = ('{"v":' + $Json + "`n}") | ConvertFrom-Json
     $names = @($parsed.PSObject.Properties | ForEach-Object { $_.Name })
-    if ($names.Count -ne 1 -or $names[0] -ne 'v') { throw 'JSON metni tek bir değer olmalı.' }
+    if ($names.Count -ne 1 -or $names[0] -ne 'v') { throw 'JSON text must be a single value.' }
     $result = ConvertTo-Hashtable -InputObject $parsed.v
     return , $result
 }
@@ -75,7 +75,7 @@ function Read-JsonFile {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true, Position = 0)] [string] $Path)
 
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "Dosya yok: $Path" }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "File not found: $Path" }
     $text = [System.IO.File]::ReadAllText((Convert-Path -LiteralPath $Path), [System.Text.Encoding]::UTF8)
     $result = ConvertFrom-JsonText -Json $text.TrimStart([char]0xFEFF)
     return , $result
@@ -111,7 +111,7 @@ function ConvertTo-FaiRegistryValue {
             foreach ($b in @($Value)) { $bytes.Add([byte]$b) }
             return , $bytes.ToArray()
         }
-        default { throw "Bilinmeyen kayıt defteri türü: $Kind" }
+        default { throw "Unknown registry type: $Kind" }
     }
 }
 

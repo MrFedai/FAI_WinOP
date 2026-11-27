@@ -31,12 +31,12 @@ class ActionBase {
     # Geri alma önizlemesi (salt okunur): snapshot'taki önceki duruma dönülünce ne olacağı. Varsayılan genel;
     # türler şu an → geri alınca biçiminde ezer.
     [string] PreviewRevert([ExecutionContext] $Ctx, [hashtable] $Snapshot) {
-        return ('geri alınacak: {0} → önceki duruma [{1}]' -f $this.Describe(), [ActionBase]::SnapshotSummary($Snapshot))
+        return ('will revert: {0} → previous state [{1}]' -f $this.Describe(), [ActionBase]::SnapshotSummary($Snapshot))
     }
 
     # Snapshot'ın kısa özeti: anahtar=değer, en çok 120 karakter; uzun dizi / bayt kısaltılır.
     static [string] SnapshotSummary([hashtable] $Snapshot) {
-        if ($null -eq $Snapshot -or $Snapshot.Count -eq 0) { return 'boş' }
+        if ($null -eq $Snapshot -or $Snapshot.Count -eq 0) { return 'empty' }
         $parts = New-Object 'System.Collections.Generic.List[string]'
         foreach ($k in @($Snapshot.Keys | Sort-Object)) {
             $v = $Snapshot[$k]
@@ -47,7 +47,7 @@ class ActionBase {
                 $items = @($v)
                 $shown = @($items | Select-Object -First 4 | ForEach-Object { [string]$_ })
                 $txt = '[' + ($shown -join ',')
-                if ($items.Count -gt $shown.Count) { $txt += (',… {0} öğe' -f $items.Count) }
+                if ($items.Count -gt $shown.Count) { $txt += (',… {0} items' -f $items.Count) }
                 $txt += ']'
             }
             else { $txt = [string]$v }

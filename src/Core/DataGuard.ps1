@@ -100,12 +100,12 @@ function Protect-FaiDataDirectory {
             $created = $true
         }
         # Yeni açılan klasör bağlantıysa (taşıma ile oluşturma arasında araya giren) dokunulmaz: izin bağlantının hedefine yazılırdı.
-        if ($Security.IsReparsePoint($dir)) { throw "Veri klasörü bir bağlantı (junction / symlink), kullanılmadı: $dir" }
+        if ($Security.IsReparsePoint($dir)) { throw "Data folder is a link (junction / symlink), not used: $dir" }
         if (-not (Test-FaiRestrictedAcl -Acl $Security.GetAcl($dir) -ReaderSid $readers[$dir])) {
             $Security.SetRestrictedAcl($dir, $readers[$dir])
             if (-not $created) { $fixed.Add($dir) }
         }
-        if (-not $Security.IsTrusted($dir)) { throw "Veri klasörünün sahibi SYSTEM / Administrators değil, kullanılmadı: $dir" }
+        if (-not $Security.IsTrusted($dir)) { throw "Data folder owner is not SYSTEM / Administrators, not used: $dir" }
     }
 
     # İzin kilitlendi (yeni yazma olmaz); şimdi içerik.

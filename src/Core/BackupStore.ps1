@@ -141,14 +141,14 @@ class BackupStore {
 
     [BackupSession] Load([string] $Id) {
         $path = Join-Path $this.Root ($Id + '.json')
-        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Yedek oturumu yok: $Id" }
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Backup session not found: $Id" }
         if ($null -ne $this.Security -and -not $this.Security.IsTrusted($path)) {
-            throw "Yedek oturumu güvenilmez (sahibi SYSTEM / Administrators değil ya da bağlantı), kullanılmadı: $path"
+            throw "Backup session untrusted (owner is not SYSTEM / Administrators, or it is a link), not used: $path"
         }
         $data = $null
         try { $data = Read-JsonFile -Path $path }
-        catch { throw "Yedek oturumu bozuk (okunamadı): $path — $($_.Exception.Message)" }
-        if ($data -isnot [hashtable] -or -not $data['Id']) { throw "Yedek oturumu bozuk (okunamadı): $path" }
+        catch { throw "Backup session corrupt (unreadable): $path — $($_.Exception.Message)" }
+        if ($data -isnot [hashtable] -or -not $data['Id']) { throw "Backup session corrupt (unreadable): $path" }
         return [BackupSession]::FromHashtable($data, $path)
     }
 
@@ -160,14 +160,14 @@ class BackupStore {
             if ($null -ne $this.Security) {
                 $path = Join-Path $this.Root ($ids[$i] + '.json')
                 if (-not $this.Security.IsTrusted($path)) {
-                    $this.Warnings.Add("güvenilmeyen yedek oturumu atlandı (sahibi SYSTEM / Administrators değil ya da bağlantı): $path")
+                    $this.Warnings.Add("untrusted backup session skipped (owner is not SYSTEM / Administrators, or it is a link): $path")
                     continue
                 }
             }
             $s = $null
             try { $s = $this.Load($ids[$i]) }
             catch {
-                $this.Warnings.Add("bozuk yedek oturumu atlandı: $($_.Exception.Message)")
+                $this.Warnings.Add("corrupt backup session skipped: $($_.Exception.Message)")
                 continue
             }
             if (-not $s.IsUndone()) { return $s }

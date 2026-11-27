@@ -21,17 +21,17 @@ class Condition {
         $errors = New-Object 'System.Collections.Generic.List[string]'
         if ($Raw -is [string]) {
             if ([Condition]::BooleanNames() -notcontains $Raw) {
-                $errors.Add("bilinmeyen koşul '$Raw' (bilinenler: " + ([Condition]::BooleanNames() -join ', ') + ')')
+                $errors.Add("unknown condition '$Raw' (known: " + ([Condition]::BooleanNames() -join ', ') + ')')
             }
             return $errors.ToArray()
         }
         if ($Raw -isnot [System.Collections.IDictionary]) {
-            $errors.Add('koşul metin ya da tek anahtarlı hashtable olmalı')
+            $errors.Add('condition must be a string or a single-key hashtable')
             return $errors.ToArray()
         }
         $keys = @($Raw.Keys)
         if ($keys.Count -ne 1) {
-            $errors.Add('koşul hashtable''ı tam olarak bir anahtar içermeli')
+            $errors.Add('condition hashtable must have exactly one key')
             return $errors.ToArray()
         }
         $key = [string]$keys[0]
@@ -39,21 +39,21 @@ class Condition {
         switch ($key) {
             'Not' {
                 if ($val -isnot [string] -or [Condition]::BooleanNames() -notcontains $val) {
-                    $errors.Add("Not yalnız mantıksal koşul adı alır (" + ([Condition]::BooleanNames() -join ', ') + ')')
+                    $errors.Add("Not takes only a boolean condition name (" + ([Condition]::BooleanNames() -join ', ') + ')')
                 }
             }
             'Edition' {
                 $items = @($val)
                 if ($items.Count -eq 0 -or @($items | Where-Object { $_ -isnot [string] -or -not $_ }).Count -gt 0) {
-                    $errors.Add('Edition metin ya da metin dizisi olmalı')
+                    $errors.Add('Edition must be a string or an array of strings')
                 }
             }
             { $_ -eq 'MinBuild' -or $_ -eq 'MinRamGB' } {
                 $isNumber = $val -is [int] -or $val -is [long] -or $val -is [double] -or $val -is [decimal]
-                if (-not $isNumber -or $val -lt 0) { $errors.Add("$key sıfır ya da pozitif sayı olmalı") }
+                if (-not $isNumber -or $val -lt 0) { $errors.Add("$key must be zero or a positive number") }
             }
             default {
-                $errors.Add("bilinmeyen koşul anahtarı '$key' (bilinenler: Not, " + ([Condition]::ValuedNames() -join ', ') + ')')
+                $errors.Add("unknown condition key '$key' (known: Not, " + ([Condition]::ValuedNames() -join ', ') + ')')
             }
         }
         return $errors.ToArray()
@@ -61,7 +61,7 @@ class Condition {
 
     static [Condition] Parse([object] $Raw) {
         $errors = [Condition]::Validate($Raw)
-        if ($errors.Count -gt 0) { throw ('Geçersiz koşul: ' + ($errors -join '; ')) }
+        if ($errors.Count -gt 0) { throw ('Invalid condition: ' + ($errors -join '; ')) }
         $c = [Condition]::new()
         if ($Raw -is [string]) {
             $c.Name = $Raw
@@ -95,7 +95,7 @@ class Condition {
             }
             'MinBuild' { $result = ($Sys.GetBuild() -ge [int]$this.Value) }
             'MinRamGB' { $result = ($Sys.GetRamGB() -ge [double]$this.Value) }
-            default { throw "Bilinmeyen koşul: $($this.Name)" }
+            default { throw "Unknown condition: $($this.Name)" }
         }
         if ($this.Negate) { return (-not $result) }
         return $result
@@ -104,7 +104,7 @@ class Condition {
     [string] Describe() {
         $text = $this.Name
         if ($null -ne $this.Value) { $text = '{0} {1}' -f $this.Name, (@($this.Value) -join '/') }
-        if ($this.Negate) { $text = 'değil: ' + $text }
+        if ($this.Negate) { $text = 'not: ' + $text }
         return $text
     }
 }

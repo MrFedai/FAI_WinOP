@@ -162,7 +162,7 @@ Describe 'Katalog dry-run raporu' {
     It 'P0 tweak''i yalnız NVIDIA sınıf anahtarına yazar, onay her çalıştırmada' {
         $line = @($script:DryReport.Find('graphics.p0-state').Lines)[0]
         $line | Should -Match 'değişecek 1 alt anahtar: 0000\]'
-        $script:DryReport.Find('graphics.p0-state').Reason | Should -Match 'onay'
+        $script:DryReport.Find('graphics.p0-state').Reason | Should -Match 'confirm'
     }
 
     It 'her tweak ÖNİZLEME ve en az bir okunabilir değişiklik satırı' {

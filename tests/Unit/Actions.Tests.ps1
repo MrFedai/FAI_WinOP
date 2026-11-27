@@ -241,9 +241,9 @@ Describe 'PreviewRevert (geri alma önizlemesi)' {
         $ctx = New-Ctx
         $a = [MMAgentAction]::new(@{ Type = 'MMAgent'; Feature = 'PageCombining'; Enabled = $false })
         $line = $a.PreviewRevert($ctx, @{ Enabled = $true })
-        $line | Should -Match '^geri alınacak: .+ → önceki duruma \[Enabled=True\]$'
+        $line | Should -Match '^will revert: .+ → previous state \[Enabled=True\]$'
         $sum = [ActionBase]::SnapshotSummary(@{ Exists = $true; Bytes = (1..50) })
-        $sum | Should -Match 'Bytes=\[1,2,3,4,… 50 öğe\]'
+        $sum | Should -Match 'Bytes=\[1,2,3,4,… 50 items\]'
         $long = [ActionBase]::SnapshotSummary(@{ A = ('x' * 200); B = ('y' * 200); C = ('z' * 200) })
         $long.Length | Should -BeLessOrEqual 120
     }
@@ -330,10 +330,10 @@ Describe 'Reporter' {
         [void]$r.Add('c.d', 'Başlık C', 'Skipped', 'sebep', [string[]]@())
         $text = $r.Render()
         $text | Should -Match 'Başlık'
-        $text | Should -Match '\[UYGULANDI\] a\.b'
+        $text | Should -Match '\[APPLIED\] a\.b'
         $text | Should -Match '· satır 1'
-        $text | Should -Match '\[ATLANDI\] c\.d — Başlık C \(sebep\)'
-        $text | Should -Match 'Özet: UYGULANDI: 1 · ATLANDI: 1'
+        $text | Should -Match '\[SKIPPED\] c\.d — Başlık C \(sebep\)'
+        $text | Should -Match 'Summary: APPLIED: 1 · SKIPPED: 1'
         $r.HasFailures() | Should -BeFalse
     }
 }

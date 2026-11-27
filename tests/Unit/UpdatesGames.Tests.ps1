@@ -196,10 +196,10 @@ Describe 'Benzeşim maskesi (Get-FaiAffinityMask)' {
     It '64 mantıksal işlemci: en üst bit dahil; 64 üstü ve boş maske hata' {
         Get-FaiAffinityMask -Logical 64 -Cores 64 | Should -Be ([long]-1)
         { Get-FaiAffinityMask -Logical 128 -Cores 64 } | Should -Throw '*64*'
-        { Get-FaiAffinityMask -Logical 1 -Cores 1 -ExcludeCore0 } | Should -Throw '*boş*'
+        { Get-FaiAffinityMask -Logical 1 -Cores 1 -ExcludeCore0 } | Should -Throw '*empty*'
         { Get-FaiAffinityMask -Logical 2 -Cores 2 -SmtOff -ExcludeCore0 } | Should -Not -Throw
-        { Get-FaiAffinityMask -Logical 2 -Cores 1 -SmtOff -ExcludeCore0 } | Should -Throw '*boş*'
-        { Get-FaiAffinityMask -Logical 24 -Cores 8 } | Should -Throw '*oran*'
+        { Get-FaiAffinityMask -Logical 2 -Cores 1 -SmtOff -ExcludeCore0 } | Should -Throw '*empty*'
+        { Get-FaiAffinityMask -Logical 24 -Cores 8 } | Should -Throw '*ratio*'
     }
 }
 
@@ -220,14 +220,14 @@ Describe 'Profil games şeması' {
                     'f.exe'
                 ) })
         $text = $errs -join "`n"
-        $text | Should -Match 'games\[0\]\.exe: yalnız dosya adı'
-        $text | Should -Match 'games\[1\]\.affinity: bilinmeyen alan'
+        $text | Should -Match 'games\[0\]\.exe: must be a file name only'
+        $text | Should -Match 'games\[1\]\.affinity: unknown field'
         $text | Should -Match 'games\[1\]\.priority:'
-        $text | Should -Match 'games\[2\]\.smtOff: true ya da false'
-        $text | Should -Match 'games\[3\]: en az bir ayar'
-        $text | Should -Match 'games\[5\]\.exe: .* birden çok kez'
-        $text | Should -Match 'games\[6\]: \{ exe'
-        @(Get-FaiProfileError -Data @{ name = 'x'; tweaks = @(); games = 'a.exe' }) | Should -Match 'games: dizi olmalı'
+        $text | Should -Match 'games\[2\]\.smtOff: must be true or false'
+        $text | Should -Match 'games\[3\]: at least one setting'
+        $text | Should -Match 'games\[5\]\.exe: .* more than once'
+        $text | Should -Match 'games\[6\]: must be an \{ exe'
+        @(Get-FaiProfileError -Data @{ name = 'x'; tweaks = @(); games = 'a.exe' }) | Should -Match 'games: must be an array'
     }
 }
 

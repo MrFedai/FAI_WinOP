@@ -136,17 +136,17 @@ Describe 'Get-FaiAppCatalogError' {
 ] }
 '@
         $e = @(Get-FaiAppCatalogError $bad)
-        Test-HasError $e 'apps[0].extra: bilinmeyen alan' | Should -BeTrue -Because ($e -join '; ')
+        Test-HasError $e 'apps[0].extra: unknown field' | Should -BeTrue -Because ($e -join '; ')
         Test-HasError $e 'apps[0].id:' | Should -BeTrue
-        Test-HasError $e 'apps[0].source: winget ya da msstore' | Should -BeTrue
-        Test-HasError $e 'apps[1].name: boş olmayan metin' | Should -BeTrue
-        Test-HasError $e 'apps[1].packageId: ''a.b'' başka uygulamada da var' | Should -BeTrue
-        Test-HasError $e 'apps[1].postInstall.removeAutostart: true ya da false' | Should -BeTrue
-        Test-HasError $e 'apps[1].postInstall.bilinmeyen: bilinmeyen alan' | Should -BeTrue
-        Test-HasError $e 'apps[1].postInstall.startupFolderNames[0]: .lnk' | Should -BeTrue
-        Test-HasError $e 'apps[1].postInstall.startupRegistryNames[0]: Run değeri' | Should -BeTrue
-        Test-HasError $e 'apps[2].id: ''ok'' birden çok kez' | Should -BeTrue
-        Test-HasError $e 'apps[2].packageId: paket kimliği' | Should -BeTrue
+        Test-HasError $e 'apps[0].source: must be winget or msstore' | Should -BeTrue
+        Test-HasError $e 'apps[1].name: must be a non-empty string' | Should -BeTrue
+        Test-HasError $e 'apps[1].packageId: ''a.b'' is also used by another app' | Should -BeTrue
+        Test-HasError $e 'apps[1].postInstall.removeAutostart: must be true or false' | Should -BeTrue
+        Test-HasError $e 'apps[1].postInstall.bilinmeyen: unknown field' | Should -BeTrue
+        Test-HasError $e 'apps[1].postInstall.startupFolderNames[0]: must be a .lnk' | Should -BeTrue
+        Test-HasError $e 'apps[1].postInstall.startupRegistryNames[0]: must be a Run value' | Should -BeTrue
+        Test-HasError $e 'apps[2].id: ''ok'' is defined more than once' | Should -BeTrue
+        Test-HasError $e 'apps[2].packageId: must be a package ID' | Should -BeTrue
     }
 
     It 'eylem düzeyi kuralları (kısayol adı, görev yolu, klasör adı) da denetlenir' {
@@ -163,9 +163,9 @@ Describe 'Get-FaiAppCatalogError' {
     }
 
     It 'kök ve apps biçimi' {
-        @(Get-FaiAppCatalogError (ConvertFrom-JsonText '[1]'))[0] | Should -Match '^\(kök\)'
-        Test-HasError @(Get-FaiAppCatalogError @{ }) 'apps: zorunlu' | Should -BeTrue
-        Test-HasError @(Get-FaiAppCatalogError @{ apps = 'x' }) 'apps: dizi' | Should -BeTrue
+        @(Get-FaiAppCatalogError (ConvertFrom-JsonText '[1]'))[0] | Should -Match '^\(root\)'
+        Test-HasError @(Get-FaiAppCatalogError @{ }) 'apps: required' | Should -BeTrue
+        Test-HasError @(Get-FaiAppCatalogError @{ apps = 'x' }) 'apps: must be an array' | Should -BeTrue
     }
 }
 
@@ -181,12 +181,12 @@ Describe 'Profil apps' {
 
     It 'geçersiz girdiler alan yoluyla raporlanır' {
         $e = @(Get-FaiProfileError (ConvertFrom-JsonText '{"name":"p","tweaks":[],"apps":["Chrome","a","a",{"id":"b","keepAutostart":"evet","x":1},{"keep":true},3]}'))
-        Test-HasError $e 'apps[0]: ''Chrome'' geçerli bir uygulama kimliği değil' | Should -BeTrue -Because ($e -join '; ')
-        Test-HasError $e 'apps[2]: ''a'' birden çok kez' | Should -BeTrue
-        Test-HasError $e 'apps[3].keepAutostart: true ya da false' | Should -BeTrue
-        Test-HasError $e 'apps[3].x: bilinmeyen alan' | Should -BeTrue
-        Test-HasError $e 'apps[4].id: zorunlu alan eksik' | Should -BeTrue
-        Test-HasError $e 'apps[5]: uygulama kimliği' | Should -BeTrue
+        Test-HasError $e 'apps[0]: ''Chrome'' is not a valid app ID' | Should -BeTrue -Because ($e -join '; ')
+        Test-HasError $e 'apps[2]: ''a'' is listed more than once' | Should -BeTrue
+        Test-HasError $e 'apps[3].keepAutostart: must be true or false' | Should -BeTrue
+        Test-HasError $e 'apps[3].x: unknown field' | Should -BeTrue
+        Test-HasError $e 'apps[4].id: required field missing' | Should -BeTrue
+        Test-HasError $e 'apps[5]: must be an app ID' | Should -BeTrue
     }
 }
 
@@ -301,8 +301,8 @@ Describe 'App eylemi: sessiz kaldırıcı (quietUninstall)' {
         @(Get-FaiActionError @{ Type = 'App'; Id = 'A.B'; UninstallArgs = '/S' }) -join "`n" | Should -Match 'UninstallPath olmadan'
         $bad = ConvertFrom-JsonText '{ "apps": [ { "id": "a", "name": "A", "source": "winget", "packageId": "A.A", "quietUninstall": { "args": "/S", "x": 1 } } ] }'
         $ce = @(Get-FaiAppCatalogError $bad)
-        Test-HasError $ce 'apps[0].quietUninstall.path: zorunlu' | Should -BeTrue -Because ($ce -join '; ')
-        Test-HasError $ce 'apps[0].quietUninstall.x: bilinmeyen alan' | Should -BeTrue
+        Test-HasError $ce 'apps[0].quietUninstall.path: required' | Should -BeTrue -Because ($ce -join '; ')
+        Test-HasError $ce 'apps[0].quietUninstall.x: unknown field' | Should -BeTrue
     }
 
     It 'gerçek katalogda Steam quietUninstall kullanır' {
@@ -345,7 +345,7 @@ Describe 'App eylemi: dry-run, msstore, rapor' {
         $r.Items[0].Status | Should -Be 'Applied'
         $r.Items[1].TweakId | Should -Be 'app.yok'
         $r.Items[1].Status | Should -Be 'Failed'
-        $r.Items[1].Reason | Should -Match 'kataloğunda yok'
+        $r.Items[1].Reason | Should -Match 'Not in the app catalog'
         $r.Items[2].TweakId | Should -Be $first
         $ctx.Packages.IsInstalled('9NKSQGP7F2NH', 'msstore') | Should -BeTrue
     }

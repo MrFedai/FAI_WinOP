@@ -95,7 +95,7 @@ Describe 'BackupStore' {
 
     It 'olmayan oturum kimliği hata verir' {
         $store = [BackupStore]::new((Join-Path $TestDrive 'none'))
-        { $store.Load('yok') } | Should -Throw '*Yedek oturumu yok*'
+        { $store.Load('yok') } | Should -Throw '*Backup session not found*'
     }
 }
 
@@ -129,7 +129,7 @@ Describe 'BackupStore: atomik kayıt ve kayıt başına geri alındı (v0.1.1)' 
         $store = [BackupStore]::new((Join-Path $TestDrive 'corrupt-load'))
         [void](New-Item -ItemType Directory -Path $store.Root -Force)
         Write-Raw (Join-Path $store.Root '20990101-000000-000-00.json') '{"Id": "20990101-000000-000-00", "Entries": [ {"TweakId'
-        { $store.Load('20990101-000000-000-00') } | Should -Throw '*bozuk*'
+        { $store.Load('20990101-000000-000-00') } | Should -Throw '*corrupt*'
     }
 
     It 'GetLatest bozuk ya da boş son oturumları uyarıyla atlar, öncekini döndürür' {
@@ -139,8 +139,8 @@ Describe 'BackupStore: atomik kayıt ve kayıt başına geri alındı (v0.1.1)' 
         Write-Raw (Join-Path $store.Root '20990101-000000-000-01.json') ''
         $store.GetLatest().Id | Should -Be $first.Id
         @($store.Warnings).Count | Should -Be 2
-        @($store.Warnings)[0] | Should -BeLike '*bozuk*20990101-000000-000-01.json*'
-        @($store.Warnings)[1] | Should -BeLike '*bozuk*20990101-000000-000-00.json*'
+        @($store.Warnings)[0] | Should -BeLike '*corrupt*20990101-000000-000-01.json*'
+        @($store.Warnings)[1] | Should -BeLike '*corrupt*20990101-000000-000-00.json*'
     }
 
     It 'kayıt başına geri alındı ve atlama işareti diske yazılır' {
@@ -182,7 +182,7 @@ Describe 'BackupStore: sahip denetimi (Security)' {
 
     It 'sahibi kullanıcı olan oturum Load ile okunmaz, açık hata' {
         $g = New-GuardedStore 'guard-load'
-        { $g.Store.Load($g.Second.Id) } | Should -Throw '*güvenilmez*'
+        { $g.Store.Load($g.Second.Id) } | Should -Throw '*untrusted*'
         $g.Store.Load($g.First.Id).Id | Should -Be $g.First.Id
     }
 
@@ -196,7 +196,7 @@ Describe 'BackupStore: sahip denetimi (Security)' {
     It 'bağlantı (symlink) olan oturum dosyası güvenilmez' {
         $g = New-GuardedStore 'guard-link'
         $g.Security.SeedLink($g.First.Path, 'File', 'S-1-5-32-544')
-        { $g.Store.Load($g.First.Id) } | Should -Throw '*güvenilmez*'
+        { $g.Store.Load($g.First.Id) } | Should -Throw '*untrusted*'
         $g.Store.GetLatest() | Should -BeNullOrEmpty
         @($g.Store.Warnings).Count | Should -Be 2
     }
@@ -211,7 +211,7 @@ Describe 'BackupStore: sahip denetimi (Security)' {
         $ctx.Backup.Security = $sec
         $report = Invoke-FaiEngine -Undo -Context $ctx -Catalog @{} -AppCatalog @{} 6>$null
         $report.Heading | Should -BeLike "*$($first.Id)*"
-        $row = @($report.Items | Where-Object { $_.TweakId -eq '(yedek)' })
+        $row = @($report.Items | Where-Object { $_.TweakId -eq '(backup)' })
         $row.Count | Should -Be 1
         $row[0].Status | Should -Be 'Skipped'
         $row[0].Reason | Should -BeLike "*$($second.Id).json*"

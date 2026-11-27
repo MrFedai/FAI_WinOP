@@ -25,7 +25,7 @@ class Profile {
     static [Profile] FromHashtable([hashtable] $Data, [string] $Source) {
         $errors = @(Get-FaiProfileError -Data $Data)
         if ($errors.Count -gt 0) {
-            throw ("Profil geçersiz ({0}):`n  {1}" -f $Source, ($errors -join "`n  "))
+            throw ("Invalid profile ({0}):`n  {1}" -f $Source, ($errors -join "`n  "))
         }
         $p = [Profile]::new()
         $p.Name = [string]$Data['name']

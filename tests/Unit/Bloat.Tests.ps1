@@ -113,7 +113,7 @@ Describe 'Motor: bloat.remove' {
         $ctx.Appx.Seed([string[]]@('Microsoft.BingNews', 'Microsoft.Todos', 'Microsoft.WindowsStore'), [string[]]@())
         $report = Invoke-FaiEngine (New-BloatProfile -Tweaks @('bloat.remove')) -Context $ctx -Catalog $script:Catalog
         $msg = [string]$ctx.Prompt.Asked[0]['Message']
-        $msg | Should -Match 'Yapılacaklar \(2\)'
+        $msg | Should -Match 'To do \(2\)'
         $msg | Should -Match '1\. Appx: Microsoft.BingNews'
         $msg | Should -Match '2\. Appx: Microsoft.Todos'
         $msg | Should -Not -Match 'WindowsStore'
@@ -192,7 +192,7 @@ Describe 'AppxCleanupAction (bloat.persistence)' {
         $text | Should -Match 'Get-AppxProvisionedPackage -Online -ErrorAction Stop'
         $text | Should -Not -Match 'Get-AppxProvisionedPackage[^\r\n]*SilentlyContinue'
         ([regex]::Matches($text, '\$failed = \$true')).Count | Should -Be 3
-        $text | Should -Match 'if \(\$failed\) \{[^\r\n]*damga yazılmadı, sonraki açılışta yinelenir'
+        $text | Should -Match 'if \(\$failed\) \{[^\r\n]*stamp not written, will retry at next startup'
         $text | Should -Match '(?s)else \{\s*Set-Content -LiteralPath \$stamp'
         ([regex]::Matches($text, 'Set-Content -LiteralPath \$stamp')).Count | Should -Be 1
         (Test-FaiScriptText $text).Count | Should -Be 0
@@ -221,7 +221,7 @@ Describe 'AppxCleanupAction (bloat.persistence)' {
     }
 
     It 'betik üretici jokerli adı reddeder; boş listeyle de geçerli betik üretir' {
-        { Get-FaiBloatCleanupScript -Names @('Microsoft.*') } | Should -Throw '*birebir*'
+        { Get-FaiBloatCleanupScript -Names @('Microsoft.*') } | Should -Throw '*must be exact*'
         (Test-FaiScriptText (Get-FaiBloatCleanupScript -Names @())).Count | Should -Be 0
     }
 }
@@ -265,7 +265,7 @@ Describe 'EdgeRemoveAction ve bloat.edge-remove' {
         $ctx.Edge.WebView2Version = '131.0'
         $report = Invoke-FaiEngine (New-BloatProfile -Tweaks @('bloat.edge-remove')) -Context $ctx -Catalog $script:Catalog
         $report.HasFailures() | Should -BeFalse
-        $ctx.Prompt.Asked[0]['Message'] | Should -Match 'Yapılacaklar \(8\)'
+        $ctx.Prompt.Asked[0]['Message'] | Should -Match 'To do \(8\)'
         $ctx.Registry.GetValue('HKLM:\SOFTWARE\Classes\microsoft-edge\shell\open\command', '') | Should -Match 'EdgeRedirect.ps1" "%1"$'
         $undo = Invoke-FaiEngine -Undo -Context $ctx -Catalog $script:Catalog
         $undo.HasFailures() | Should -BeFalse

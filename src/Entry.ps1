@@ -1,46 +1,47 @@
 ﻿<#
 .SYNOPSIS
-    FAI_WinOP — Windows 11 için profil odaklı optimizer. Profil yoksa etkileşimli menü açılır.
+    FAI_WinOP — a profile-driven optimizer for Windows 11. Without a profile, the interactive menu opens.
 
 .DESCRIPTION
-    Önerilen kurulum (SHA-256 doğrulamalı, yönetici PowerShell'de):
+    Recommended install (SHA-256 verified, in an administrator PowerShell):
         & ([scriptblock]::Create((irm https://github.com/MrFedai/FAI_WinOP/releases/latest/download/get.ps1))) -Profile fedai -DryRun
-    Yönetici değilse kendini yükseltir (UAC). Bu dosya build/Bundle.ps1 ile üretilir; kaynak: src/Entry.ps1.
+    If not run as administrator, it elevates itself (UAC). This file is built by build/Bundle.ps1; source: src/Entry.ps1.
 
 .PARAMETER FaiProfile
-    -Profile: gömülü profil adı (fedai), .json yolu ya da https URL. Verilmezse menü.
+    -Profile: embedded profile name (fedai), a .json path or an https URL. If omitted, the menu opens.
 .PARAMETER DryRun
-    Önizleme: hiçbir şey değişmez, soru sorulmaz.
+    Preview: nothing changes, no questions are asked.
 .PARAMETER Unattended
-    Soru sorulmaz: Risk hiç, Caution yalnız profildeki autoConfirm ile uygulanır.
+    No questions: Risk is never applied, Caution only with autoConfirm in the profile.
 .PARAMETER Undo
-    Geri alınmamış son oturumu (ya da -Session ile verileni) geri alır.
+    Reverts the last session that has not been undone (or the one given with -Session).
 .PARAMETER Session
-    -Undo ile: oturum kimliği. -Profile / -Only ile: yarıda kalan bu oturuma devam (yeniden başlatma sonrası devam
-    komutu kendisi ekler; güvenilmez ya da geri alınmış oturuma yazılmaz, yeni oturum açılır).
+    With -Undo: the session ID. With -Profile / -Only: resume this unfinished session (the resume command after a
+    restart adds it; an untrusted or already reverted session is not written to, a new session is opened).
 .PARAMETER SkipFailed
-    -Undo ile: geri alınamayan kayıtları atlar ve oturumu kapatır (atlananlar raporda). Verilmezse oturum açık kalır,
-    yeniden -Undo yalnız kalanları dener.
+    With -Undo: skips entries that cannot be reverted and closes the session (skipped entries are in the report).
+    Without it, the session stays open and running -Undo again retries only the rest.
 .PARAMETER Only
-    Yalnız bu tweak'ler (virgüllü). Profil yoksa yalnız bunlar çalışır; araç tweak'lerine (Tool) izin verir.
+    Only these tweaks (comma-separated). Without a profile, only these run; allows tool tweaks (Tool).
 .PARAMETER Skip
-    Profilden çıkarılacak tweak / uygulama kimlikleri (uygulama: app.<id>).
+    Tweak / app IDs to leave out of the profile (app: app.<id>).
 .PARAMETER UpdatesOn
-    Windows Update duraklatmasını kaldırır.
+    Resumes Windows Update (removes the pause).
 .PARAMETER UpdatesOff
-    Windows Update'i 365 gün duraklatır.
+    Pauses Windows Update for 365 days.
 .PARAMETER ExportProfile
-    Bu makinenin durumunu profil olarak yazar: ad (Belgeler\FAI_WinOP\<ad>.json) ya da .json yolu.
+    Writes this machine's state as a profile: a name (Documents\FAI_WinOP\<name>.json) or a .json path.
 .PARAMETER ExportLayout
-    Görev çubuğu / Başlat / masaüstü düzenini profilin layout bölümüne yazar (-Profile .json yolu ya da
-    Belgeler\FAI_WinOP\layout.json).
+    Writes the taskbar / Start / desktop layout to the profile's layout section (-Profile .json path or
+    Documents\FAI_WinOP\layout.json).
 .PARAMETER Version
-    Bu sürümü (vX.Y.Z) GitHub sürümünden indirir, SHA-256 doğrular ve onunla çalıştırır.
+    Downloads this version (vX.Y.Z) from GitHub releases, verifies its SHA-256 and runs it.
 .PARAMETER List
-    Tweak'leri, uygulamaları ve gömülü profilleri listeler.
+    Lists tweaks, apps and embedded profiles.
 .PARAMETER AllowOtherUser
-    Yükselten yönetici hesabı masaüstü oturumunun sahibi değilse araç durur (HKCU, masaüstü ve sabitlemeler yükselten
-    hesabın profiline gider). Bu anahtarla bilerek o hesabın profiline uygulanır. -DryRun da aynı denetimden geçer.
+    If the elevating administrator account does not own the desktop session, the tool stops (HKCU, desktop and pins
+    would go to the elevating account's profile). With this switch it applies to that account's profile on purpose.
+    -DryRun goes through the same check.
 
 .EXAMPLE
     .\install.ps1 -Profile fedai -DryRun

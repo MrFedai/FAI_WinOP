@@ -117,7 +117,7 @@ Describe 'CLI yardımcıları' {
         Test-FaiSha256 -Path $f -HashText "$hash  install.ps1`n" | Should -BeTrue
         Test-FaiSha256 -Path $f -HashText $hash.ToUpperInvariant() | Should -BeTrue
         Test-FaiSha256 -Path $f -HashText ('0' * 64) | Should -BeFalse
-        { Test-FaiSha256 -Path $f -HashText 'bozuk' } | Should -Throw '*geçersiz*'
+        { Test-FaiSha256 -Path $f -HashText 'bozuk' } | Should -Throw '*invalid*'
     }
 
     It 'Resolve-FaiProfile: düz http reddedilir, yol ve gömülü ad çözülür' {
@@ -184,7 +184,7 @@ Describe 'Invoke-FaiCli' {
         $path = Write-Profile 'rapor' @('ui.alpha')
         Invoke-Quiet { Invoke-FaiCli -Bound @{ Profile = $path; DryRun = $true } -Context $ctx -Catalog (New-TestCatalog) } | Should -Be 0
         $text = Get-Content -LiteralPath $ctx.Logger.Path -Raw -Encoding UTF8
-        $text | Should -Match '\[ÖNİZLEME\] ui\.alpha — Başlık ui\.alpha'
+        $text | Should -Match '\[PREVIEW\] ui\.alpha — Başlık ui\.alpha'
         $text | Should -Match '      · '
         $ctx.Logger.Entries | Where-Object { $_.Message -match 'ui\.alpha — ' } | Should -BeNullOrEmpty
     }
@@ -305,7 +305,7 @@ Describe 'Oturum sahibi denetimi (3.1)' {
         $code = Invoke-Quiet { Invoke-FaiCli -Bound @{ Profile = $path } -Context $ctx -Catalog (New-TestCatalog) -SessionUser (New-SessionUser $script:Me $null) }
         $code | Should -Be 0
         $ctx.Registry.GetValue($script:Key, 'Alpha') | Should -Be 1
-        @($ctx.Logger.Entries | Where-Object { $_.Level -eq 'WARN' -and $_.Message -match 'bulunamadı' }).Count | Should -Be 1
+        @($ctx.Logger.Entries | Where-Object { $_.Level -eq 'WARN' -and $_.Message -match 'owner not found' }).Count | Should -Be 1
     }
 
     It 'yönetici gerektirmeyen yollar (-List, -ExportProfile) denetlenmez' {
@@ -386,20 +386,20 @@ Describe 'Menü' {
         $b = ConvertFrom-FaiSelection -Text '4-2 5' -Count 5
         $b | Should -Be @(2, 3, 4, 5)
         (ConvertFrom-FaiSelection -Text '' -Count 5).Count | Should -Be 0
-        { ConvertFrom-FaiSelection -Text '6' -Count 5 } | Should -Throw '*Aralık dışı*'
-        { ConvertFrom-FaiSelection -Text 'x' -Count 5 } | Should -Throw '*Anlaşılmadı*'
+        { ConvertFrom-FaiSelection -Text '6' -Count 5 } | Should -Throw '*Out of range*'
+        { ConvertFrom-FaiSelection -Text 'x' -Count 5 } | Should -Throw '*Not understood*'
     }
 
     It 'Get-FaiMenuCategory sabit sıra ve Türkçe başlık' {
         $cats = Get-FaiMenuCategory -Catalog (New-TestCatalog)
         @($cats | ForEach-Object { $_.Name }) | Should -Be @('ui', 'privacy', 'refresh')
-        $cats[0].Label | Should -Be 'Arayüz'
+        $cats[0].Label | Should -Be 'Interface'
         @($cats[0].Tweaks | ForEach-Object { $_.Id }) | Should -Be @('ui.alpha', 'ui.beta')
     }
 
     It 'kategori → onay kutusu → önizle (yazma yok) → uygula' {
-        # 2: tweak seç · 1: Arayüz · 2: beta'yı işaretle · Enter: tamam · c: çalıştır · ö: önizle · u: uygula · Enter: geri · 0
-        $ctx = New-Env -Answers @('2', '1', '2', '', 'c', 'ö', 'u', '', '0')
+        # 2: tweak seç · 1: Interface · 2: beta'yı işaretle · Enter: tamam · r: çalıştır · p: önizle · a: uygula · Enter: geri · 0
+        $ctx = New-Env -Answers @('2', '1', '2', '', 'r', 'p', 'a', '', '0')
         Invoke-Quiet { Invoke-FaiMenu -Context $ctx -Catalog (New-TestCatalog) } | Should -Be 0
         $ctx.Registry.GetValue($script:Key, 'Beta') | Should -Be 1
         $ctx.Registry.ValueExists($script:Key, 'Alpha') | Should -BeFalse
@@ -407,21 +407,21 @@ Describe 'Menü' {
         @($ctx.Prompt.Asked | Where-Object { $_.Kind -eq 'ReadLine' }).Count | Should -Be 9
     }
 
-    It 'önizleme yalnız dry-run; G ile çıkınca hiçbir şey yazılmaz' {
-        $ctx = New-Env -Answers @('2', '1', 'h', '', 'c', 'ö', 'g', '', '0')
+    It 'önizleme yalnız dry-run; B ile çıkınca hiçbir şey yazılmaz' {
+        $ctx = New-Env -Answers @('2', '1', 'a', '', 'r', 'p', 'b', '', '0')
         Invoke-Quiet { Invoke-FaiMenu -Context $ctx -Catalog (New-TestCatalog) } | Should -Be 0
         $ctx.Registry.WriteCount | Should -Be 0
     }
 
     It 'profil seçimi: dosya yolu ile uygular' {
         $path = Write-Profile 'menu' @('privacy.gamma')
-        $ctx = New-Env -Answers @('1', 'd', $path, 'u', '0')
+        $ctx = New-Env -Answers @('1', 'f', $path, 'a', '0')
         Invoke-Quiet { Invoke-FaiMenu -Context $ctx -Catalog (New-TestCatalog) } | Should -Be 0
         $ctx.Registry.GetValue($script:Key, 'Gamma') | Should -Be 1
     }
 
     It 'araçlar: Caution araç onayla uygulanır' {
-        $ctx = New-Env -Answers @('5', '1', 'u', 'E', '0')
+        $ctx = New-Env -Answers @('5', '1', 'a', 'Y', '0')
         Invoke-Quiet { Invoke-FaiMenu -Context $ctx -Catalog (New-TestCatalog) } | Should -Be 0
         $ctx.Registry.GetValue($script:Key, 'Tool') | Should -Be 1
     }
@@ -525,10 +525,10 @@ Describe 'Kenar durumları (3.5)' {
 
     It 'c) menüden çalışan iş hatalıysa çıkış 1, yoksa 0' {
         $path = Write-Profile 'menu-hata' @('privacy.gamma')
-        $ctx = New-Env -Answers @('1', 'd', $path, 'u', '0')
+        $ctx = New-Env -Answers @('1', 'f', $path, 'a', '0')
         $ctx.Registry.FailOnName = 'Gamma'
         Invoke-Quiet { Invoke-FaiMenu -Context $ctx -Catalog (New-TestCatalog) } | Should -Be 1
-        $ctx2 = New-Env -Answers @('1', 'd', $path, 'u', '0')
+        $ctx2 = New-Env -Answers @('1', 'f', $path, 'a', '0')
         Invoke-Quiet { Invoke-FaiMenu -Context $ctx2 -Catalog (New-TestCatalog) } | Should -Be 0
     }
 
@@ -536,16 +536,16 @@ Describe 'Kenar durumları (3.5)' {
         $ctx = New-Env
         $ctx.Registry.Seed($script:Key, 'Alpha', 1, 'DWord')
         $cat = New-TestCatalog
-        # Motor, Test istisna atan tweak'i 'Failed' raporlar (Engine: 'eylem N (...) denetlenemedi').
+        # Motor, Test istisna atan tweak'i 'Failed' raporlar (Engine: 'action N (...) could not be checked').
         Mock Invoke-FaiEngine {
             $r = [Reporter]::new()
             [void]$r.Add('ui.alpha', 'A', 'UpToDate', '', [string[]]@())
-            [void]$r.Add('ui.beta', 'B', 'Failed', 'eylem 1 (Registry) denetlenemedi: erişim yok', [string[]]@())
+            [void]$r.Add('ui.beta', 'B', 'Failed', 'action 1 (Registry) could not be checked: access denied', [string[]]@())
             return $r
         }
         $data = Invoke-Quiet { Export-FaiProfile -Context $ctx -Catalog $cat -Name 'disa' }
         @($data['tweaks']) | Should -Be @('ui.alpha')
-        @($ctx.Logger.Entries | Where-Object { $_.Message -match 'ui\.beta denetlenemedi, profile alınmadı: ' }).Count | Should -Be 1
+        @($ctx.Logger.Entries | Where-Object { $_.Message -match 'ui\.beta could not be checked, not added to the profile: ' }).Count | Should -Be 1
     }
 
     It 'e) devam kopyası başarısızsa Get-FaiResumeCommand hata verir (RunOnce yazılmaz)' {

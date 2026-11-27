@@ -55,15 +55,15 @@ function ConvertTo-FaiUpdatesSwitchTweak {
 
     if ($On.IsPresent -and -not $Off.IsPresent) {
         $data = @{
-            Id = 'updates.on'; Title = 'Windows Update: duraklatmayı kaldır'; Category = 'updates'; Risk = 'Safe'
-            Description = 'Ayarlar > Windows Update duraklatma değerleri silinir; güncellemeler yeniden gelir (-UpdatesOn).'
+            Id = 'updates.on'; Title = 'Windows Update: resume'; Category = 'updates'; Risk = 'Safe'
+            Description = 'Removes the Settings > Windows Update pause values; updates resume (-UpdatesOn).'
             Actions = @(@{ Type = 'UpdatePause'; Ensure = 'Absent' })
         }
     }
     else {
         $data = @{
-            Id = 'updates.off'; Title = ('Windows Update: {0} gün duraklat' -f $Days); Category = 'updates'; Risk = 'Safe'
-            Description = 'Ayarlar > Windows Update duraklatılır (-UpdatesOff); bekleyen güncellemeler kurulmaz.'
+            Id = 'updates.off'; Title = ('Windows Update: pause for {0} days' -f $Days); Category = 'updates'; Risk = 'Safe'
+            Description = 'Pauses Settings > Windows Update (-UpdatesOff); pending updates are not installed.'
             Actions = @(@{ Type = 'UpdatePause'; Days = $Days })
         }
     }
