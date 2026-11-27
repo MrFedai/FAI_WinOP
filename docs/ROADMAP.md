@@ -556,14 +556,14 @@ Kaynak: kod incelemesi (lint temiz, 379 birim testi yeşilken bulunanlar). Sıra
   olmayan `input.mouse`; README "Faz 8" ve "-Undo gerçek önceki duruma döner" iddiası (geri alınamayanlar yazılır). ✓ `bb44a73`
 
 ### v0.1.1 — geri alma sağlamlığı
-- [ ] **2.1 Atomik oturum kaydı** · Efor: medium — geçici dosya + yer değiştirme; `GetLatest` bozuk dosyayı uyarıp atlar.
-- [ ] **2.2 Kayıt başına "geri alındı"** · Efor: high — başarısız kayıt oturumu kilitlemez; yeniden denemede başarılılar atlanır,
-  "hatalıyı atla, oturumu kapat" seçeneği.
-- [ ] **2.3 `-Undo -DryRun` önizlemesi** · Efor: medium — snapshot'tan (dönülecek durum), eylemin hedefinden değil.
-- [ ] **2.4 Kayıt defteri türü** · Efor: medium — `REG_NONE` / bilinmeyen tür ham bayt olarak yedeklenir ve geri yüklenir.
-- [ ] **2.5 Kaldırıcı çıkış kodu** · Efor: low — 3010 (yeniden başlatma gerekli) başarı sayılır.
-- [ ] **2.6 Devam sonrası geri alma** · Efor: medium — yeniden başlatma sonrası devam aynı oturuma yazar (ya da kullanıcıya iki
-  oturum olduğu söylenir); oturum JSON'u her eylemde iki kez baştan yazılmaz.
+- [x] **2.1 Atomik oturum kaydı** · Efor: medium — geçici dosya + yer değiştirme; `GetLatest` bozuk dosyayı uyarıp atlar. ✓ `86ae162`
+- [x] **2.2 Kayıt başına "geri alındı"** · Efor: high — başarısız kayıt oturumu kilitlemez; yeniden denemede başarılılar atlanır,
+  "hatalıyı atla, oturumu kapat" seçeneği. ✓ `86ae162`
+- [x] **2.3 `-Undo -DryRun` önizlemesi** · Efor: medium — snapshot'tan (dönülecek durum), eylemin hedefinden değil. ✓ `f39c47a`
+- [x] **2.4 Kayıt defteri türü** · Efor: medium — `REG_NONE` / bilinmeyen tür ham bayt olarak yedeklenir ve geri yüklenir. ✓ `e722a20`
+- [x] **2.5 Kaldırıcı çıkış kodu** · Efor: low — 3010 (yeniden başlatma gerekli) başarı sayılır. ✓ `95fe493`
+- [x] **2.6 Devam sonrası geri alma** · Efor: medium — yeniden başlatma sonrası devam aynı oturuma yazar (ya da kullanıcıya iki
+  oturum olduğu söylenir); oturum JSON'u her eylemde iki kez baştan yazılmaz. ✓ `86ae162`
 
 ### v0.1.2 — çalışma zamanı sağlamlığı
 - [ ] **3.1 Yükseltilmiş kullanıcı denetimi** · Efor: high — yükseltilmiş kullanıcı ≠ oturum sahibi ise dur / uyar (HKCU,
@@ -591,3 +591,5 @@ Kaynak: kod incelemesi (lint temiz, 379 birim testi yeşilken bulunanlar). Sıra
   güvenilir sahipli alt öğelerdeki açık izin kuralları sıfırlanmıyor. VM'de doğrula (olası): yükseltilmiş yöneticinin yeni dosya
   sahibi Administrators; Gezgin düzeni `shared\`'ten okuyor; Set-Acl kalıtım yayılımı önceden konmuş junction'a girmiyor.
 - v0.1.0 1.3 / 1.4: CI'da 5.1 Pester ve yönetici-yalnız get.ps1 akışı ilk koşuda görülecek.
+- v0.1.1 2.1 / 2.2: `Load` oturum kimliği beyaz liste denetimi; tamamen geri alınmış oturuma `-Undo` mesajı; BackupStore
+  doğrudan `System.IO` (sağlayıcı arkasına alınabilir). 2.4: REG_NONE / ham tür yedek + geri yükleme Sandbox'ta doğrulanacak (olası).

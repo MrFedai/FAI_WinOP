@@ -27,7 +27,7 @@ Profil yoksa Türkçe menü açılır. Diğer parametreler: `-Unattended`, `-Und
 - **Ayarlar veri, motor sınıf:** her tweak bir `.psd1` dosyası (açıklama, risk seviyesi, koşullar, eylemler).
 - **Risk seviyesi:** `Safe` doğrudan, `Caution` onay ister, `Risk` açıkça "EVET" yazdırır; gözetimsiz kipte `Risk` hiç uygulanmaz.
 - **Koşullar:** dizüstü, GPU üreticisi, sürüm, derleme numarası… Donanıma uymayan ayar atlanır.
-- **Geri alınabilir:** uygulamadan önce snapshot; `-DryRun` hiçbir şey yazmaz.
+- **Geri alınabilir:** uygulamadan önce snapshot; `-DryRun` hiçbir şey yazmaz; `-Undo -DryRun` geri alınca dönülecek durumu snapshot'tan gösterir.
 - **Profiller açık:** kendi profilini yaz (`profiles/`), yerel yoldan ya da URL'den yükle. Profillerde kişisel veri (şifre,
   lisans anahtarı, token, e-posta) bulunmaz.
 - **Hedef Windows PowerShell 5.1** (Windows 11 ile gelen); ek kurulum gerekmez.
