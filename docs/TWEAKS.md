@@ -57,7 +57,7 @@ Changes (8):
 - `Registry: HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate\Install{56EB18F8-B008-4CBD-B6D2-8C97FE7E9062} = 0 (DWord)`
 - `Registry: HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate\Install{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5} = 1 (DWord)`
 - `Registry: HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate\Update{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5} = 1 (DWord)`
-- `File: %ProgramData%\FAI_WinOP\EdgeRedirect.ps1 is written (570 characters, UTF8BOM)`
+- `File: %ProgramData%\FAI_WinOP\EdgeRedirect.ps1 is written (563 characters, UTF8BOM)`
 - `Registry: HKLM:\SOFTWARE\Classes\microsoft-edge\ = URL:microsoft-edge (String)`
 - `Registry: HKLM:\SOFTWARE\Classes\microsoft-edge\URL Protocol =  (String)`
 - `Registry: HKLM:\SOFTWARE\Classes\microsoft-edge\shell\open\command\ = "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "%ProgramData%\FAI_WinOP\EdgeRedirect.ps1" "%1" (ExpandString)`

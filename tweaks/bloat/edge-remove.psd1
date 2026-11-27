@@ -14,7 +14,7 @@
         @{ Type = 'Registry'; Path = 'HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate'; Name = 'Update{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'; Value = 1; Kind = 'DWord' }
         # microsoft-edge: → varsayılan tarayıcı
         @{ Type = 'File'; Path = '%ProgramData%\FAI_WinOP\EdgeRedirect.ps1'; Encoding = 'UTF8BOM'; Content = @'
-# FAI_WinOP bloat.edge-remove: microsoft-edge: bağlantısını varsayılan tarayıcıda açar. Yalnız http / https.
+# FAI_WinOP bloat.edge-remove: opens microsoft-edge: links in the default browser. http / https only.
 #   microsoft-edge:https://site/yol  ·  microsoft-edge:?url=https%3A%2F%2Fsite%2F&launchContext1=...
 param([string] $Uri = '', [switch] $Print)
 $target = ($Uri -replace '^microsoft-edge:', '').Trim().Trim('"')
