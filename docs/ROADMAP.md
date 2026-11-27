@@ -595,6 +595,11 @@ SKIPPED · REVERTED · PREVIEW; risk onayı `YES`, diğerleri `Y` / `N`; menü `
 - [x] **5.4 Tweak ve katalog metinleri** — tweak Title / Description / Confirm, katalog, profil, şemalar; TWEAKS.md + APPS.md. ✓ `b8692bd`
 - [x] **5.5 Bekçi testi** — `tests/Unit/EnglishGuard.Tests.ps1`: dize belirteçlerinde ve veri / belgede Türkçe harf kalırsa kırmızı. ✓ `508ca91`
 
+### v0.2.1 — Windows 5.1 CI düzeltmesi
+- [x] **6 test 5.1'de kırmızıydı (test hatası, ürün değil):** Türkçe harf denetimi harfe duyarlı (`-cmatch`; .NET Framework'te harfe
+  duyarsız eşlemede İ / ı sıradan i / I ile eşleşir) · hata bekleyen alt süreç testlerinde 2>&1 stderr'i Stop altında testi
+  düşürüyordu (yardımcıda `ErrorActionPreference = 'Continue'`; Lint `-Version` testi v0.1.3'ten beri kırmızıydı).
+
 ### Sonra bak
 - Bundle imzası (Authenticode) ya da `actions/attest-build-provenance`; `get.ps1`'e gömülü sürüm özeti.
 - `store-optimize` yerine zamanlanmış `winget upgrade`; `power.plan` prizde ısı / fan (dizüstü).

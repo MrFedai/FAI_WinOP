@@ -9,6 +9,8 @@ BeforeAll {
     $script:Shell = (Get-Process -Id $PID).Path
 
     function Invoke-Child([string] $Script, [string[]] $Arguments) {
+        # 5.1: 2>&1 ile gelen stderr satırı ErrorRecord olur; Stop altında testi düşürmesin
+        $ErrorActionPreference = 'Continue'
         $out = & $script:Shell -NoProfile -NonInteractive -File $Script @Arguments 2>&1 | Out-String
         [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $out }
     }

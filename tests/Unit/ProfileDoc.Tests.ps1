@@ -7,6 +7,8 @@ BeforeAll {
     $script:Script = Join-Path $script:Root 'build/ProfileDoc.ps1'
     $script:Readme = Join-Path $script:Root 'README.md'
     function Invoke-ProfileDoc([string[]] $Arguments) {
+        # 5.1: 2>&1 ile gelen stderr satırı ErrorRecord olur; Stop altında testi düşürmesin
+        $ErrorActionPreference = 'Continue'
         $out = & pwsh -NoProfile -File $script:Script @Arguments 2>&1
         return @{ Exit = $LASTEXITCODE; Out = ($out -join "`n") }
     }
@@ -42,6 +44,6 @@ Describe 'README profil bölümü' {
     }
 
     It 'README''de Türkçe harf yok' {
-        (Get-Content -LiteralPath $script:Readme -Raw) | Should -Not -Match '[çğıöşüÇĞİÖŞÜ]'
+        (Get-Content -LiteralPath $script:Readme -Raw) | Should -Not -MatchExactly '[çğıöşüÇĞİÖŞÜ]'
     }
 }

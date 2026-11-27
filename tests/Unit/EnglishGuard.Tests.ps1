@@ -5,7 +5,8 @@
 
 BeforeAll {
     $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
-    # Türkçe harfler (ç ğ ı ö ş ü Ç Ğ İ Ö Ş Ü); bu dosya da İngilizce kalsın diye kaçışla
+    # Türkçe harfler (ç ğ ı ö ş ü Ç Ğ İ Ö Ş Ü), kaçışla. Eşleme harfe duyarlı (-cmatch): Windows PowerShell 5.1'de (.NET Framework)
+    # harfe duyarsız eşlemede İ ve ı sıradan i / I ile eşleşir, her İngilizce metin Türkçe sayılırdı.
     $script:TurkishChars = '[çğıöşüÇĞİÖŞÜ]'
     # Bilerek Türkçe harf taşıyan dize: 'dosya göreli yolu|dizenin bir parçası'
     $script:Allowed = @()
@@ -39,7 +40,7 @@ Describe 'Kullanıcıya görünen metin İngilizce (bekçi)' {
             $rel = Get-RelPath $f.FullName
             foreach ($t in $tokens) {
                 if ($script:StringKinds -notcontains [string]$t.Kind) { continue }
-                if ($t.Text -notmatch $script:TurkishChars) { continue }
+                if ($t.Text -cnotmatch $script:TurkishChars) { continue }
                 if (Test-Allowed $rel $t.Text) { continue }
                 $txt = $t.Text
                 if ($txt.Length -gt 80) { $txt = $txt.Substring(0, 80) + '…' }
@@ -61,7 +62,7 @@ Describe 'Kullanıcıya görünen metin İngilizce (bekçi)' {
             $n = 0
             foreach ($line in [System.IO.File]::ReadAllLines($f.FullName)) {
                 $n++
-                if ($line -notmatch $script:TurkishChars) { continue }
+                if ($line -cnotmatch $script:TurkishChars) { continue }
                 if (Test-Allowed $rel $line) { continue }
                 $hits.Add(('{0}:{1}: {2}' -f $rel, $n, $line.Trim()))
             }
@@ -75,7 +76,7 @@ Describe 'Kullanıcıya görünen metin İngilizce (bekçi)' {
         [System.IO.File]::WriteAllText($tmp, $body, (New-Object System.Text.UTF8Encoding $true))
         $tokens = $null; $errors = $null
         [void][System.Management.Automation.Language.Parser]::ParseFile($tmp, [ref] $tokens, [ref] $errors)
-        $found = @($tokens | Where-Object { $script:StringKinds -contains [string]$_.Kind -and $_.Text -match $script:TurkishChars })
+        $found = @($tokens | Where-Object { $script:StringKinds -contains [string]$_.Kind -and $_.Text -cmatch $script:TurkishChars })
         $found.Count | Should -Be 1
         $found[0].Extent.StartLineNumber | Should -Be 2
     }
