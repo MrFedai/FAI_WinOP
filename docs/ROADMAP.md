@@ -566,13 +566,13 @@ Kaynak: kod incelemesi (lint temiz, 379 birim testi yeşilken bulunanlar). Sıra
   oturum olduğu söylenir); oturum JSON'u her eylemde iki kez baştan yazılmaz. ✓ `86ae162`
 
 ### v0.1.2 — çalışma zamanı sağlamlığı
-- [ ] **3.1 Yükseltilmiş kullanıcı denetimi** · Efor: high — yükseltilmiş kullanıcı ≠ oturum sahibi ise dur / uyar (HKCU,
-  masaüstü, sabitlemeler yanlış profile gitmesin).
-- [ ] **3.2 Yükseltmede yollar** · Efor: low — UAC ve `-Version` yeniden başlatmasında göreli yol mutlak yapılır (olası).
-- [ ] **3.3 Dış süreç zaman aşımı** · Efor: medium — winget, Edge `setup.exe`, kaldırıcı; aşımda süreç ağacı sonlanır.
-- [ ] **3.4 Bloat temizlik damgası** · Efor: low — yalnız hatasız bitişte yazılır (açılışta AppX hazır değilse yinelenir; olası).
-- [ ] **3.5 CLI kenar durumları** · Efor: low — `-Version V1.2.3`; `-ExportLayout` + `-Only` / `-Skip` kullanım hatası; menü çıkış
-  kodu; `-ExportProfile` denetlenemeyen tweak'i uyarır; devam kopyası başarısızsa RunOnce yazılmaz.
+- [x] **3.1 Yükseltilmiş kullanıcı denetimi** · Efor: high — yükseltilmiş kullanıcı ≠ oturum sahibi ise dur / uyar (HKCU,
+  masaüstü, sabitlemeler yanlış profile gitmesin). ✓ `976ddbf`
+- [x] **3.2 Yükseltmede yollar** · Efor: low — UAC ve `-Version` yeniden başlatmasında göreli yol mutlak yapılır (olası). ✓ `976ddbf`
+- [x] **3.3 Dış süreç zaman aşımı** · Efor: medium — winget, Edge `setup.exe`, kaldırıcı; aşımda süreç ağacı sonlanır. ✓ `2b516bc`
+- [x] **3.4 Bloat temizlik damgası** · Efor: low — yalnız hatasız bitişte yazılır (açılışta AppX hazır değilse yinelenir; olası). ✓ `f5adf28`
+- [x] **3.5 CLI kenar durumları** · Efor: low — `-Version V1.2.3`; `-ExportLayout` + `-Only` / `-Skip` kullanım hatası; menü çıkış
+  kodu; `-ExportProfile` denetlenemeyen tweak'i uyarır; devam kopyası başarısızsa RunOnce yazılmaz. ✓ `f5adf28`
 
 ### v0.1.3 — test gerçekliği ve temizlik
 - [ ] **4.1 Fake = gerçek** · Efor: medium — `DeleteEmptyKey` kovan altı anahtar, winget kimliği harf duyarlılığı, kısayol
@@ -593,3 +593,8 @@ Kaynak: kod incelemesi (lint temiz, 379 birim testi yeşilken bulunanlar). Sıra
 - v0.1.0 1.3 / 1.4: CI'da 5.1 Pester ve yönetici-yalnız get.ps1 akışı ilk koşuda görülecek.
 - v0.1.1 2.1 / 2.2: `Load` oturum kimliği beyaz liste denetimi; tamamen geri alınmış oturuma `-Undo` mesajı; BackupStore
   doğrudan `System.IO` (sağlayıcı arkasına alınabilir). 2.4: REG_NONE / ham tür yedek + geri yükleme Sandbox'ta doğrulanacak (olası).
+- v0.1.2 3.1: UAC'de başka yönetici hesabıyla gerçek deneme VM'de (explorer.exe sahibi tespiti; RunOnce açılışında kabuk yoksa uyarıp sürer).
+  `-Version` ile eski sürüme `-AllowOtherUser` geçilirse eski sürümde parametre yok (bağlama hatası). `Resolve-FaiExportTarget`,
+  `-ExportLayout` `[IO.Path]::GetFullPath` ile süreç klasörüne göre çözer, PowerShell konumuna göre değil.
+- v0.1.2 3.3: zaman aşımı + `taskkill /T` yolu ve kaldırıcının artık gizli pencere / `UseShellExecute=false` ile açılması Sandbox'ta doğrulanacak (olası).
+  3.4: `Get-AppxPackage -AllUsers` hatası damgayı engellemiyor (yalnız provisioned liste ve kaldırma hataları).
