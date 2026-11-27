@@ -1,11 +1,11 @@
 ﻿@{
     Id          = 'setup.updates-staged'
-    Title       = 'Windows Update: önce bekleyenleri kur, sonra duraklat'
-    Description = 'Önce bekleyen bütün yazılım güncellemeleri (Windows Update Agent; sürücüler hariç) indirilip kurulur, ilerleme basılır. Kurulum yeniden başlatma isterse çalıştırma burada durur: yeniden başlatıp profili tekrar çalıştırın (CLI ResumeCommand verirse RunOnce ile kendiliğinden sürer); kalan güncellemeler ve duraklatma o çalıştırmada yapılır. Hiç bekleyen kalmayınca güncellemeler pauseDays (varsayılan 365) gün duraklatılır: Ayarlar > Windows Update''in duraklatma değerleri (UX\Settings, başlangıç / bitiş UTC). FlightSettingsMaxPauseDays yazılmaz; 365 günün Ayarlar''da nasıl göründüğü VM''de doğrulanacak. -UpdatesOn / -UpdatesOff ayrıca duraklatmayı kaldırır / yeniden koyar. -Undo duraklatmayı kaldırır; kurulan güncellemeler geri alınmaz. Güvenlik yamaları da duraklatılır; uzun duraklatma Insider yapısının süresini doldurabilir. Onay her çalıştırmada istenir.'
+    Title       = 'Windows Update: install pending first, then pause'
+    Description = 'First, all pending software updates (Windows Update Agent; drivers excluded) are downloaded and installed, with progress printed. If the installation asks for a restart, the run stops here: restart and run the profile again (if the CLI provides a ResumeCommand, it continues on its own through RunOnce); the remaining updates and the pause are done in that run. When none are pending, updates are paused for pauseDays (default 365) days: the pause values of Settings > Windows Update (UX\Settings, start / end in UTC). FlightSettingsMaxPauseDays is not written; how 365 days appears in Settings will be verified in a VM. -UpdatesOn / -UpdatesOff separately remove / re-apply the pause. -Undo removes the pause; installed updates are not rolled back. Security patches are paused too; a long pause can make an Insider build expire. Confirmation is requested on every run.'
     Category    = 'setup'
     Risk        = 'Caution'
     AlwaysConfirm = $true
-    Confirm     = 'Güvenlik yamaları dahil bütün güncellemeler 365 gün duraklatılır; uzun duraklatma Insider yapısının süresini doldurabilir.'
+    Confirm     = 'All updates, including security patches, are paused for 365 days; a long pause can make an Insider build expire.'
     Params      = @{ pauseDays = 365 }
     Actions     = @(
         @{ Type = 'WindowsUpdate' }

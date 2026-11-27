@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/MrFedai/FAI_WinOP/apps/_schema.json",
-  "title": "FAI_WinOP uygulama kataloğu",
-  "description": "BELGE / editör desteği. Asıl doğrulama src/Core/AppCatalog.ps1 (Get-FaiAppCatalogError) içindedir. Alan adları ikisinde birebir aynı tutulur (tests/Unit/Apps.Tests.ps1 denetler).",
+  "title": "FAI_WinOP app catalog",
+  "description": "DOCUMENTATION / editor support. The real validation is in src/Core/AppCatalog.ps1 (Get-FaiAppCatalogError). Field names are kept identical in both (checked by tests/Unit/Apps.Tests.ps1).",
   "type": "object",
   "additionalProperties": false,
   "required": [ "apps" ],
@@ -15,30 +15,30 @@
         "additionalProperties": false,
         "required": [ "id", "name", "source", "packageId" ],
         "properties": {
-          "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "Profilde kullanılan kısa ad; motorda app.<id> tweak'i olur." },
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "Short name used in profiles; becomes the app.<id> tweak in the engine." },
           "name": { "type": "string" },
           "source": { "enum": [ "winget", "msstore" ] },
-          "packageId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9.\\-_+]*$", "description": "winget / Store kimliği (tests/Integration/App-Ids.ps1 doğrular)." },
+          "packageId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9.\\-_+]*$", "description": "winget / Store ID (verified by tests/Integration/App-Ids.ps1)." },
           "notes": { "type": "string" },
-          "appxNames": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9.\\-]*$" }, "description": "Uygulamanın Appx (MSIX) paket adları: profilde olduğu sürece bloat.remove / bloat.persistence bunlara dokunmaz." },
+          "appxNames": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9.\\-]*$" }, "description": "The app's Appx (MSIX) package names: as long as the app is in the profile, bloat.remove / bloat.persistence do not touch them." },
           "quietUninstall": {
             "type": "object",
             "additionalProperties": false,
             "required": [ "path" ],
-            "description": "Geri almada winget yerine çalışacak sessiz kaldırıcı (kaldırma kaydında sessiz komut olmayan kurucular: Steam).",
+            "description": "Silent uninstaller to run instead of winget on revert (for installers whose uninstall entry has no silent command: Steam).",
             "properties": { "path": { "type": "string" }, "args": { "type": "string" } }
           },
           "postInstall": {
             "type": "object",
             "additionalProperties": false,
             "properties": {
-              "removeAutostart": { "type": "boolean", "description": "Otomatik başlatmayı Görev Yöneticisi gibi kapat (StartupApproved). Profilde keepAutostart bunu devre dışı bırakır." },
-              "startupRegistryNames": { "type": "array", "items": { "type": "string" }, "description": "Run değeri adları (-like kalıbı; jokersiz ad önceden kapatılır)." },
-              "startupFolderNames": { "type": "array", "items": { "type": "string", "pattern": "\\.lnk$" }, "description": "Başlangıç klasöründeki kısayol adları." },
-              "startupTaskNames": { "type": "array", "items": { "type": "string", "pattern": "^\\\\" }, "description": "Oturum açılışında uygulamayı başlatan zamanlanmış görev yolları." },
-              "removeDesktopShortcut": { "type": "boolean", "description": "Kurulumda masaüstüne eklenen kısayolları ve desktopShortcutNames'i sil." },
+              "removeAutostart": { "type": "boolean", "description": "Turn off autostart the way Task Manager does (StartupApproved). keepAutostart in the profile disables this." },
+              "startupRegistryNames": { "type": "array", "items": { "type": "string" }, "description": "Run value names (-like pattern; a name without wildcards is turned off in advance)." },
+              "startupFolderNames": { "type": "array", "items": { "type": "string", "pattern": "\\.lnk$" }, "description": "Shortcut names in the Startup folder." },
+              "startupTaskNames": { "type": "array", "items": { "type": "string", "pattern": "^\\\\" }, "description": "Paths of scheduled tasks that start the app at sign-in." },
+              "removeDesktopShortcut": { "type": "boolean", "description": "Delete the shortcuts the installer added to the desktop, and desktopShortcutNames." },
               "desktopShortcutNames": { "type": "array", "items": { "type": "string", "pattern": "\\.lnk$" } },
-              "flattenStartMenu": { "type": "boolean", "description": "startMenuFolders klasörlerindeki kısayolları Programlar köküne taşı." },
+              "flattenStartMenu": { "type": "boolean", "description": "Move the shortcuts in the startMenuFolders folders to the Programs root." },
               "startMenuFolders": { "type": "array", "items": { "type": "string" } }
             }
           }

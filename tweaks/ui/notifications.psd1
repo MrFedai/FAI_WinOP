@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'ui.notifications'
-    Title       = 'Bildirimleri kapat (istisna listesi hariç)'
-    Description = 'Bildirimler genel olarak açık tutulur, ama bildirim gönderen uygulama ve sistem bileşenlerinin hepsi tek tek kapatılır; exceptions parametresindeki kalıplara (-like, varsayılan *WhatsApp*, *Telegram*) uyanlar açık kalır. Windows Güvenliği / Defender ile Güvenlik ve Bakım bildirimleri her zaman korunur. Ayrıca Windows hoş geldin deneyimi, kurulumu tamamlama önerileri ve ipucu / öneri bildirimleri kapanır. Bir uygulamanın bildirim kaydı ilk bildiriminde oluşur: sonradan kurulan uygulama profil yeniden çalıştırılınca kapanır.'
+    Title       = 'Turn off notifications (except an exception list)'
+    Description = 'Notifications stay on globally, but every app and system component that sends notifications is turned off one by one; those that match the patterns in the exceptions parameter (-like, default *WhatsApp*, *Telegram*) stay on. Windows Security / Defender and Security and Maintenance notifications are always kept. Also turned off: the Windows welcome experience, suggestions to finish setting up, and tip / suggestion notifications. An app''s notification entry is created with its first notification: an app installed later is turned off when the profile is run again.'
     Category    = 'ui'
     Risk        = 'Caution'
     Params      = @{ exceptions = @('*WhatsApp*', '*Telegram*') }

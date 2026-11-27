@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'setup.mmagent-off'
-    Title       = 'Bellek sıkıştırma ve ön getirmeyi kapat'
-    Description = 'Bellek yöneticisinde (MMAgent) bellek sıkıştırma, uygulama başlatma ön getirmesi (prefetch) ve uygulama ön yüklemesi (PreLaunch) kapatılır; ayrıca PrefetchParameters\EnablePrefetcher=0. Bol RAM''li (en az 16 GB) makine içindir: sıkıştırma için harcanan işlemci zamanı ve arka plan disk okumaları kalkar. Sayfa birleştirme ve OperationAPI''ye dokunulmaz. Bellek sıkıştırma yeniden başlatınca etkinleşir. Get-MMAgent SysMain servisinin çalışmasını ister. Bedeli: EnablePrefetcher=0 açılış ön getirmesini de kapatır, açılış ve ilk uygulama açılışları uzayabilir; NVMe SSD''de kazanç küçük. Hyper-V açık makinede Windows ön getirme değişikliğini reddedebilir ("The request is not supported"). fedai profilinde değil (Faz 9: açılışı uzattığı gözlendi).'
+    Title       = 'Turn off memory compression and prefetching'
+    Description = 'In the memory manager (MMAgent), memory compression, application launch prefetching (prefetch) and application preloading (PreLaunch) are turned off; also PrefetchParameters\EnablePrefetcher=0. For machines with plenty of RAM (at least 16 GB): the CPU time spent on compression and background disk reads go away. Page combining and OperationAPI are not touched. Memory compression takes effect after a restart. Get-MMAgent needs the SysMain service to be running. Cost: EnablePrefetcher=0 also turns off boot prefetching, so boot and first app launches may take longer; on an NVMe SSD the gain is small. On a machine with Hyper-V enabled, Windows may reject the prefetch change ("The request is not supported"). Not in the fedai profile (Phase 9: it was observed to lengthen boot).'
     Category    = 'setup'
     Risk        = 'Safe'
     Conditions  = @(@{ MinRamGB = 16 })

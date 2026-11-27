@@ -1,7 +1,7 @@
 {
   "$schema": "./_schema.json",
   "name": "fedai",
-  "description": "Format sonrası kişisel kurulum (docs/ROADMAP.md 3): koyu / siyah arayüz, sade görev çubuğu, bloatware ve Edge yok, gizlilik, ses %15, dizüstü güç planı. Güncellemeler en sonda: hepsi kurulur, sonra 365 gün duraklatılır.",
+  "description": "Personal setup after a fresh install (docs/ROADMAP.md 3): dark / black UI, simple taskbar, no bloatware or Edge, privacy, volume 15%, laptop power plan. Updates come last: all are installed, then paused for 365 days.",
   "tweaks": [
     "system.restore-point",
     "setup.background-apps-off",

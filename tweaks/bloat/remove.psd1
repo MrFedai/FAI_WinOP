@@ -1,10 +1,10 @@
 ﻿@{
     Id          = 'bloat.remove'
-    Title       = 'Gereksiz Store uygulamalarını kaldır'
-    Description = 'Açık kara listedeki (joker yok, her paket adıyla) önceden kurulu Store uygulamalarını oturumdaki kullanıcıdan kaldırır. Çalışmadan önce kurulu olanlar tablo olarak gösterilir ve onay istenir. Korunan liste (src/Core/Bloat.ps1, Get-FaiBloatProtected) ve profildeki uygulamaların Appx adları (apps/catalog.json appxNames) hiçbir koşulda kaldırılmaz: Store, winget (App Installer), Ekran Alıntısı Aracı, WhatsApp, Claude, kabuk / sistem bileşenleri, kodekler, Fotoğraflar, Paint, Not Defteri, Terminal, Hesap Makinesi, Medya Oynatıcı, sürücü panelleri, Xbox kimliği. Geri alma: provisioned kopyası makinede durdukça paket yeniden kaydedilir; bloat.persistence provisioned kopyayı da kaldırdıysa geri alma uyarı verir, uygulama Store''dan yeniden kurulur.'
+    Title       = 'Remove unnecessary Store apps'
+    Description = 'Removes preinstalled Store apps from an explicit blocklist (no wildcards, each by package name) for the signed-in user. Before running, the installed ones are shown as a table and confirmation is requested. The protected list (src/Core/Bloat.ps1, Get-FaiBloatProtected) and the Appx names of the profile''s apps (apps/catalog.json appxNames) are never removed: Store, winget (App Installer), Snipping Tool, WhatsApp, Claude, shell / system components, codecs, Photos, Paint, Notepad, Terminal, Calculator, Media Player, driver control panels, Xbox identity. Revert: while the provisioned copy stays on the machine the package is registered again; if bloat.persistence also removed the provisioned copy, revert warns and the app is reinstalled from the Store.'
     Category    = 'bloat'
     Risk        = 'Caution'
-    Confirm     = 'Yukarıdaki uygulamalar kaldırılacak (Store''dan yeniden kurulabilir).'
+    Confirm     = 'The apps above will be removed (they can be reinstalled from the Store).'
     Actions     = @(
         @{ Type = 'Appx'; Name = 'Clipchamp.Clipchamp';                    Scope = 'User' }  # Clipchamp video düzenleyici
         @{ Type = 'Appx'; Name = 'Microsoft.549981C3F5F10';                Scope = 'User' }  # Cortana

@@ -1,10 +1,10 @@
 ﻿@{
     Id          = 'bloat.persistence'
-    Title       = 'Kaldırılan uygulamaların geri gelmesini engelle'
-    Description = 'bloat.remove listesindeki paketlerin provisioned kopyalarını kaldırır (yeni kullanıcılara ve güncellemeden sonra yeniden kurulmasınlar), Windows''un önerilen / sponsorlu uygulamaları kendiliğinden kurmasını kapatır (ContentDeliveryManager ve CloudContent ilkesi) ve açılışta Windows yapı numarası değiştiyse (büyük ya da aylık güncelleme) aynı listeyi bütün kullanıcılardan yeniden kaldıran bir zamanlanmış görev (\FAI_WinOP\BloatCleanup, SYSTEM) kurar; görev %ProgramData%\FAI_WinOP\BloatCleanup.log dosyasına yazar. Korunan liste ve profildeki uygulamalar görev betiğine de girmez. Provisioned kaldırmanın geri dönüşü yoktur: geri alma görevi ve betiği siler, ayarları döndürür; uygulamalar Store''dan yeniden kurulur. DisableWindowsConsumerFeatures ilkesi resmî olarak yalnız Enterprise / Education''da etkilidir; Pro''da asıl işi ContentDeliveryManager değerleri yapar.'
+    Title       = 'Keep removed apps from coming back'
+    Description = 'Removes the provisioned copies of the packages in the bloat.remove list (so they are not reinstalled for new users or after updates), stops Windows from installing suggested / sponsored apps on its own (ContentDeliveryManager and CloudContent policy), and sets up a scheduled task (\FAI_WinOP\BloatCleanup, SYSTEM) that, at startup, removes the same list again from all users if the Windows build number changed (major or monthly update); the task writes to %ProgramData%\FAI_WinOP\BloatCleanup.log. The protected list and the profile''s apps are excluded from the task script too. Removing provisioned packages cannot be undone: revert deletes the task and script and restores the settings; apps are reinstalled from the Store. The DisableWindowsConsumerFeatures policy is officially effective only on Enterprise / Education; on Pro the ContentDeliveryManager values do the real work.'
     Category    = 'bloat'
     Risk        = 'Caution'
-    Confirm     = 'Provisioned paket kaldırma geri alınamaz (uygulama gerekirse Store''dan kurulur).'
+    Confirm     = 'Removing provisioned packages cannot be undone (reinstall the app from the Store if needed).'
     Actions     = @(
         # Ad listesi tweaks/bloat/remove.psd1 ile birebir aynı olmalı (birim testi denetler).
         @{ Type = 'AppxCleanup'; TaskPath = '\FAI_WinOP\BloatCleanup'; ScriptPath = '%ProgramData%\FAI_WinOP\BloatCleanup.ps1'

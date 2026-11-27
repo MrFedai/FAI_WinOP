@@ -1,38 +1,38 @@
-# Uygulama kataloğu ve kurulum (Faz 4)
+# App catalog and installation (Phase 4)
 
-Kaynak: [`apps/catalog.json`](../apps/catalog.json) (biçim: [`apps/_schema.json`](../apps/_schema.json), doğrulama
-`src/Core/AppCatalog.ps1`). Profil `apps` listesinde kimlik verir; motor her uygulamayı tweak'lerden **önce**
-`app.<id>` tweak'i olarak işler (bildirim istisnası, görev çubuğu sabitlemesi kurulu uygulama ister) (dry-run, rapor, snapshot, `-Undo` aynı yol).
+Source: [`apps/catalog.json`](../apps/catalog.json) (format: [`apps/_schema.json`](../apps/_schema.json), validation in
+`src/Core/AppCatalog.ps1`). The profile's `apps` list gives IDs; the engine handles each app **before** the tweaks as an
+`app.<id>` tweak (the notification exception and the taskbar pin need an installed app) (dry-run, report, snapshot, `-Undo` all use the same path).
 
 ```json
 "apps": [ "chrome", "spotify", { "id": "telegram", "keepAutostart": true } ]
 ```
 
-## Kurulum sonrası kurallar
+## Post-install rules
 
-| Alan | Ne yapar |
+| Field | What it does |
 | --- | --- |
-| `removeAutostart` + `startupRegistryNames` / `startupFolderNames` | Run değeri ya da Başlangıç klasörü kısayolu **silinmez**; Görev Yöneticisi'nin "Devre dışı bırak"ı gibi `Explorer\StartupApproved` altına kapalı işareti (`03…`) yazılır. Uygulama Run değerini yeniden yazsa da kapalı kalır, kullanıcı Görev Yöneticisi'nden açabilir. Jokersiz ad, değer henüz yokken de HKCU'da önceden kapatılır (ilk açılışta yazan uygulamalar için). |
-| `startupTaskNames` | Oturum açılışında uygulamayı başlatan zamanlanmış görevi kapatır. |
-| `removeDesktopShortcut` + `desktopShortcutNames` | Kurulum sırasında kullanıcı / ortak masaüstüne eklenen **her** `.lnk` silinir (önce / sonra karşılaştırması); adı listede olanlar her çalıştırmada silinir (güncellemeyle geri gelenler). |
-| `quietUninstall` (`{ path, args }`, uygulama düzeyi) | Geri almada winget yerine çalışan sessiz kaldırıcı. Kaldırma kaydında sessiz komut olmayan kurucular için (winget onları etkileşimli başlatır): Steam. |
-| `flattenStartMenu` + `startMenuFolders` | Başlat > Programlar altındaki klasörün kısayolları köke taşınır, kaldırma kısayolları ve `.url`'ler silinir, boş klasör silinir. |
-| profilde `keepAutostart` | O uygulamanın otomatik başlatma kuralı uygulanmaz (fedai: WhatsApp, Telegram). |
+| `removeAutostart` + `startupRegistryNames` / `startupFolderNames` | The Run value or the Startup folder shortcut is **not deleted**; like Task Manager's "Disable", a disabled marker (`03…`) is written under `Explorer\StartupApproved`. It stays disabled even if the app rewrites its Run value, and the user can enable it from Task Manager. A name without wildcards is disabled in HKCU in advance, even before the value exists (for apps that write it on first launch). |
+| `startupTaskNames` | Disables the scheduled task that starts the app at sign-in. |
+| `removeDesktopShortcut` + `desktopShortcutNames` | **Every** `.lnk` added to the user / public desktop during installation is deleted (before / after comparison); those whose name is in the list are deleted on every run (ones that come back with updates). |
+| `quietUninstall` (`{ path, args }`, app level) | Silent uninstaller that runs instead of winget on revert. For installers whose uninstall entry has no silent command (winget starts them interactively): Steam. |
+| `flattenStartMenu` + `startMenuFolders` | The shortcuts of the folder under Start > Programs are moved to the root, uninstall shortcuts and `.url` files are deleted, and the empty folder is deleted. |
+| `keepAutostart` in the profile | The app's autostart rule is not applied (fedai: WhatsApp, Telegram). |
 
-Geri alma (`-Undo`): eylem her dosyaya / değere / göreve dokunmadan önce eski hâlini oturum günlüğüne yazar. Uygulama o
-çalıştırmada kurulduysa kaldırılır ve bizim taşıdığımız / yazdığımız her şey silinir; zaten kuruluysa silinen kısayollar,
-taşınan klasör ve StartupApproved değerleri birebir geri gelir.
+Revert (`-Undo`): before touching any file / value / task, the action writes its old state to the session log. If the app
+was installed in that run, it is uninstalled and everything we moved / wrote is deleted; if it was already installed, the deleted
+shortcuts, the moved folder and the StartupApproved values come back exactly.
 
-Bilinen sınır: Electron uygulamaları (Discord, Claude) "açılışta başlat" ayarı açıkken `StartupApproved`'ı da yeniden
-"açık" yapabilir. Profil yeniden çalıştırıldığında tekrar kapatılır; kalıcı çözüm uygulamanın kendi ayarı.
+Known limit: Electron apps (Discord, Claude) can set `StartupApproved` back to "enabled" when their "launch at startup"
+setting is on. It is turned off again when the profile is run again; the lasting fix is the app's own setting.
 
-## Paket kimlikleri
+## Package IDs
 
-12 kimliğin hepsi 2026-11-24'te `winget show --id <kimlik> --exact --source <kaynak>` ile doğrulandı (winget 1.29).
-Yeniden doğrulama: [`tests/Integration/App-Ids.ps1`](../tests/Integration/App-Ids.ps1) (salt okunur; Windows CI'da her
-push'ta koşar).
+All 12 IDs were verified on 2026-11-24 with `winget show --id <id> --exact --source <source>` (winget 1.29).
+Re-verification: [`tests/Integration/App-Ids.ps1`](../tests/Integration/App-Ids.ps1) (read-only; runs on every push in
+Windows CI).
 
-| id | Paket | Kaynak | Kurucu |
+| id | Package | Source | Installer |
 | --- | --- | --- | --- |
 | claude | `Anthropic.Claude` | winget | exe |
 | telegram | `Telegram.TelegramDesktop` | winget | inno |
@@ -41,84 +41,84 @@ push'ta koşar).
 | steam | `Valve.Steam` | winget | nullsoft |
 | tradingview | `TradingView.TradingViewDesktop` | winget | msix |
 | ollama | `Ollama.Ollama` | winget | inno |
-| vscode | `Microsoft.VisualStudioCode` | winget | inno (kullanıcı kapsamı) |
+| vscode | `Microsoft.VisualStudioCode` | winget | inno (user scope) |
 | protonvpn | `Proton.ProtonVPN` | winget | inno |
-| chrome | `Google.Chrome` | winget | wix (MSI, makine kapsamı) |
-| spotify | `9NCBCSZSJRSB` | msstore | Store (MSIX) — winget `Spotify.Spotify` kurucusu yönetici oturumunda çalışmıyor (`-1978335146`, CI'da görüldü) |
+| chrome | `Google.Chrome` | winget | wix (MSI, machine scope) |
+| spotify | `9NCBCSZSJRSB` | msstore | Store (MSIX) — the installer of the winget `Spotify.Spotify` does not work in an administrator session (`-1978335146`, seen in CI) |
 | obs | `OBSProject.OBSStudio` | winget | nullsoft |
 
-## Kurulum sonrası adlar: doğrulama durumu
+## Post-install names: verification status
 
-Gerçek kurulum testi: [`tests/Integration/Apps-Install.ps1`](../tests/Integration/Apps-Install.ps1) uygulamaları kurar,
-masaüstünde yeni kısayol kalırsa HATA verir, yeni Run değerlerini, Başlangıç öğelerini, Başlat öğelerini ve StartupApproved
-durumunu döker. CI'da `apps` işi (yalnız elle tetikleme: Actions → CI → Run workflow) ya da Hyper-V VM'de `-Force -Undo`.
+Real install test: [`tests/Integration/Apps-Install.ps1`](../tests/Integration/Apps-Install.ps1) installs the apps,
+reports an ERROR if a new shortcut is left on the desktop, and dumps the new Run values, Startup items, Start items and
+StartupApproved state. In CI it is the `apps` job (manual trigger only: Actions → CI → Run workflow) or `-Force -Undo` in a Hyper-V VM.
 
-**İlk koşu (2026-11-24, GitHub `windows-latest`, yönetici):** 11 uygulama kuruldu + düzen uygulandı, ikinci çalıştırma
-hepsi ZATEN UYGUN, **masaüstünde yeni kısayol: 0** (Faz 4 kabulü). Spotify winget kurucusu yönetici oturumunu reddetti →
-Store sürümüne geçildi. Keşif dökümünde Ollama (`Ollama`) ve Proton (`Proton`) Başlat klasörleri düzleştirilmemiş kaldı →
-katalog düzeltildi. Chrome runner imajında zaten kurulu.
+**First run (2026-11-24, GitHub `windows-latest`, administrator):** 11 apps installed + layout applied, the second run
+was all ALREADY SET, **new shortcuts on the desktop: 0** (Phase 4 acceptance). The Spotify winget installer rejected the administrator session →
+switched to the Store version. In the discovery dump, the Ollama (`Ollama`) and Proton (`Proton`) Start folders were left unflattened →
+catalog fixed. Chrome is already installed on the runner image.
 
-**Son koşu (2026-11-24, 3b74cdd):** 12/12 kurulum, masaüstünde 0 yeni kısayol, ikinci çalıştırma 12/12 ZATEN UYGUN,
-`-Undo` 11/12: **Steam** kalkmadı. Teşhis (winget `--verbose-logs`): Steam'in kaldırma kaydında `QuietUninstallString`
-yok; winget `--silent` verilse de `uninstall.exe`'yi **argümansız** başlatıyor, NSIS kaldırıcısı (`Un_A.exe`) görünmez
-onay penceresinde bekliyor, winget yine "Successfully uninstalled" diyor. Aynı dosya `/S` ile 3-6 sn'de tamamen kaldırıyor.
-Çözüm: katalogda `quietUninstall` (`%ProgramFiles(x86)%\Steam\uninstall.exe /S`); geri alma winget yerine bunu çalıştırır.
-Sağlayıcı her kaldırmadan sonra paket listeden düşene kadar bekler (en çok 120 sn), düşmezse HATA (sessizce geçmez).
+**Latest run (2026-11-24, 3b74cdd):** 12/12 installed, 0 new shortcuts on the desktop, second run 12/12 ALREADY SET,
+`-Undo` 11/12: **Steam** was not removed. Diagnosis (winget `--verbose-logs`): Steam's uninstall entry has no
+`QuietUninstallString`; even with `--silent`, winget starts `uninstall.exe` **without arguments**, the NSIS uninstaller (`Un_A.exe`) waits
+in an invisible confirmation window, and winget still says "Successfully uninstalled". The same file with `/S` removes it completely in 3-6 s.
+Fix: `quietUninstall` in the catalog (`%ProgramFiles(x86)%\Steam\uninstall.exe /S`); revert runs this instead of winget.
+After each uninstall, the provider waits until the package disappears from the list (at most 120 s) and reports an ERROR if it does not (it does not pass silently).
 
-**Doğrulama (2026-11-24, 66b4d1d):** CI `apps` işi 0 HATA: 12/12 kurulum, masaüstünde 0 yeni kısayol, ikinci çalıştırma
-12/12 ZATEN UYGUN, `-Undo` 12/12 (Steam dahil), geri almadan sonra kurulu kalan yok.
+**Verification (2026-11-24, 66b4d1d):** CI `apps` job with 0 ERROR: 12/12 installed, 0 new shortcuts on the desktop, second run
+12/12 ALREADY SET, `-Undo` 12/12 (including Steam), nothing left installed after revert.
 
-| id | Run / Başlangıç | Masaüstü | Başlat klasörü | Durum |
+| id | Run / Startup | Desktop | Start folder | Status |
 | --- | --- | --- | --- | --- |
-| claude | `*Claude*` (kurulumda yazmadı) | `Claude.lnk` | kısayol kökte ✓ | Run adı açılışta görülecek |
-| telegram | `Telegram Desktop` (önceden kapatıldı) | `Telegram.lnk` | `Telegram Desktop` ✓ | Run ilk açılışta yazılır |
-| discord | HKCU `Discord` ✓ | `Discord.lnk` | `Discord Inc` → kökte ✓ | ✓ |
-| steam | HKCU `Steam` ✓ | `Steam.lnk` | `Steam` ✓ | ✓ (geri alma `quietUninstall` ile) |
-| ollama | Başlangıç klasörü `Ollama.lnk` ✓ | `Ollama.lnk` | `Ollama` → kökte ✓ | ✓ |
+| claude | `*Claude*` (not written at install) | `Claude.lnk` | shortcut at root ✓ | Run name to be seen at first launch |
+| telegram | `Telegram Desktop` (disabled in advance) | `Telegram.lnk` | `Telegram Desktop` ✓ | Run is written at first launch |
+| discord | HKCU `Discord` ✓ | `Discord.lnk` | `Discord Inc` → at root ✓ | ✓ |
+| steam | HKCU `Steam` ✓ | `Steam.lnk` | `Steam` ✓ | ✓ (revert with `quietUninstall`) |
+| ollama | Startup folder `Ollama.lnk` ✓ | `Ollama.lnk` | `Ollama` → at root ✓ | ✓ |
 | vscode | — | `Visual Studio Code.lnk` | `Visual Studio Code` ✓ | ✓ |
-| protonvpn | `ProtonVPN`, `Proton VPN` (kurulumda yazmadı) | `Proton VPN.lnk` | `Proton` → kökte ✓ | Run adı açılışta görülecek |
-| chrome | `GoogleChromeAutoLaunch_*` | `Google Chrome.lnk` | kökte ✓ | runner'da önceden kurulu |
-| obs | — | `OBS Studio.lnk` | `OBS Studio` → kökte ✓ | ✓ |
-| spotify, tradingview, whatsapp | MSIX `StartupTask` (yönetilmiyor) | yeni kısayol temizliği | — (MSIX) | — |
+| protonvpn | `ProtonVPN`, `Proton VPN` (not written at install) | `Proton VPN.lnk` | `Proton` → at root ✓ | Run name to be seen at first launch |
+| chrome | `GoogleChromeAutoLaunch_*` | `Google Chrome.lnk` | at root ✓ | preinstalled on the runner |
+| obs | — | `OBS Studio.lnk` | `OBS Studio` → at root ✓ | ✓ |
+| spotify, tradingview, whatsapp | MSIX `StartupTask` (not managed) | new shortcut cleanup | — (MSIX) | — |
 
-Listede olmayan masaüstü kısayolu da kurulum anındaki önce / sonra karşılaştırmasıyla silinir; tahmini adın yanlış olması
-yalnız güncellemeyle geri gelen kısayolu etkiler.
+A desktop shortcut that is not in the list is also deleted by the before / after comparison at install time; a wrong guessed name
+only affects a shortcut that comes back with an update.
 
-## Varsayılan tarayıcı (`setup.default-browser`)
+## Default browser (`setup.default-browser`)
 
-Karar: **programla ayarlanmaz; Ayarlar'da uygulamanın sayfası açılır, kullanıcı "Varsayılan olarak ayarla"ya basar,
-araç sonucu denetler.**
+Decision: **it is not set programmatically; the app's page is opened in Settings, the user clicks "Set default",
+and the tool checks the result.**
 
-- `http` / `https` seçimi `HKCU\...\Shell\Associations\UrlAssociations\<protokol>\UserChoice` (24H2+'da ayrıca
-  `UserChoiceLatest\ProgId`) altında, kullanıcıya ve zamana bağlı bir **karma (Hash)** ile tutulur; karma tutmayan
-  yazım Windows tarafından sıfırlanır.
-- Şubat 2024 güncellemesiyle (Windows 11: KB5034765) gelen **UCPD** sürücüsü (UserChoice Protection Driver) http/https
-  ve .pdf UserChoice anahtarlarına (ve üst anahtarlarına) Microsoft dışı süreçlerin yazmasını engelliyor.
-- Kalan yollar uygun değil: UCPD servisini kapatıp karmayı hesaplamak (sistem koruması kapatılır, güncellemeyle
-  bozulabilir), üçüncü parti imzasız araç (SetUserFTA vb.; repo kuralı: imzasız ikili yok), DISM / grup ilkesi
-  varsayılan ilişkilendirme XML'i (yeni kullanıcı profillerine ya da etki alanı makinelerine uygulanır).
-- Desteklenen yol: Windows 11 Ayarlar'daki tek tık "Varsayılan olarak ayarla" (Firefox da bunu kullanıyor). Sayfa
-  doğrudan açılır: `ms-settings:defaultapps?registeredAppMachine=Google%20Chrome` (Chrome MSI makine geneli kurulur;
-  kullanıcı kapsamındaki tarayıcı için `scope = 'User'`).
+- The `http` / `https` choice is kept under `HKCU\...\Shell\Associations\UrlAssociations\<protocol>\UserChoice` (and on 24H2+
+  also `UserChoiceLatest\ProgId`) with a **hash** tied to the user and time; a write without the hash
+  is reset by Windows.
+- The **UCPD** driver (UserChoice Protection Driver) that arrived with the February 2024 update (Windows 11: KB5034765) blocks non-Microsoft processes
+  from writing to the http/https and .pdf UserChoice keys (and their parent keys).
+- The remaining ways are not suitable: turning off the UCPD service and computing the hash (system protection is disabled, may
+  break with updates), a third-party unsigned tool (SetUserFTA etc.; repo rule: no unsigned binaries), a DISM / group policy
+  default associations XML (applies to new user profiles or domain machines).
+- Supported way: the one-click "Set default" in Windows 11 Settings (Firefox uses this too). The page
+  opens directly: `ms-settings:defaultapps?registeredAppMachine=Google%20Chrome` (Chrome MSI is installed machine-wide;
+  for a user-scope browser use `scope = 'User'`).
 
-Davranış: tweak `Caution` (soru sorar); etkileşimsiz kipte uygulanmaz. Uygulandığında sayfayı açar, kullanıcı onaylayınca
-`UserChoiceLatest\ProgId` (yoksa `UserChoice`) yeniden okunur; hâlâ farklıysa HATA. Geri alma da elle: önceki tarayıcı
-farklıysa Varsayılan uygulamalar sayfası açılır ve günlüğe uyarı yazılır. Bu makinede okunan değer: `ChromeHTML`.
+Behavior: the tweak is `Caution` (asks a question); not applied in non-interactive mode. When applied, it opens the page, and after the user confirms
+`UserChoiceLatest\ProgId` (or `UserChoice` if missing) is read again; if it still differs, ERROR. Revert is also manual: if the previous browser
+is different, the Default apps page is opened and a warning is written to the log. The value read on this machine: `ChromeHTML`.
 
-## WhatsApp ve WebView2
+## WhatsApp and WebView2
 
-- WhatsApp'ın Windows uygulaması (`9NKSQGP7F2NH`) Temmuz 2025'te beta 2.2569.0.0 ile yerel UWP / WinUI sürümünden
-  **WebView2 tabanlı** sürüme geçti (web.whatsapp.com'u WebView2 içinde çalıştırır); Kasım 2025 haberlerine göre kararlı sürüm de
-  bu (Faz 9'da kurulu sürümle teyit edilecek). Yani WhatsApp **Microsoft Edge WebView2 Runtime olmadan açılmaz**.
-- Claude, Discord, Spotify, VS Code, Telegram, Steam, OBS kendi Chromium'unu / Qt'yi taşır; WebView2'ye bağlı değil.
-  Microsoft Store, yeni Outlook / Teams ve Windows'un bazı bileşenleri de WebView2 kullanır.
-- WebView2 Runtime Windows 11'de sistem bileşenidir ve Edge tarayıcısından **ayrı** kurulur / güncellenir
-  (`Microsoft.EdgeWebView2Runtime`, güncelleme EdgeUpdate üzerinden).
-- Faz 5 (`bloat.edge-remove`) için sonuç: Edge kaldırılırken WebView2 Runtime ve EdgeUpdate'in WebView2 güncellemesi
-  **korunmalı**; Edge'in yeniden kurulmasını engelleyen politika WebView2'yi kapsamamalı. Faz 9'da kontrol: Edge
-  kaldırıldıktan sonra WhatsApp açılıyor ve mesaj yüklüyor.
+- WhatsApp's Windows app (`9NKSQGP7F2NH`) moved in July 2025 with beta 2.2569.0.0 from the native UWP / WinUI version to a
+  **WebView2-based** one (it runs web.whatsapp.com inside WebView2); according to November 2025 news the stable version is also
+  this (to be confirmed with the installed version in Phase 9). So WhatsApp **does not open without the Microsoft Edge WebView2 Runtime**.
+- Claude, Discord, Spotify, VS Code, Telegram, Steam, OBS carry their own Chromium / Qt; they do not depend on WebView2.
+  Microsoft Store, the new Outlook / Teams and some Windows components also use WebView2.
+- WebView2 Runtime is a system component on Windows 11 and is installed / updated **separately** from the Edge browser
+  (`Microsoft.EdgeWebView2Runtime`, updated through EdgeUpdate).
+- Conclusion for Phase 5 (`bloat.edge-remove`): when removing Edge, the WebView2 Runtime and EdgeUpdate's WebView2 update must be
+  **kept**; the policy that blocks reinstalling Edge must not cover WebView2. Check in Phase 9: after Edge is
+  removed, WhatsApp opens and loads messages.
 
-Kaynaklar: [Neowin](https://www.neowin.net/news/whatsapp-for-windows-is-ditching-uwp-for-a-web-app/),
+Sources: [Neowin](https://www.neowin.net/news/whatsapp-for-windows-is-ditching-uwp-for-a-web-app/),
 [Notebookcheck](https://www.notebookcheck.net/WhatsApp-ditches-native-Windows-11-app-in-favor-of-Microsoft-WebView2.1063682.0.html),
 [TechSpot](https://www.techspot.com/news/108752-whatsapp-dropping-native-windows-app-favor-web-based.html),
 [Daring Fireball](https://daringfireball.net/2025/11/meta_whatsapp_windows_shitty_web_app),

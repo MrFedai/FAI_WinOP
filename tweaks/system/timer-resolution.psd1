@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'system.timer-resolution'
-    Title       = 'Zamanlayıcı çözünürlüğü 0,5 ms'
-    Description = 'FAI_TimerResolution servisini kurar (src/Native/TimerResolution.cs, açılışta otomatik başlar) ve sistem zamanlayıcısını 0,5 ms''ye (5000 × 100 ns) çeker. Windows 11''de bir sürecin istediği çözünürlük yalnız o süreci etkiler; sistem geneli etki için GlobalTimerResolutionRequests=1 gerekir (Session Manager\kernel). Pilde güç tüketimini biraz artırabilir. -Undo servisi kaldırır, değeri siler.'
+    Title       = 'Timer resolution 0.5 ms'
+    Description = 'Installs the FAI_TimerResolution service (src/Native/TimerResolution.cs, starts automatically at boot) and sets the system timer to 0.5 ms (5000 × 100 ns). On Windows 11, a resolution requested by a process affects only that process; for a system-wide effect GlobalTimerResolutionRequests=1 is required (Session Manager\kernel). May slightly increase power consumption on battery. -Undo removes the service and deletes the value.'
     Category    = 'system'
     Risk        = 'Safe'
     Params      = @{ resolution = 5000 }

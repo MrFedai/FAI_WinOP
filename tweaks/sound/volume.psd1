@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'sound.volume'
-    Title       = 'Ses seviyesini ayarla'
-    Description = 'Varsayılan ses çıkış aygıtının seviyesini level parametresine (0-100, varsayılan 15) getirir. Çıkış aygıtı yoksa (sunucu, sanal makine) atlanır. Aygıt değişirse yeni aygıt kendi seviyesini kullanır.'
+    Title       = 'Set the volume level'
+    Description = 'Sets the level of the default audio output device to the level parameter (0-100, default 15). Skipped if there is no output device (server, virtual machine). If the device changes, the new device uses its own level.'
     Category    = 'sound'
     Risk        = 'Safe'
     Params      = @{ level = 15 }

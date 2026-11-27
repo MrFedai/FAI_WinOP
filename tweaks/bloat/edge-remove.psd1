@@ -1,10 +1,10 @@
 ﻿@{
     Id          = 'bloat.edge-remove'
-    Title       = 'Microsoft Edge''i kaldır (WebView2 kalır)'
-    Description = 'Edge''i (Chromium) kendi kurucusuyla sistem düzeyinde kaldırır. WebView2 Runtime''a ve EdgeUpdate''e dokunmaz: WhatsApp gibi WebView2 kullanan uygulamalar çalışmaya, WebView2 güncellenmeye devam eder. EdgeUpdate ilkesiyle Edge''in yeniden kurulması engellenir (Install{Edge}=0), WebView2''nin kurulması ve güncellenmesi açıkça izinli kalır. microsoft-edge: bağlantıları (Ayarlar, Widget''lar, arama sonuçları) küçük bir yönlendirme betiğiyle varsayılan tarayıcıda açılır; yalnız http / https adresi kabul edilir. Sınırlar: Windows Update ayrı bir Edge paketi gönderirse Edge geri gelebilir (EdgeUpdate ilkesi onu durdurmaz); msedge.exe''yi doğrudan çağıran sistem bileşenleri açılmaz; microsoft-edge: için kullanıcı seçimi (UserChoice) önceden Edge''e bağlıysa Windows bir kez "nasıl açılsın" sorabilir. Geri alma: önce ilke ve yönlendirme kalkar, sonra Edge winget ile yeniden kurulur.'
+    Title       = 'Remove Microsoft Edge (WebView2 stays)'
+    Description = 'Removes Edge (Chromium) system-wide with its own installer. WebView2 Runtime and EdgeUpdate are left alone: apps that use WebView2, such as WhatsApp, keep working and WebView2 keeps updating. An EdgeUpdate policy blocks reinstalling Edge (Install{Edge}=0) while installing and updating WebView2 stays explicitly allowed. microsoft-edge: links (Settings, Widgets, search results) open in the default browser through a small redirect script; only http / https addresses are accepted. Limits: if Windows Update ships a separate Edge package, Edge can come back (the EdgeUpdate policy does not stop it); system components that call msedge.exe directly will not open; if the user choice (UserChoice) for microsoft-edge: was already bound to Edge, Windows may ask "how do you want to open this" once. Revert: the policy and the redirect are removed first, then Edge is reinstalled with winget.'
     Category    = 'bloat'
     Risk        = 'Caution'
-    Confirm     = 'Edge kaldırılacak. Sık kullanılanları / parolaları önce Chrome''a aktarın. WebView2 kalır.'
+    Confirm     = 'Edge will be removed. Export favorites / passwords to Chrome first. WebView2 stays.'
     Actions     = @(
         # Kaldırma ilk adım: geri alma ters sırada çalışır, Install{Edge}=0 ilkesi kalkmadan Edge kurulamaz.
         @{ Type = 'EdgeRemove' }

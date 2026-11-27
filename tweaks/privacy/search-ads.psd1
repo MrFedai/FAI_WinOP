@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'privacy.search-ads'
-    Title       = 'Arama ve Başlat reklamlarını kapat'
-    Description = 'Başlat aramasında web (Bing) sonuçlarını ve önerilerini, arama vurgularını (dinamik arama kutusu), Microsoft / iş hesabı bulut içerik aramasını ve cihaz arama geçmişini kapatır. Başlat menüsündeki öneri ve hesap bildirimlerini, Ayarlar uygulamasındaki önerilen içeriği ve Dosya Gezgini''ndeki eşitleme sağlayıcısı (OneDrive / Microsoft 365) tanıtımlarını kapatır. Yerel dosya ve uygulama araması çalışmaya devam eder. Etkisi için Gezgin''in yeniden başlaması ya da oturumun kapatılıp açılması gerekebilir.'
+    Title       = 'Turn off search and Start ads'
+    Description = 'Turns off web (Bing) results and suggestions in Start search, search highlights (dynamic search box), Microsoft / work account cloud content search and device search history. Also turns off suggestions and account notifications in the Start menu, suggested content in the Settings app, and sync provider (OneDrive / Microsoft 365) promotions in File Explorer. Local file and app search keep working. For the change to take effect, Explorer may need to restart or you may need to sign out and back in.'
     Category    = 'privacy'
     Risk        = 'Safe'
     Actions     = @(

@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'ui.visual-effects'
-    Title       = 'Görsel efektleri azalt (yazı yumuşatma açık)'
-    Description = 'Sistem > Gelişmiş sistem ayarları > Performans seçenekleri "Özel" yapılır: menü / araç ipucu solma ve kayma animasyonları, açılır kutu ve liste kaydırma animasyonları, fare işaretçisi ve pencere gölgeleri, simge etiketi gölgeleri, yarı saydam seçim dikdörtgeni, pencere küçültme / büyütme ve görev çubuğu animasyonları kapanır. Ekran yazı tiplerinin kenarlarını yumuşatma (ClearType) ve küçük resim önizlemeleri açık kalır; pencere sürüklenirken içerik gösterilmeye devam eder. UserPreferencesMask ikili (REG_BINARY) değerdir; değişiklikler oturum kapatılıp açılınca tam etkili olur.'
+    Title       = 'Reduce visual effects (font smoothing on)'
+    Description = 'System > Advanced system settings > Performance Options is set to "Custom": menu / tooltip fade and slide animations, combo box and list box scrolling animations, mouse pointer and window shadows, icon label shadows, translucent selection rectangle, window minimize / maximize animations and taskbar animations are turned off. Smoothing the edges of screen fonts (ClearType) and thumbnail previews stay on; window contents keep showing while dragging. UserPreferencesMask is a binary (REG_BINARY) value; changes take full effect after signing out and back in.'
     Category    = 'ui'
     Risk        = 'Safe'
     Actions     = @(

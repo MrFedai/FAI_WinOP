@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'ui.explorer'
-    Title       = 'Dosya Gezgini düzeni'
-    Description = 'Dosya Gezgini Bu Bilgisayar ile açılır, dosya uzantıları görünür, başlık çubuğunda tam yol yazar. Gezinti bölmesinde Galeri ve Ana Sayfa gizlenir; 3D Nesneler Bu Bilgisayar''dan gizlenir (Windows 11''de zaten yoktur, eylem yalnız güvencedir). Ana Sayfa HubMode ilkesiyle gizlenir: Microsoft bu davranışı güncellemelerle değiştirebilir, gerçek donanımda doğrulanacak (Faz 9). Gezinti bölmesi değişiklikleri Gezgin yeniden başlayınca görünür.'
+    Title       = 'File Explorer layout'
+    Description = 'File Explorer opens to This PC, file extensions are shown, and the title bar shows the full path. Gallery and Home are hidden in the navigation pane; 3D Objects is hidden from This PC (it does not exist on Windows 11 anyway; the action is only a safeguard). Home is hidden with the HubMode policy: Microsoft may change this behavior with updates, to be verified on real hardware (Phase 9). Navigation pane changes show after Explorer restarts.'
     Category    = 'ui'
     Risk        = 'Safe'
     Actions     = @(

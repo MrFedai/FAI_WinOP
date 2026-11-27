@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'graphics.amd-settings'
-    Title       = 'AMD: Adrenalin sadeleştirme ve düşük gecikme'
-    Description = 'AMD Software (Adrenalin) ayarları, yalnız kayıt defteriyle: otomatik güncelleme, sistem tepsisi, web içeriği, animasyonlar, bildirim baloncukları ve oyun içi kaplama kapalı. Sağlayıcısı AMD olan ekran bağdaştırıcısı sınıf anahtarında Radeon Anti-Lag açık (KMD_DeLagEnabled=1); UMD altında dikey eşitleme her zaman kapalı, doku filtreleme kalitesi performans, mozaikleme uygulama ayarını geçersiz kılar; power_v1 altında Vari-Bright (abmlevel) kapalı. UMD değerleri UTF-16 metin rakamıdır (ör. 30 00 = "0"). Değerler Ultimate referansından alındı, gerçek AMD donanımında doğrulanmadı; sürücü güncellemesi bazılarını sıfırlayabilir.'
+    Title       = 'AMD: simplified Adrenalin and low latency'
+    Description = 'AMD Software (Adrenalin) settings, registry only: automatic updates, system tray, web content, animations, notification bubbles and in-game overlay are off. In the class key of the display adapter whose provider is AMD, Radeon Anti-Lag is on (KMD_DeLagEnabled=1); under UMD, vertical sync is always off, texture filtering quality is performance, and tessellation overrides the application setting; under power_v1, Vari-Bright (abmlevel) is off. UMD values are UTF-16 text digits (e.g. 30 00 = "0"). Values were taken from the Ultimate reference and not verified on real AMD hardware; a driver update may reset some of them.'
     Category    = 'graphics'
     Risk        = 'Safe'
     Conditions  = @('HasAmdGpu')

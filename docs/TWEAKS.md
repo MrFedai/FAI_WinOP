@@ -1,57 +1,57 @@
-# Tweak kataloğu
+# Tweak catalog
 
-> Otomatik üretilir: `pwsh -NoProfile -File build/TweaksDoc.ps1` (kaynak: `tweaks/**/*.psd1`). Elle düzenlemeyin.
+> Auto-generated: `pwsh -NoProfile -File build/TweaksDoc.ps1` (source: `tweaks/**/*.psd1`). Do not edit by hand.
 
-Risk: **Safe** doğrudan uygulanır · **⚠ Caution** onay ister · **⛔ Risk** "EVET" yazılmasını ister, `-Unattended` kipte uygulanmaz.
-Değişiklikler varsayılan parametrelerle listelenir; profil parametreleri geçersiz kılabilir.
+Risk: **Safe** is applied directly · **⚠ Caution** asks for confirmation · **⛔ Risk** requires typing "YES" and is not applied in `-Unattended` mode.
+Changes are listed with default parameters; a profile can override the parameters.
 
-Profilden üretilen tweak'ler katalogda dosya olarak yok: `app.<id>` (profil `apps`, `apps/catalog.json`), `gaming.per-game` (profil `games`: IFEO `CpuPriorityClass` + işlemci benzeşimi için `\FAI_WinOP\GameAffinity` açılış görevi; maskeler makinenin işlemci sayısından), `layout.profile` (profil `layout`), `updates.on` / `updates.off` (`-UpdatesOn` / `-UpdatesOff`). Biçim: `profiles/_schema.json`.
+Tweaks generated from the profile are not files in the catalog: `app.<id>` (profile `apps`, `apps/catalog.json`), `gaming.per-game` (profile `games`: IFEO `CpuPriorityClass` + the `\FAI_WinOP\GameAffinity` startup task for processor affinity; masks come from the machine's processor count), `layout.profile` (profile `layout`), `updates.on` / `updates.off` (`-UpdatesOn` / `-UpdatesOff`). Format: `profiles/_schema.json`.
 
-| Id | Başlık | Risk | Koşul | Parametre |
+| Id | Title | Risk | Condition | Parameters |
 | --- | --- | --- | --- | --- |
-| [`bloat.edge-remove`](#bloatedge-remove) | Microsoft Edge'i kaldır (WebView2 kalır) | ⚠ Caution | — | — |
-| [`bloat.persistence`](#bloatpersistence) | Kaldırılan uygulamaların geri gelmesini engelle | ⚠ Caution | — | — |
-| [`bloat.remove`](#bloatremove) | Gereksiz Store uygulamalarını kaldır | ⚠ Caution | — | — |
-| [`graphics.amd-settings`](#graphicsamd-settings) | AMD: Adrenalin sadeleştirme ve düşük gecikme | Safe | HasAmdGpu | — |
-| [`graphics.nvidia-settings`](#graphicsnvidia-settings) | NVIDIA: tepsi simgesi ve eski keskinleştirme kapalı | Safe | HasNvidia | — |
-| [`graphics.p0-state`](#graphicsp0-state) | NVIDIA: P0 güç durumunda sabit tut | ⚠ Caution | HasNvidia | — |
-| [`power.plan`](#powerplan) | Güç planı: prizde yüksek performans, pilde dengeli | Safe | — | `hibernateOnBatterySec`, `sleepOnBatterySec` |
-| [`privacy.app-permissions`](#privacyapp-permissions) | Uygulama izinlerini kapat (kamera ve mikrofon açık) | Safe | — | — |
-| [`privacy.search-ads`](#privacysearch-ads) | Arama ve Başlat reklamlarını kapat | Safe | — | — |
-| [`privacy.telemetry`](#privacytelemetry) | Telemetriyi en aza indir | Safe | — | — |
-| [`refresh.reboot-to-bios`](#refreshreboot-to-bios) | UEFI (BIOS) ayarlarına yeniden başlat | ⚠ Caution | — | `delay` |
-| [`setup.background-apps-off`](#setupbackground-apps-off) | Arka plan uygulamalarını kapat (istisna listesi hariç) | Safe | — | `exceptions` |
-| [`setup.default-browser`](#setupdefault-browser) | Varsayılan tarayıcı (Ayarlar üzerinden) | ⚠ Caution | — | `appName`, `progId`, `scope` |
-| [`setup.edition-pro`](#setupedition-pro) | Windows Home → Pro yükseltmesi (Ayarlar üzerinden) | ⚠ Caution | Edition Core | — |
-| [`setup.mmagent-off`](#setupmmagent-off) | Bellek sıkıştırma ve ön getirmeyi kapat | Safe | MinRamGB 16 | — |
-| [`setup.store-optimize`](#setupstore-optimize) | Microsoft Store: otomatik güncelleme, video ve kişiselleştirme kapalı | ⚠ Caution | — | — |
-| [`setup.updates-staged`](#setupupdates-staged) | Windows Update: önce bekleyenleri kur, sonra duraklat | ⚠ Caution | — | `pauseDays` |
-| [`sound.startup-sound-off`](#soundstartup-sound-off) | Açılış sesini kapat | Safe | — | — |
-| [`sound.volume`](#soundvolume) | Ses seviyesini ayarla | Safe | — | `level` |
-| [`system.restore-point`](#systemrestore-point) | Sistem Geri Yükleme noktası | Safe | — | `description` |
-| [`system.timer-resolution`](#systemtimer-resolution) | Zamanlayıcı çözünürlüğü 0,5 ms | Safe | — | `resolution` |
-| [`ui.account-pictures-black`](#uiaccount-pictures-black) | Varsayılan hesap resimleri siyah | Safe | — | — |
-| [`ui.copilot-off`](#uicopilot-off) | Copilot'u kapat | Safe | — | — |
-| [`ui.explorer`](#uiexplorer) | Dosya Gezgini düzeni | Safe | — | — |
-| [`ui.lockscreen-black`](#uilockscreen-black) | Kilit ve oturum açma ekranı siyah | Safe | — | — |
-| [`ui.notepad-settings`](#uinotepad-settings) | Not Defteri ayarları | Safe | — | `aiRewrite`, `openInNewWindow`, `restoreSession` |
-| [`ui.notifications`](#uinotifications) | Bildirimleri kapat (istisna listesi hariç) | ⚠ Caution | — | `exceptions` |
-| [`ui.taskbar`](#uitaskbar) | Görev çubuğu: düğmeler kapalı, tepsi taşma menüsünde, yalnız Dosya Gezgini + Chrome | Safe | — | — |
-| [`ui.theme-black`](#uitheme-black) | Siyah tema (koyu, saydamlık kapalı, otomatik vurgu, düz siyah duvar kağıdı) | Safe | — | — |
-| [`ui.visual-effects`](#uivisual-effects) | Görsel efektleri azalt (yazı yumuşatma açık) | Safe | — | — |
-| [`ui.widgets-off`](#uiwidgets-off) | Pencere öğelerini (Widgets) kapat | Safe | — | — |
+| [`bloat.edge-remove`](#bloatedge-remove) | Remove Microsoft Edge (WebView2 stays) | ⚠ Caution | — | — |
+| [`bloat.persistence`](#bloatpersistence) | Keep removed apps from coming back | ⚠ Caution | — | — |
+| [`bloat.remove`](#bloatremove) | Remove unnecessary Store apps | ⚠ Caution | — | — |
+| [`graphics.amd-settings`](#graphicsamd-settings) | AMD: simplified Adrenalin and low latency | Safe | HasAmdGpu | — |
+| [`graphics.nvidia-settings`](#graphicsnvidia-settings) | NVIDIA: tray icon and legacy sharpening off | Safe | HasNvidia | — |
+| [`graphics.p0-state`](#graphicsp0-state) | NVIDIA: stay in the P0 power state | ⚠ Caution | HasNvidia | — |
+| [`power.plan`](#powerplan) | Power plan: high performance on AC, balanced on battery | Safe | — | `hibernateOnBatterySec`, `sleepOnBatterySec` |
+| [`privacy.app-permissions`](#privacyapp-permissions) | Turn off app permissions (camera and microphone stay on) | Safe | — | — |
+| [`privacy.search-ads`](#privacysearch-ads) | Turn off search and Start ads | Safe | — | — |
+| [`privacy.telemetry`](#privacytelemetry) | Minimize telemetry | Safe | — | — |
+| [`refresh.reboot-to-bios`](#refreshreboot-to-bios) | Restart to UEFI (BIOS) settings | ⚠ Caution | — | `delay` |
+| [`setup.background-apps-off`](#setupbackground-apps-off) | Turn off background apps (except an exception list) | Safe | — | `exceptions` |
+| [`setup.default-browser`](#setupdefault-browser) | Default browser (via Settings) | ⚠ Caution | — | `appName`, `progId`, `scope` |
+| [`setup.edition-pro`](#setupedition-pro) | Windows Home → Pro upgrade (via Settings) | ⚠ Caution | Edition Core | — |
+| [`setup.mmagent-off`](#setupmmagent-off) | Turn off memory compression and prefetching | Safe | MinRamGB 16 | — |
+| [`setup.store-optimize`](#setupstore-optimize) | Microsoft Store: automatic updates, video and personalization off | ⚠ Caution | — | — |
+| [`setup.updates-staged`](#setupupdates-staged) | Windows Update: install pending first, then pause | ⚠ Caution | — | `pauseDays` |
+| [`sound.startup-sound-off`](#soundstartup-sound-off) | Turn off the startup sound | Safe | — | — |
+| [`sound.volume`](#soundvolume) | Set the volume level | Safe | — | `level` |
+| [`system.restore-point`](#systemrestore-point) | System Restore point | Safe | — | `description` |
+| [`system.timer-resolution`](#systemtimer-resolution) | Timer resolution 0.5 ms | Safe | — | `resolution` |
+| [`ui.account-pictures-black`](#uiaccount-pictures-black) | Default account pictures black | Safe | — | — |
+| [`ui.copilot-off`](#uicopilot-off) | Turn off Copilot | Safe | — | — |
+| [`ui.explorer`](#uiexplorer) | File Explorer layout | Safe | — | — |
+| [`ui.lockscreen-black`](#uilockscreen-black) | Lock and sign-in screen black | Safe | — | — |
+| [`ui.notepad-settings`](#uinotepad-settings) | Notepad settings | Safe | — | `aiRewrite`, `openInNewWindow`, `restoreSession` |
+| [`ui.notifications`](#uinotifications) | Turn off notifications (except an exception list) | ⚠ Caution | — | `exceptions` |
+| [`ui.taskbar`](#uitaskbar) | Taskbar: buttons off, tray in overflow, only File Explorer + Chrome | Safe | — | — |
+| [`ui.theme-black`](#uitheme-black) | Black theme (dark, transparency off, automatic accent, solid black wallpaper) | Safe | — | — |
+| [`ui.visual-effects`](#uivisual-effects) | Reduce visual effects (font smoothing on) | Safe | — | — |
+| [`ui.widgets-off`](#uiwidgets-off) | Turn off Widgets | Safe | — | — |
 
 ## bloat
 
 ### bloat.edge-remove
 
-**Microsoft Edge'i kaldır (WebView2 kalır)** · Risk: ⚠ Caution
+**Remove Microsoft Edge (WebView2 stays)** · Risk: ⚠ Caution
 
-Edge'i (Chromium) kendi kurucusuyla sistem düzeyinde kaldırır. WebView2 Runtime'a ve EdgeUpdate'e dokunmaz: WhatsApp gibi WebView2 kullanan uygulamalar çalışmaya, WebView2 güncellenmeye devam eder. EdgeUpdate ilkesiyle Edge'in yeniden kurulması engellenir (Install{Edge}=0), WebView2'nin kurulması ve güncellenmesi açıkça izinli kalır. microsoft-edge: bağlantıları (Ayarlar, Widget'lar, arama sonuçları) küçük bir yönlendirme betiğiyle varsayılan tarayıcıda açılır; yalnız http / https adresi kabul edilir. Sınırlar: Windows Update ayrı bir Edge paketi gönderirse Edge geri gelebilir (EdgeUpdate ilkesi onu durdurmaz); msedge.exe'yi doğrudan çağıran sistem bileşenleri açılmaz; microsoft-edge: için kullanıcı seçimi (UserChoice) önceden Edge'e bağlıysa Windows bir kez "nasıl açılsın" sorabilir. Geri alma: önce ilke ve yönlendirme kalkar, sonra Edge winget ile yeniden kurulur.
+Removes Edge (Chromium) system-wide with its own installer. WebView2 Runtime and EdgeUpdate are left alone: apps that use WebView2, such as WhatsApp, keep working and WebView2 keeps updating. An EdgeUpdate policy blocks reinstalling Edge (Install{Edge}=0) while installing and updating WebView2 stays explicitly allowed. microsoft-edge: links (Settings, Widgets, search results) open in the default browser through a small redirect script; only http / https addresses are accepted. Limits: if Windows Update ships a separate Edge package, Edge can come back (the EdgeUpdate policy does not stop it); system components that call msedge.exe directly will not open; if the user choice (UserChoice) for microsoft-edge: was already bound to Edge, Windows may ask "how do you want to open this" once. Revert: the policy and the redirect are removed first, then Edge is reinstalled with winget.
 
-Onay uyarısı: Edge kaldırılacak. Sık kullanılanları / parolaları önce Chrome'a aktarın. WebView2 kalır.
+Confirmation warning: Edge will be removed. Export favorites / passwords to Chrome first. WebView2 stays.
 
-Değişiklikler (8):
+Changes (8):
 
 - `Microsoft Edge kaldırılır (WebView2 Runtime ve güncellemesi kalır)`
 - `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate\Install{56EB18F8-B008-4CBD-B6D2-8C97FE7E9062} = 0 (DWord)`
@@ -64,13 +64,13 @@ Değişiklikler (8):
 
 ### bloat.persistence
 
-**Kaldırılan uygulamaların geri gelmesini engelle** · Risk: ⚠ Caution
+**Keep removed apps from coming back** · Risk: ⚠ Caution
 
-bloat.remove listesindeki paketlerin provisioned kopyalarını kaldırır (yeni kullanıcılara ve güncellemeden sonra yeniden kurulmasınlar), Windows'un önerilen / sponsorlu uygulamaları kendiliğinden kurmasını kapatır (ContentDeliveryManager ve CloudContent ilkesi) ve açılışta Windows yapı numarası değiştiyse (büyük ya da aylık güncelleme) aynı listeyi bütün kullanıcılardan yeniden kaldıran bir zamanlanmış görev (\\FAI\_WinOP\\BloatCleanup, SYSTEM) kurar; görev %ProgramData%\\FAI\_WinOP\\BloatCleanup.log dosyasına yazar. Korunan liste ve profildeki uygulamalar görev betiğine de girmez. Provisioned kaldırmanın geri dönüşü yoktur: geri alma görevi ve betiği siler, ayarları döndürür; uygulamalar Store'dan yeniden kurulur. DisableWindowsConsumerFeatures ilkesi resmî olarak yalnız Enterprise / Education'da etkilidir; Pro'da asıl işi ContentDeliveryManager değerleri yapar.
+Removes the provisioned copies of the packages in the bloat.remove list (so they are not reinstalled for new users or after updates), stops Windows from installing suggested / sponsored apps on its own (ContentDeliveryManager and CloudContent policy), and sets up a scheduled task (\\FAI\_WinOP\\BloatCleanup, SYSTEM) that, at startup, removes the same list again from all users if the Windows build number changed (major or monthly update); the task writes to %ProgramData%\\FAI\_WinOP\\BloatCleanup.log. The protected list and the profile's apps are excluded from the task script too. Removing provisioned packages cannot be undone: revert deletes the task and script and restores the settings; apps are reinstalled from the Store. The DisableWindowsConsumerFeatures policy is officially effective only on Enterprise / Education; on Pro the ContentDeliveryManager values do the real work.
 
-Onay uyarısı: Provisioned paket kaldırma geri alınamaz (uygulama gerekirse Store'dan kurulur).
+Confirmation warning: Removing provisioned packages cannot be undone (reinstall the app from the Store if needed).
 
-Değişiklikler (10):
+Changes (10):
 
 - `Bloatware kalıcılığı: 44 paketin provisioned kopyası kaldırılır, açılış görevi \FAI_WinOP\BloatCleanup güncelleme sonrası yineler`
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SilentInstalledAppsEnabled = 0 (DWord)`
@@ -85,13 +85,13 @@ Değişiklikler (10):
 
 ### bloat.remove
 
-**Gereksiz Store uygulamalarını kaldır** · Risk: ⚠ Caution
+**Remove unnecessary Store apps** · Risk: ⚠ Caution
 
-Açık kara listedeki (joker yok, her paket adıyla) önceden kurulu Store uygulamalarını oturumdaki kullanıcıdan kaldırır. Çalışmadan önce kurulu olanlar tablo olarak gösterilir ve onay istenir. Korunan liste (src/Core/Bloat.ps1, Get-FaiBloatProtected) ve profildeki uygulamaların Appx adları (apps/catalog.json appxNames) hiçbir koşulda kaldırılmaz: Store, winget (App Installer), Ekran Alıntısı Aracı, WhatsApp, Claude, kabuk / sistem bileşenleri, kodekler, Fotoğraflar, Paint, Not Defteri, Terminal, Hesap Makinesi, Medya Oynatıcı, sürücü panelleri, Xbox kimliği. Geri alma: provisioned kopyası makinede durdukça paket yeniden kaydedilir; bloat.persistence provisioned kopyayı da kaldırdıysa geri alma uyarı verir, uygulama Store'dan yeniden kurulur.
+Removes preinstalled Store apps from an explicit blocklist (no wildcards, each by package name) for the signed-in user. Before running, the installed ones are shown as a table and confirmation is requested. The protected list (src/Core/Bloat.ps1, Get-FaiBloatProtected) and the Appx names of the profile's apps (apps/catalog.json appxNames) are never removed: Store, winget (App Installer), Snipping Tool, WhatsApp, Claude, shell / system components, codecs, Photos, Paint, Notepad, Terminal, Calculator, Media Player, driver control panels, Xbox identity. Revert: while the provisioned copy stays on the machine the package is registered again; if bloat.persistence also removed the provisioned copy, revert warns and the app is reinstalled from the Store.
 
-Onay uyarısı: Yukarıdaki uygulamalar kaldırılacak (Store'dan yeniden kurulabilir).
+Confirmation warning: The apps above will be removed (they can be reinstalled from the Store).
 
-Değişiklikler (44):
+Changes (44):
 
 - `Appx: Clipchamp.Clipchamp kaldırılır (kullanıcı)`
 - `Appx: Microsoft.549981C3F5F10 kaldırılır (kullanıcı)`
@@ -142,13 +142,13 @@ Değişiklikler (44):
 
 ### graphics.amd-settings
 
-**AMD: Adrenalin sadeleştirme ve düşük gecikme** · Risk: Safe
+**AMD: simplified Adrenalin and low latency** · Risk: Safe
 
-AMD Software (Adrenalin) ayarları, yalnız kayıt defteriyle: otomatik güncelleme, sistem tepsisi, web içeriği, animasyonlar, bildirim baloncukları ve oyun içi kaplama kapalı. Sağlayıcısı AMD olan ekran bağdaştırıcısı sınıf anahtarında Radeon Anti-Lag açık (KMD\_DeLagEnabled=1); UMD altında dikey eşitleme her zaman kapalı, doku filtreleme kalitesi performans, mozaikleme uygulama ayarını geçersiz kılar; power\_v1 altında Vari-Bright (abmlevel) kapalı. UMD değerleri UTF-16 metin rakamıdır (ör. 30 00 = "0"). Değerler Ultimate referansından alındı, gerçek AMD donanımında doğrulanmadı; sürücü güncellemesi bazılarını sıfırlayabilir.
+AMD Software (Adrenalin) settings, registry only: automatic updates, system tray, web content, animations, notification bubbles and in-game overlay are off. In the class key of the display adapter whose provider is AMD, Radeon Anti-Lag is on (KMD\_DeLagEnabled=1); under UMD, vertical sync is always off, texture filtering quality is performance, and tessellation overrides the application setting; under power\_v1, Vari-Bright (abmlevel) is off. UMD values are UTF-16 text digits (e.g. 30 00 = "0"). Values were taken from the Ultimate reference and not verified on real AMD hardware; a driver update may reset some of them.
 
-Koşul: HasAmdGpu
+Condition: HasAmdGpu
 
-Değişiklikler (12):
+Changes (12):
 
 - `Kayıt defteri: HKCU:\Software\AMD\CN\AutoUpdate = 0 (DWord)`
 - `Kayıt defteri: HKCU:\Software\AMD\CN\SystemTray = false (String)`
@@ -165,13 +165,13 @@ Değişiklikler (12):
 
 ### graphics.nvidia-settings
 
-**NVIDIA: tepsi simgesi ve eski keskinleştirme kapalı** · Risk: Safe
+**NVIDIA: tray icon and legacy sharpening off** · Risk: Safe
 
-Yalnız kayıt defteriyle yapılabilen NVIDIA ayarları: oturum açılışında NVIDIA tepsi simgesi başlamaz (NvTray\\StartOnLogin=0) ve eski görüntü keskinleştirme ölçekleyicisi kapanır (nvlddmkm FTS\\EnableGR535=0; yalnız sürücünün oluşturduğu FTS anahtarı varsa yazılır). Denetim Masası ayarları (düşük gecikme, güç yönetimi, dikey eşitleme, doku filtreleme…) NVIDIA DRS veritabanındadır; imzasız üçüncü parti araç (Profile Inspector) kullanılmadığından bu tweak'in kapsamı dışındadır (NVAPI ile sonra). Gerçek NVIDIA donanımında doğrulanmadı.
+NVIDIA settings that can be made with the registry alone: the NVIDIA tray icon does not start at sign-in (NvTray\\StartOnLogin=0) and the legacy image sharpening scaler is turned off (nvlddmkm FTS\\EnableGR535=0; written only if the FTS key created by the driver exists). Control Panel settings (low latency, power management, vertical sync, texture filtering…) live in the NVIDIA DRS database; since no unsigned third-party tool (Profile Inspector) is used, they are outside this tweak's scope (later, via NVAPI). Not verified on real NVIDIA hardware.
 
-Koşul: HasNvidia
+Condition: HasNvidia
 
-Değişiklikler (3):
+Changes (3):
 
 - `Kayıt defteri: HKCU:\Software\NVIDIA Corporation\NvTray\StartOnLogin = 0 (DWord)`
 - `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Services\nvlddmkm\*\EnableGR535 = 0 (DWord) — yalnız: FTS`
@@ -179,17 +179,17 @@ Değişiklikler (3):
 
 ### graphics.p0-state
 
-**NVIDIA: P0 güç durumunda sabit tut** · Risk: ⚠ Caution
+**NVIDIA: stay in the P0 power state** · Risk: ⚠ Caution
 
-NVIDIA ekran kartının dinamik P-state geçişlerini kapatır (DisableDynamicPstate=1): kart boştayken de en yüksek güç durumunda (P0) kalır, saat düşüşünden gelen gecikme sıçramaları azalır. Değer yalnız sağlayıcısı NVIDIA olan ekran bağdaştırıcısı sınıf anahtarına (0000, 0001…) yazılır; Intel / AMD anahtarlarına dokunulmaz. Dizüstünde pil süresi kısalır ve ısı artar; bu yüzden onay her çalıştırmada istenir (profil autoConfirm'i işlemez, -Unattended'da uygulanmaz). Sürücü yeniden yüklenince ya da yeniden başlatınca etkin olur. Not: etkisi gerçek donanımda ölçülmedi (Faz 9).
+Turns off dynamic P-state switching on the NVIDIA GPU (DisableDynamicPstate=1): the card stays in the highest power state (P0) even when idle, which reduces latency spikes from clock drops. The value is written only to the display adapter class keys (0000, 0001…) whose provider is NVIDIA; Intel / AMD keys are not touched. On a laptop, battery life gets shorter and heat rises; for this reason confirmation is requested on every run (the profile's autoConfirm does not apply, and it is not applied with -Unattended). Takes effect when the driver is reloaded or after a restart. Note: the effect has not been measured on real hardware (Phase 9).
 
-Onay uyarısı: Ekran kartı boştayken de tam güçte kalır: dizüstünde pil süresi kısalır ve ısı artar.
+Confirmation warning: The GPU stays at full power even when idle: on a laptop, battery life gets shorter and heat rises.
 
-Çalışma: onay her çalıştırmada sorulur (autoConfirm işlemez, `-Unattended` kipte uygulanmaz)
+Run: confirmation is asked on every run (autoConfirm does not apply, not applied in `-Unattended` mode)
 
-Koşul: HasNvidia
+Condition: HasNvidia
 
-Değişiklikler (1):
+Changes (1):
 
 - `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*\DisableDynamicPstate = 1 (DWord) — yalnız: [0-9][0-9][0-9][0-9] — ProviderName: NVIDIA*`
 
@@ -197,13 +197,13 @@ Değişiklikler (1):
 
 ### power.plan
 
-**Güç planı: prizde yüksek performans, pilde dengeli** · Risk: Safe
+**Power plan: high performance on AC, balanced on battery** · Risk: Safe
 
-Aracın kendi güç planını (FAI\_WinOP, sabit GUID) Balanced'dan kopyalayıp etkin yapar; var olan bir planın varlığı varsayılmaz (Balanced silinmişse etkin planın kopyası alınır). Prizde (AC): işlemci en düşük / en yüksek durum %100, çekirdek park etme kapalı (en az çekirdek %100), soğutma etkin, USB seçici askıya alma ve PCIe bağlantı durumu güç yönetimi kapalı, disk kapanmaz, kablosuz bağdaştırıcı en yüksek performans, uyku ve hazırda bekletme yok. Pilde (DC): Balanced varsayılanları kalır; uyku (sleepOnBatterySec, varsayılan 900 sn) ve hazırda bekletme (hibernateOnBatterySec, varsayılan 10800 sn) açıkça açık. Dizüstünde hazırda bekletme (powercfg /hibernate on) da açılır. Ekran ve parlaklığa dokunulmaz. Geri alma önceki etkin plana döner ve aracın planını siler.
+Copies the tool's own power plan (FAI\_WinOP, fixed GUID) from Balanced and makes it active; the existence of any plan is not assumed (if Balanced was deleted, a copy of the active plan is used). On AC: processor minimum / maximum state 100%, core parking off (minimum cores 100%), cooling active, USB selective suspend and PCIe link state power management off, disk never turns off, wireless adapter at maximum performance, no sleep or hibernate. On battery (DC): Balanced defaults stay; sleep (sleepOnBatterySec, default 900 s) and hibernate (hibernateOnBatterySec, default 10800 s) are explicitly on. On a laptop, hibernate (powercfg /hibernate on) is also enabled. Display and brightness are not touched. Revert returns to the previous active plan and deletes the tool's plan.
 
-Parametreler (varsayılan): `hibernateOnBatterySec` = `10800` · `sleepOnBatterySec` = `900`
+Parameters (default): `hibernateOnBatterySec` = `10800` · `sleepOnBatterySec` = `900`
 
-Değişiklikler (12):
+Changes (12):
 
 - `Güç planı 'FAI_WinOP' (46414900-5769-4e4f-9000-000000000001): yoksa 381b4222-f694-41f0-9685-ff5bb260df2e kopyası olarak kurulur, etkin olur`
 - `Güç: 46414900-5769-4e4f-9000-000000000001 / SUB_PROCESSOR / PROCTHROTTLEMIN → prizde = 100`
@@ -222,11 +222,11 @@ Değişiklikler (12):
 
 ### privacy.app-permissions
 
-**Uygulama izinlerini kapat (kamera ve mikrofon açık)** · Risk: Safe
+**Turn off app permissions (camera and microphone stay on)** · Risk: Safe
 
-Ayarlar \> Gizlilik ve güvenlik \> Uygulama izinleri altındaki izinleri cihaz düzeyinde kapatır: konum, bildirimlere erişim, hesap bilgisi, kişiler, takvim, telefon aramaları, arama geçmişi, e-posta, görevler, mesajlaşma, radyolar, diğer cihazlarla eşitleme, uygulama tanılaması, belgeler, resimler, videolar, müzik, dosya sistemi, metin / görüntü üretimi (yapay zekâ modelleri) ve geçiş anahtarı listeleme. Kamera ve mikrofon açık tutulur (cihaz ve kullanıcı düzeyinde). İzinler çoğunlukla Store (paketli) uygulamaları etkiler; masaüstü uygulamalarında yalnız konum, kamera ve mikrofon izni geçerlidir. Konum kapalıyken otomatik saat dilimi ve Cihazımı bul çalışmaz. İzin anahtarı olmayan bir sürümde (ör. müzik, yapay zekâ modelleri) değer yine yazılır, etkisi olmaz.
+Turns off, at the device level, the permissions under Settings \> Privacy & security \> App permissions: location, notification access, account info, contacts, calendar, phone calls, call history, email, tasks, messaging, radios, sync with other devices, app diagnostics, documents, pictures, videos, music, file system, text / image generation (AI models) and passkey listing. Camera and microphone stay on (device and user level). The permissions mostly affect Store (packaged) apps; for desktop apps only the location, camera and microphone permissions apply. While location is off, automatic time zone and Find my device do not work. On a version without a permission key (e.g. music, AI models) the value is still written but has no effect.
 
-Değişiklikler (24):
+Changes (24):
 
 - `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam\Value = Allow (String)`
 - `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone\Value = Allow (String)`
@@ -255,11 +255,11 @@ Değişiklikler (24):
 
 ### privacy.search-ads
 
-**Arama ve Başlat reklamlarını kapat** · Risk: Safe
+**Turn off search and Start ads** · Risk: Safe
 
-Başlat aramasında web (Bing) sonuçlarını ve önerilerini, arama vurgularını (dinamik arama kutusu), Microsoft / iş hesabı bulut içerik aramasını ve cihaz arama geçmişini kapatır. Başlat menüsündeki öneri ve hesap bildirimlerini, Ayarlar uygulamasındaki önerilen içeriği ve Dosya Gezgini'ndeki eşitleme sağlayıcısı (OneDrive / Microsoft 365) tanıtımlarını kapatır. Yerel dosya ve uygulama araması çalışmaya devam eder. Etkisi için Gezgin'in yeniden başlaması ya da oturumun kapatılıp açılması gerekebilir.
+Turns off web (Bing) results and suggestions in Start search, search highlights (dynamic search box), Microsoft / work account cloud content search and device search history. Also turns off suggestions and account notifications in the Start menu, suggested content in the Settings app, and sync provider (OneDrive / Microsoft 365) promotions in File Explorer. Local file and app search keep working. For the change to take effect, Explorer may need to restart or you may need to sign out and back in.
 
-Değişiklikler (15):
+Changes (15):
 
 - `Kayıt defteri: HKCU:\Software\Policies\Microsoft\Windows\Explorer\DisableSearchBoxSuggestions = 1 (DWord)`
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Search\BingSearchEnabled = 0 (DWord)`
@@ -279,11 +279,11 @@ Değişiklikler (15):
 
 ### privacy.telemetry
 
-**Telemetriyi en aza indir** · Risk: Safe
+**Minimize telemetry** · Risk: Safe
 
-Tanılama verisini sürümün izin verdiği en düşük düzeye indirir: telemetri ilkesi, DiagTrack (Bağlı Kullanıcı Deneyimleri ve Telemetri) ve dmwappushservice servisleri, CEIP / uyumluluk / disk tanılama görevleri, reklam kimliği, kişiye özel deneyimler, geri bildirim istekleri, hata raporlama, etkinlik geçmişi, mürekkep ve yazma verisi gönderimi. Sürüm farkı: AllowTelemetry=0 (Güvenlik) yalnız Enterprise, Education ve Server sürümlerinde tam etkilidir; Home ve Pro bu değeri 1 (Gerekli tanılama verisi) olarak uygular, yani Home / Pro için ulaşılabilecek en düşük ilke düzeyi Gerekli'dir. Home / Pro'da gönderimi asıl durduran DiagTrack servisinin kapatılmasıdır. CEIPEnable ve AITEnable ilkeleri yeni sürümlerde etkisiz olabilir, eski bileşenler için yazılır. AllowTelemetry=0 Windows Insider uçuşlarını keser (Insider yapıları güncelleme almaz). Windows Update, Store ve Defender çalışmaya devam eder; Ayarlar'da "Bazı ayarlar kuruluşunuz tarafından yönetiliyor" yazısı görünür. MDM / Intune ile yönetilen cihazda kullanmayın (dmwappushservice kayıt iletilerini taşır).
+Lowers diagnostic data to the lowest level the edition allows: telemetry policy, the DiagTrack (Connected User Experiences and Telemetry) and dmwappushservice services, CEIP / compatibility / disk diagnostic tasks, advertising ID, tailored experiences, feedback requests, error reporting, activity history, and ink and typing data submission. Edition difference: AllowTelemetry=0 (Security) is fully effective only on Enterprise, Education and Server; Home and Pro apply it as 1 (Required diagnostic data), so Required is the lowest policy level reachable on Home / Pro. On Home / Pro, what actually stops sending is turning off the DiagTrack service. The CEIPEnable and AITEnable policies may have no effect in newer versions and are written for older components. AllowTelemetry=0 cuts off Windows Insider flights (Insider builds get no updates). Windows Update, Store and Defender keep working; Settings shows "Some settings are managed by your organization". Do not use on a device managed with MDM / Intune (dmwappushservice carries registration messages).
 
-Değişiklikler (30):
+Changes (30):
 
 - `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection\AllowTelemetry = 0 (DWord)`
 - `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection\DoNotShowFeedbackNotifications = 1 (DWord)`
@@ -320,17 +320,17 @@ Değişiklikler (30):
 
 ### refresh.reboot-to-bios
 
-**UEFI (BIOS) ayarlarına yeniden başlat** · Risk: ⚠ Caution
+**Restart to UEFI (BIOS) settings** · Risk: ⚠ Caution
 
-Araç: bilgisayarı birkaç saniye sonra doğrudan UEFI ürün yazılımı ayarlarına yeniden başlatır (shutdown /r /fw). Profille otomatik çalışmaz; yalnız menüden ya da -Only ile, onayla. Açık belgeleri kaydedin. Vazgeçmek için süre dolmadan: shutdown /a. Eski (Legacy BIOS) kurulumlarda desteklenmez.
+Tool: restarts the computer in a few seconds directly into the UEFI firmware settings (shutdown /r /fw). It does not run automatically with a profile; only from the menu or with -Only, with confirmation. Save open documents. To cancel before the time runs out: shutdown /a. Not supported on legacy BIOS installs.
 
-Onay uyarısı: Bilgisayar birkaç saniye içinde yeniden başlayacak; kaydedilmemiş işler kaybolur.
+Confirmation warning: The computer will restart in a few seconds; unsaved work will be lost.
 
-Çalışma: araç: profille otomatik çalışmaz, menüden / `-Only` ile
+Run: tool: does not run automatically with a profile, only from the menu / with `-Only`
 
-Parametreler (varsayılan): `delay` = `10`
+Parameters (default): `delay` = `10`
 
-Değişiklikler (1):
+Changes (1):
 
 - `10 sn sonra UEFI (BIOS) ayarlarına yeniden başlat`
 
@@ -338,54 +338,54 @@ Değişiklikler (1):
 
 ### setup.background-apps-off
 
-**Arka plan uygulamalarını kapat (istisna listesi hariç)** · Risk: Safe
+**Turn off background apps (except an exception list)** · Risk: Safe
 
-Gizlilik ilkesiyle (AppPrivacy\\LetAppsRunInBackground=2, "zorla reddet") Store / paketli uygulamaların arka planda çalışması kapatılır; exceptions parametresindeki paket aile adları (varsayılan WhatsApp: 5319275A.WhatsAppDesktop\_cv1g1gvanyjgm) LetAppsRunInBackground\_ForceAllowTheseApps ile açık kalır. İlke sonradan kurulan uygulamaları da kapsar; Ayarlar'daki uygulama başına seçenek ilke yüzünden gri görünür. Win32 uygulamaları (ör. winget ile kurulan Telegram Desktop) bu ayardan etkilenmez, bu yüzden listede yok. Kullanıcı genel anahtarı (GlobalUserDisabled) kullanılmadı: o istisnaları da kapatır.
+With a privacy policy (AppPrivacy\\LetAppsRunInBackground=2, "force deny") Store / packaged apps are stopped from running in the background; the package family names in the exceptions parameter (default WhatsApp: 5319275A.WhatsAppDesktop\_cv1g1gvanyjgm) stay allowed through LetAppsRunInBackground\_ForceAllowTheseApps. The policy also covers apps installed later; the per-app option in Settings appears grayed out because of the policy. Win32 apps (e.g. Telegram Desktop installed with winget) are not affected by this setting, so they are not in the list. The user-wide switch (GlobalUserDisabled) was not used: it would turn off the exceptions too.
 
-Parametreler (varsayılan): `exceptions` = `5319275A.WhatsAppDesktop_cv1g1gvanyjgm`
+Parameters (default): `exceptions` = `5319275A.WhatsAppDesktop_cv1g1gvanyjgm`
 
-Değişiklikler (2):
+Changes (2):
 
 - `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy\LetAppsRunInBackground = 2 (DWord)`
 - `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy\LetAppsRunInBackground_ForceAllowTheseApps = 5319275A.WhatsAppDesktop_cv1g1gvanyjgm (MultiString)`
 
 ### setup.default-browser
 
-**Varsayılan tarayıcı (Ayarlar üzerinden)** · Risk: ⚠ Caution
+**Default browser (via Settings)** · Risk: ⚠ Caution
 
-https için varsayılan tarayıcı appName değilse Ayarlar \> Varsayılan uygulamalar sayfasını o uygulamada açar; "Varsayılan olarak ayarla" düğmesine kullanıcı basar, sonra sonuç denetlenir. Windows 11 UserChoice karma koruması ve UCPD sürücüsü yüzünden programla güvenilir yol yok (docs/APPS.md). Etkileşimsiz kipte uygulanmaz; geri alma da Ayarlar sayfasından elle yapılır.
+If the default browser for https is not appName, opens Settings \> Default apps for that app; the user clicks the "Set default" button, then the result is checked. Because of the Windows 11 UserChoice hash protection and the UCPD driver, there is no reliable programmatic way (docs/APPS.md). Not applied in non-interactive mode; revert is also done manually from the Settings page.
 
-Onay uyarısı: Ayarlar sayfası açılacak; "Varsayılan olarak ayarla" düğmesine sizin basmanız gerekir.
+Confirmation warning: The Settings page will open; you need to click the "Set default" button yourself.
 
-Parametreler (varsayılan): `appName` = `Google Chrome` · `progId` = `ChromeHTML` · `scope` = `Machine`
+Parameters (default): `appName` = `Google Chrome` · `progId` = `ChromeHTML` · `scope` = `Machine`
 
-Değişiklikler (1):
+Changes (1):
 
 - `Varsayılan tarayıcı: Google Chrome (ChromeHTML) — Ayarlar'da tek tıkla, elle`
 
 ### setup.edition-pro
 
-**Windows Home → Pro yükseltmesi (Ayarlar üzerinden)** · Risk: ⚠ Caution
+**Windows Home → Pro upgrade (via Settings)** · Risk: ⚠ Caution
 
-Yalnız Home (Core) sürümde: Ayarlar \> Etkinleştirme sayfasını açar; Pro'ya yükseltme kullanıcının kendi ürün anahtarıyla ("Ürün anahtarını değiştir") ya da Microsoft Store'dan satın alınan yükseltmeyle yapılır. Araç anahtar içermez, genel / KMS anahtarı girmez ve hiçbir etkinleştirme atlatması yapmaz (korsan aktivasyon yok). Yükseltme sonunda Windows yeniden başlar; sürüm Pro olunca tweak koşulu sağlanmaz, atlanır. Etkileşimsiz kipte uygulanmaz; geri alma yoktur.
+Home (Core) edition only: opens the Settings \> Activation page; the upgrade to Pro is done with the user's own product key ("Change product key") or with an upgrade bought from the Microsoft Store. The tool contains no key, enters no generic / KMS key and performs no activation bypass (no pirated activation). Windows restarts at the end of the upgrade; once the edition is Pro, the tweak condition is not met and it is skipped. Not applied in non-interactive mode; there is no revert.
 
-Onay uyarısı: Ayarlar \> Etkinleştirme açılacak; yükseltmeyi kendi ürün anahtarınızla ya da Store'dan siz yaparsınız.
+Confirmation warning: Settings \> Activation will open; you do the upgrade yourself with your own product key or from the Store.
 
-Koşul: Edition Core
+Condition: Edition Core
 
-Değişiklikler (1):
+Changes (1):
 
-- `Ayarlar açılır (ms-settings:activation): Etkinleştirme sayfası açıldı: "Ürün anahtarını değiştir" ile kendi Pro anahtarınızı girin ya da Store'dan Pro yükseltmesini alın. Yükseltme sonrası Windows yeniden başlar.`
+- `Ayarlar açılır (ms-settings:activation): Activation page opened: enter your own Pro key with "Change product key", or get the Pro upgrade from the Store. Windows restarts after the upgrade.`
 
 ### setup.mmagent-off
 
-**Bellek sıkıştırma ve ön getirmeyi kapat** · Risk: Safe
+**Turn off memory compression and prefetching** · Risk: Safe
 
-Bellek yöneticisinde (MMAgent) bellek sıkıştırma, uygulama başlatma ön getirmesi (prefetch) ve uygulama ön yüklemesi (PreLaunch) kapatılır; ayrıca PrefetchParameters\\EnablePrefetcher=0. Bol RAM'li (en az 16 GB) makine içindir: sıkıştırma için harcanan işlemci zamanı ve arka plan disk okumaları kalkar. Sayfa birleştirme ve OperationAPI'ye dokunulmaz. Bellek sıkıştırma yeniden başlatınca etkinleşir. Get-MMAgent SysMain servisinin çalışmasını ister. Bedeli: EnablePrefetcher=0 açılış ön getirmesini de kapatır, açılış ve ilk uygulama açılışları uzayabilir; NVMe SSD'de kazanç küçük. Hyper-V açık makinede Windows ön getirme değişikliğini reddedebilir ("The request is not supported"). fedai profilinde değil (Faz 9: açılışı uzattığı gözlendi).
+In the memory manager (MMAgent), memory compression, application launch prefetching (prefetch) and application preloading (PreLaunch) are turned off; also PrefetchParameters\\EnablePrefetcher=0. For machines with plenty of RAM (at least 16 GB): the CPU time spent on compression and background disk reads go away. Page combining and OperationAPI are not touched. Memory compression takes effect after a restart. Get-MMAgent needs the SysMain service to be running. Cost: EnablePrefetcher=0 also turns off boot prefetching, so boot and first app launches may take longer; on an NVMe SSD the gain is small. On a machine with Hyper-V enabled, Windows may reject the prefetch change ("The request is not supported"). Not in the fedai profile (Phase 9: it was observed to lengthen boot).
 
-Koşul: MinRamGB 16
+Condition: MinRamGB 16
 
-Değişiklikler (4):
+Changes (4):
 
 - `Bellek yöneticisi: MemoryCompression → kapalı`
 - `Bellek yöneticisi: ApplicationLaunchPrefetching → kapalı`
@@ -394,11 +394,11 @@ Değişiklikler (4):
 
 ### setup.store-optimize
 
-**Microsoft Store: otomatik güncelleme, video ve kişiselleştirme kapalı** · Risk: ⚠ Caution
+**Microsoft Store: automatic updates, video and personalization off** · Risk: ⚠ Caution
 
-Store uygulamalarının otomatik indirilip güncellenmesi kapatılır (WindowsStore\\WindowsUpdate\\AutoDownload=2); Store uygulamaları bunun yerine winget upgrade ile güncellenir. Store'un kendi ayarlarında (settings.dat) videoların otomatik oynatılması, uygulama kurulum bildirimleri ve kişiselleştirilmiş deneyim kapatılır. Store hiç açılmamışsa ayar dosyası yoktur: o adımlar atlanır, Store bir kez açıldıktan sonraki çalıştırmada uygulanır. Yazarken Store açıksa kapatılır.
+Automatic download and update of Store apps is turned off (WindowsStore\\WindowsUpdate\\AutoDownload=2); Store apps are updated with winget upgrade instead. In the Store's own settings (settings.dat), video autoplay, app install notifications and personalized experience are turned off. If the Store has never been opened, the settings file does not exist: those steps are skipped and applied on the first run after the Store has been opened once. If the Store is open while writing, it is closed.
 
-Değişiklikler (4):
+Changes (4):
 
 - `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsStore\WindowsUpdate\AutoDownload = 2 (DWord)`
 - `Uygulama ayarı: Microsoft.WindowsStore VideoAutoplay = False (Bool)`
@@ -407,17 +407,17 @@ Değişiklikler (4):
 
 ### setup.updates-staged
 
-**Windows Update: önce bekleyenleri kur, sonra duraklat** · Risk: ⚠ Caution
+**Windows Update: install pending first, then pause** · Risk: ⚠ Caution
 
-Önce bekleyen bütün yazılım güncellemeleri (Windows Update Agent; sürücüler hariç) indirilip kurulur, ilerleme basılır. Kurulum yeniden başlatma isterse çalıştırma burada durur: yeniden başlatıp profili tekrar çalıştırın (CLI ResumeCommand verirse RunOnce ile kendiliğinden sürer); kalan güncellemeler ve duraklatma o çalıştırmada yapılır. Hiç bekleyen kalmayınca güncellemeler pauseDays (varsayılan 365) gün duraklatılır: Ayarlar \> Windows Update'in duraklatma değerleri (UX\\Settings, başlangıç / bitiş UTC). FlightSettingsMaxPauseDays yazılmaz; 365 günün Ayarlar'da nasıl göründüğü VM'de doğrulanacak. -UpdatesOn / -UpdatesOff ayrıca duraklatmayı kaldırır / yeniden koyar. -Undo duraklatmayı kaldırır; kurulan güncellemeler geri alınmaz. Güvenlik yamaları da duraklatılır; uzun duraklatma Insider yapısının süresini doldurabilir. Onay her çalıştırmada istenir.
+First, all pending software updates (Windows Update Agent; drivers excluded) are downloaded and installed, with progress printed. If the installation asks for a restart, the run stops here: restart and run the profile again (if the CLI provides a ResumeCommand, it continues on its own through RunOnce); the remaining updates and the pause are done in that run. When none are pending, updates are paused for pauseDays (default 365) days: the pause values of Settings \> Windows Update (UX\\Settings, start / end in UTC). FlightSettingsMaxPauseDays is not written; how 365 days appears in Settings will be verified in a VM. -UpdatesOn / -UpdatesOff separately remove / re-apply the pause. -Undo removes the pause; installed updates are not rolled back. Security patches are paused too; a long pause can make an Insider build expire. Confirmation is requested on every run.
 
-Onay uyarısı: Güvenlik yamaları dahil bütün güncellemeler 365 gün duraklatılır; uzun duraklatma Insider yapısının süresini doldurabilir.
+Confirmation warning: All updates, including security patches, are paused for 365 days; a long pause can make an Insider build expire.
 
-Çalışma: onay her çalıştırmada sorulur (autoConfirm işlemez, `-Unattended` kipte uygulanmaz)
+Run: confirmation is asked on every run (autoConfirm does not apply, not applied in `-Unattended` mode)
 
-Parametreler (varsayılan): `pauseDays` = `365`
+Parameters (default): `pauseDays` = `365`
 
-Değişiklikler (2):
+Changes (2):
 
 - `Windows Update: bekleyen bütün güncellemeler kurulur`
 - `Windows Update: 365 gün duraklatılır`
@@ -426,24 +426,24 @@ Değişiklikler (2):
 
 ### sound.startup-sound-off
 
-**Açılış sesini kapat** · Risk: Safe
+**Turn off the startup sound** · Risk: Safe
 
-Windows oturum açma (başlangıç) sesini kapatır. Ayarlar \> Kişiselleştirme \> Temalar \> Sesler \> "Windows Başlangıç sesini çal" kutusunun karşılığı; iki değer birlikte yazılır, biri yalnız bazı sürümlerde okunur.
+Turns off the Windows sign-in (startup) sound. Equivalent of the Settings \> Personalization \> Themes \> Sounds \> "Play Windows Startup sound" checkbox; two values are written together, one of which is read only on some versions.
 
-Değişiklikler (2):
+Changes (2):
 
 - `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI\BootAnimation\DisableStartupSound = 1 (DWord)`
 - `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\EditionOverrides\UserSetting_DisableStartupSound = 1 (DWord)`
 
 ### sound.volume
 
-**Ses seviyesini ayarla** · Risk: Safe
+**Set the volume level** · Risk: Safe
 
-Varsayılan ses çıkış aygıtının seviyesini level parametresine (0-100, varsayılan 15) getirir. Çıkış aygıtı yoksa (sunucu, sanal makine) atlanır. Aygıt değişirse yeni aygıt kendi seviyesini kullanır.
+Sets the level of the default audio output device to the level parameter (0-100, default 15). Skipped if there is no output device (server, virtual machine). If the device changes, the new device uses its own level.
 
-Parametreler (varsayılan): `level` = `15`
+Parameters (default): `level` = `15`
 
-Değişiklikler (1):
+Changes (1):
 
 - `Ses: varsayılan çıkış → seviye = %15`
 
@@ -451,27 +451,27 @@ Değişiklikler (1):
 
 ### system.restore-point
 
-**Sistem Geri Yükleme noktası** · Risk: Safe
+**System Restore point** · Risk: Safe
 
-Her çalıştırmada ilk adım (First): profildeki uygulamalardan ve öteki tweak'lerden önce bir Sistem Geri Yükleme noktası oluşturur. Sistem sürücüsünde Sistem Koruması kapalıysa açar. Windows'un 24 saatte bir nokta sınırı (SystemRestorePointCreationFrequency) oluşturma sırasında geçici olarak kaldırılır, sonra eski hâline döner. -Undo noktayı silmez; FAI\_WinOP'un kendi geri alması ayrıca vardır, bu nokta son çare (rstrui). Not: Sistem Koruması açma / nokta oluşturma gerçek makinede (VM) doğrulanmadı.
+The first step (First) of every run: creates a System Restore point before the profile's apps and the other tweaks. Turns on System Protection if it is off on the system drive. Windows' once-per-24-hours point limit (SystemRestorePointCreationFrequency) is temporarily lifted during creation, then restored. -Undo does not delete the point; FAI\_WinOP has its own revert, so this point is a last resort (rstrui). Note: turning on System Protection / creating a point has not been verified on a real machine (VM).
 
-Çalışma: her çalıştırmada ilk adım (uygulamalardan önce)
+Run: first step of every run (before apps)
 
-Parametreler (varsayılan): `description` = `FAI_WinOP`
+Parameters (default): `description` = `FAI_WinOP`
 
-Değişiklikler (1):
+Changes (1):
 
 - `Sistem Geri Yükleme noktası: 'FAI_WinOP'`
 
 ### system.timer-resolution
 
-**Zamanlayıcı çözünürlüğü 0,5 ms** · Risk: Safe
+**Timer resolution 0.5 ms** · Risk: Safe
 
-FAI\_TimerResolution servisini kurar (src/Native/TimerResolution.cs, açılışta otomatik başlar) ve sistem zamanlayıcısını 0,5 ms'ye (5000 × 100 ns) çeker. Windows 11'de bir sürecin istediği çözünürlük yalnız o süreci etkiler; sistem geneli etki için GlobalTimerResolutionRequests=1 gerekir (Session Manager\\kernel). Pilde güç tüketimini biraz artırabilir. -Undo servisi kaldırır, değeri siler.
+Installs the FAI\_TimerResolution service (src/Native/TimerResolution.cs, starts automatically at boot) and sets the system timer to 0.5 ms (5000 × 100 ns). On Windows 11, a resolution requested by a process affects only that process; for a system-wide effect GlobalTimerResolutionRequests=1 is required (Session Manager\\kernel). May slightly increase power consumption on battery. -Undo removes the service and deletes the value.
 
-Parametreler (varsayılan): `resolution` = `5000`
+Parameters (default): `resolution` = `5000`
 
-Değişiklikler (2):
+Changes (2):
 
 - `Kayıt defteri: HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\kernel\GlobalTimerResolutionRequests = 1 (DWord)`
 - `Zamanlayıcı çözünürlüğü servisi: 0.5 ms`
@@ -480,21 +480,21 @@ Değişiklikler (2):
 
 ### ui.account-pictures-black
 
-**Varsayılan hesap resimleri siyah** · Risk: Safe
+**Default account pictures black** · Risk: Safe
 
-Windows'un varsayılan kullanıcı ve konuk resimleri (%ProgramData%\\Microsoft\\User Account Pictures içindeki .png / .bmp dosyaları) aynı boyutta düz siyah görüntüyle değiştirilir; hesabına kendi resmini koymamış kullanıcılar Başlat'ta, giriş ekranında ve Ayarlar'da siyah daire görür. Alt klasörler (kullanıcıların kendi resimleri) ve kullanıcının seçtiği resim değişmez. Özgün dosyalar yedeklenir, geri alma birebir geri yazar. Etkisi oturum yeniden açılınca görülür.
+Windows' default user and guest pictures (the .png / .bmp files in %ProgramData%\\Microsoft\\User Account Pictures) are replaced with a plain black image of the same size; users who have not set their own account picture see a black circle in Start, on the sign-in screen and in Settings. Subfolders (users' own pictures) and the picture the user chose are not changed. The original files are backed up and revert writes them back exactly. The effect shows after signing in again.
 
-Değişiklikler (1):
+Changes (1):
 
 - `Görüntü: %ProgramData%\Microsoft\User Account Pictures\*.png,*.bmp tek renk #000000 (boyut korunur)`
 
 ### ui.copilot-off
 
-**Copilot'u kapat** · Risk: Safe
+**Turn off Copilot** · Risk: Safe
 
-Windows Copilot ilkeyle kapatılır ("Windows Copilot'u kapat", kullanıcı ve makine) ve görev çubuğundaki Copilot düğmesi gizlenir. Copilot uygulamasının kendisi bloat.remove ile kaldırılır (Microsoft.Copilot). Yeni yapılarda Copilot ayrı bir uygulama olduğundan ilke yalnız eski bütünleşik Copilot'u etkiler; düğme ve uygulama kaldırma asıl işi yapar. Gezgin yeniden başlar.
+Windows Copilot is turned off by policy ("Turn off Windows Copilot", user and machine) and the Copilot button on the taskbar is hidden. The Copilot app itself is removed by bloat.remove (Microsoft.Copilot). In newer builds Copilot is a separate app, so the policy affects only the old integrated Copilot; the button and the app removal do the real work. Explorer restarts.
 
-Değişiklikler (3):
+Changes (3):
 
 - `Kayıt defteri: HKCU:\Software\Policies\Microsoft\Windows\WindowsCopilot\TurnOffWindowsCopilot = 1 (DWord)`
 - `Kayıt defteri: HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot\TurnOffWindowsCopilot = 1 (DWord)`
@@ -502,11 +502,11 @@ Değişiklikler (3):
 
 ### ui.explorer
 
-**Dosya Gezgini düzeni** · Risk: Safe
+**File Explorer layout** · Risk: Safe
 
-Dosya Gezgini Bu Bilgisayar ile açılır, dosya uzantıları görünür, başlık çubuğunda tam yol yazar. Gezinti bölmesinde Galeri ve Ana Sayfa gizlenir; 3D Nesneler Bu Bilgisayar'dan gizlenir (Windows 11'de zaten yoktur, eylem yalnız güvencedir). Ana Sayfa HubMode ilkesiyle gizlenir: Microsoft bu davranışı güncellemelerle değiştirebilir, gerçek donanımda doğrulanacak (Faz 9). Gezinti bölmesi değişiklikleri Gezgin yeniden başlayınca görünür.
+File Explorer opens to This PC, file extensions are shown, and the title bar shows the full path. Gallery and Home are hidden in the navigation pane; 3D Objects is hidden from This PC (it does not exist on Windows 11 anyway; the action is only a safeguard). Home is hidden with the HubMode policy: Microsoft may change this behavior with updates, to be verified on real hardware (Phase 9). Navigation pane changes show after Explorer restarts.
 
-Değişiklikler (6):
+Changes (6):
 
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\LaunchTo = 1 (DWord)`
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\HideFileExt = 0 (DWord)`
@@ -517,11 +517,11 @@ Değişiklikler (6):
 
 ### ui.lockscreen-black
 
-**Kilit ve oturum açma ekranı siyah** · Risk: Safe
+**Lock and sign-in screen black** · Risk: Safe
 
-Düz siyah bir görüntü (C:\\ProgramData\\FAI\_WinOP\\Black.png, 1920x1080) üretilir ve kilit ekranı görüntüsü olarak ilkeyle (PersonalizationCSP) atanır; Windows Spotlight ve kilit ekranı ipuçları bu görüntüyle devre dışı kalır, kullanıcı Ayarlar'dan değiştiremez. Oturum açma ekranındaki bulanık (akrilik) arka plan kapatılır, böylece giriş ekranı da siyah görünür. Yol sistem sürücüsü C: varsayılarak yazılır (ilke değeri ortam değişkeni açmaz). Etkisi bir sonraki kilitlemede görülür.
+A plain black image (C:\\ProgramData\\FAI\_WinOP\\Black.png, 1920x1080) is generated and assigned by policy (PersonalizationCSP) as the lock screen image; Windows Spotlight and lock screen tips are disabled by this image, and the user cannot change it from Settings. The blurred (acrylic) background on the sign-in screen is turned off, so the sign-in screen also looks black. The path is written assuming the system drive is C: (the policy value does not expand environment variables). The effect shows at the next lock.
 
-Değişiklikler (5):
+Changes (5):
 
 - `Görüntü: C:\ProgramData\FAI_WinOP\Black.png tek renk #000000 (1920x1080, varsa boyutu korunur)`
 - `Kayıt defteri: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP\LockScreenImagePath = C:\ProgramData\FAI_WinOP\Black.png (String)`
@@ -531,13 +531,13 @@ Değişiklikler (5):
 
 ### ui.notepad-settings
 
-**Not Defteri ayarları** · Risk: Safe
+**Notepad settings** · Risk: Safe
 
-Not Defteri (Store sürümü) kendi ayar dosyasından (settings.dat) ayarlanır: dosyalar yeni pencerede açılır (sekme yerine), açılışta önceki oturum geri yüklenmez (kaydedilmemiş sekmeler hatırlanmaz), Copilot ile yeniden yazma (AI) kapalı. Not Defteri açıksa kapatılır. Ayar dosyası uygulama ilk açılışında oluşur: Not Defteri hiç açılmadıysa tweak "zaten uygun" görünür ve bir sonraki çalıştırmada uygulanır. Değer adları ve anlamları Not Defteri sürümüne bağlıdır; gerçek makinede doğrulanacak (Faz 9).
+Notepad (Store version) is configured through its own settings file (settings.dat): files open in a new window (instead of a tab), the previous session is not restored at startup (unsaved tabs are not remembered), and rewriting with Copilot (AI) is off. Notepad is closed if it is open. The settings file is created the first time the app opens: if Notepad has never been opened, the tweak shows as "already set" and is applied on the next run. Value names and meanings depend on the Notepad version; to be verified on a real machine (Phase 9).
 
-Parametreler (varsayılan): `aiRewrite` = `False` · `openInNewWindow` = `1` · `restoreSession` = `False`
+Parameters (default): `aiRewrite` = `False` · `openInNewWindow` = `1` · `restoreSession` = `False`
 
-Değişiklikler (3):
+Changes (3):
 
 - `Uygulama ayarı: Microsoft.WindowsNotepad OpenFile = 1 (Int32)`
 - `Uygulama ayarı: Microsoft.WindowsNotepad GhostFile = False (Bool)`
@@ -545,13 +545,13 @@ Değişiklikler (3):
 
 ### ui.notifications
 
-**Bildirimleri kapat (istisna listesi hariç)** · Risk: ⚠ Caution
+**Turn off notifications (except an exception list)** · Risk: ⚠ Caution
 
-Bildirimler genel olarak açık tutulur, ama bildirim gönderen uygulama ve sistem bileşenlerinin hepsi tek tek kapatılır; exceptions parametresindeki kalıplara (-like, varsayılan \*WhatsApp\*, \*Telegram\*) uyanlar açık kalır. Windows Güvenliği / Defender ile Güvenlik ve Bakım bildirimleri her zaman korunur. Ayrıca Windows hoş geldin deneyimi, kurulumu tamamlama önerileri ve ipucu / öneri bildirimleri kapanır. Bir uygulamanın bildirim kaydı ilk bildiriminde oluşur: sonradan kurulan uygulama profil yeniden çalıştırılınca kapanır.
+Notifications stay on globally, but every app and system component that sends notifications is turned off one by one; those that match the patterns in the exceptions parameter (-like, default \*WhatsApp\*, \*Telegram\*) stay on. Windows Security / Defender and Security and Maintenance notifications are always kept. Also turned off: the Windows welcome experience, suggestions to finish setting up, and tip / suggestion notifications. An app's notification entry is created with its first notification: an app installed later is turned off when the profile is run again.
 
-Parametreler (varsayılan): `exceptions` = `*WhatsApp*, *Telegram*`
+Parameters (default): `exceptions` = `*WhatsApp*, *Telegram*`
 
-Değişiklikler (10):
+Changes (10):
 
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\PushNotifications\ToastEnabled = 1 (DWord)`
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.Suggested\Enabled = 0 (DWord)`
@@ -566,11 +566,11 @@ Değişiklikler (10):
 
 ### ui.taskbar
 
-**Görev çubuğu: düğmeler kapalı, tepsi taşma menüsünde, yalnız Dosya Gezgini + Chrome** · Risk: Safe
+**Taskbar: buttons off, tray in overflow, only File Explorer + Chrome** · Risk: Safe
 
-Arama kutusu, Görev Görünümü ve Sohbet düğmeleri kaldırılır (Widgets düğmesi ui.widgets-off, Copilot düğmesi ui.copilot-off ile). Hiza ve otomatik gizleme bu tweak'te değil, profil layout.taskbar.alignment / autoHide ile verilir (tek kaynak; -ExportLayout yakalar). Bildirim alanında yalnız taşma oku ve sistem simgeleri (Wi-Fi, ses, pil) kalır: uygulama simgeleri taşma menüsüne alınır, sonradan gelen uygulamalar da Windows'un varsayılanıyla oraya düşer. Sabitlemeler yalnız Dosya Gezgini ve Google Chrome olur (diğerleri kalkar; Windows'un "Start Layout" ilkesi tek seferlik kullanılır, sonra kullanıcı istediğini sabitleyebilir). Chrome kurulu değilse yalnız Gezgin sabitlenir, sonraki çalıştırmada Chrome eklenir. Gezgin yeniden başlar; etkileşimli oturum yoksa (CI) sabitleme adımı uygulanamaz.
+The Search box, Task View and Chat buttons are removed (the Widgets button by ui.widgets-off, the Copilot button by ui.copilot-off). Alignment and auto-hide are not set in this tweak but by the profile's layout.taskbar.alignment / autoHide (single source; -ExportLayout captures them). In the notification area only the overflow arrow and system icons (Wi-Fi, volume, battery) remain: app icons move to the overflow menu, and apps that arrive later also land there with Windows' default. Pins are only File Explorer and Google Chrome (the others are removed; the Windows "Start Layout" policy is used once, after which the user can pin whatever they like). If Chrome is not installed, only Explorer is pinned and Chrome is added on the next run. Explorer restarts; without an interactive session (CI) the pinning step cannot be applied.
 
-Değişiklikler (5):
+Changes (5):
 
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Search\SearchboxTaskbarMode = 0 (DWord)`
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ShowTaskViewButton = 0 (DWord)`
@@ -580,11 +580,11 @@ Değişiklikler (5):
 
 ### ui.theme-black
 
-**Siyah tema (koyu, saydamlık kapalı, otomatik vurgu, düz siyah duvar kağıdı)** · Risk: Safe
+**Black theme (dark, transparency off, automatic accent, solid black wallpaper)** · Risk: Safe
 
-Uygulamalar ve Windows koyu kipe geçer, saydamlık efektleri kapanır. Vurgu rengi Otomatik (duvar kağıdından; düz siyahta Windows varsayılanı) ve Başlat / görev çubuğu ile pencere başlıklarında gösterilmez: yüzeyler koyu kipin kendi koyu grisinde kalır. Duvar kağıdı kaldırılır, masaüstü düz siyah renk olur (Kişiselleştir \> Arka plan: Düz renk). Değişiklikler hemen yayınlanır; bazı uygulamalar yeniden açılınca koyulaşır.
+Apps and Windows switch to dark mode and transparency effects are turned off. The accent color is Automatic (from the wallpaper; on solid black, the Windows default) and is not shown on Start / taskbar and window title bars: surfaces stay in dark mode's own dark gray. The wallpaper is removed and the desktop becomes a solid black color (Personalize \> Background: Solid color). Changes are broadcast immediately; some apps turn dark when reopened.
 
-Değişiklikler (9):
+Changes (9):
 
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme = 0 (DWord)`
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\SystemUsesLightTheme = 0 (DWord)`
@@ -598,11 +598,11 @@ Değişiklikler (9):
 
 ### ui.visual-effects
 
-**Görsel efektleri azalt (yazı yumuşatma açık)** · Risk: Safe
+**Reduce visual effects (font smoothing on)** · Risk: Safe
 
-Sistem \> Gelişmiş sistem ayarları \> Performans seçenekleri "Özel" yapılır: menü / araç ipucu solma ve kayma animasyonları, açılır kutu ve liste kaydırma animasyonları, fare işaretçisi ve pencere gölgeleri, simge etiketi gölgeleri, yarı saydam seçim dikdörtgeni, pencere küçültme / büyütme ve görev çubuğu animasyonları kapanır. Ekran yazı tiplerinin kenarlarını yumuşatma (ClearType) ve küçük resim önizlemeleri açık kalır; pencere sürüklenirken içerik gösterilmeye devam eder. UserPreferencesMask ikili (REG\_BINARY) değerdir; değişiklikler oturum kapatılıp açılınca tam etkili olur.
+System \> Advanced system settings \> Performance Options is set to "Custom": menu / tooltip fade and slide animations, combo box and list box scrolling animations, mouse pointer and window shadows, icon label shadows, translucent selection rectangle, window minimize / maximize animations and taskbar animations are turned off. Smoothing the edges of screen fonts (ClearType) and thumbnail previews stay on; window contents keep showing while dragging. UserPreferencesMask is a binary (REG\_BINARY) value; changes take full effect after signing out and back in.
 
-Değişiklikler (8):
+Changes (8):
 
 - `Kayıt defteri: HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects\VisualFXSetting = 3 (DWord)`
 - `Kayıt defteri: HKCU:\Control Panel\Desktop\UserPreferencesMask = 144,18,3,128,16,0,0,0 (Binary)`
@@ -615,10 +615,10 @@ Değişiklikler (8):
 
 ### ui.widgets-off
 
-**Pencere öğelerini (Widgets) kapat** · Risk: Safe
+**Turn off Widgets** · Risk: Safe
 
-Pencere öğeleri uygulaması (MicrosoftWindows.Client.WebExperience) bu kullanıcı için kaldırılır: pano ve görev çubuğundaki düğmesi onunla gider. İlke yolu ("Pencere öğelerine izin ver" = Devre dışı, Policies\\Microsoft\\Dsh) yeni yapılarda UCPD sürücüsü yüzünden yönetici olarak da yazılamıyor; görev çubuğu değeri (TaskbarDa) de korumalı. Paket kabuk için gerekmez; korunan listede (MicrosoftWindows.Client.\*) birebir adıyla istisna. Provisioned kopya kalır: yeni kullanıcılarda pano gelir, geri alma paketi yeniden kaydeder. Windows 10 mirası Haberler ve ilgi alanları ilkesi (Windows Feeds\\\\EnableFeeds) de UCPD korumasında ve Windows 11'de etkisiz: yazılmaz. Gezgin yeniden başlar.
+The Widgets app (MicrosoftWindows.Client.WebExperience) is removed for this user: the board and its taskbar button go with it. The policy path ("Allow widgets" = Disabled, Policies\\Microsoft\\Dsh) cannot be written even as administrator in newer builds because of the UCPD driver; the taskbar value (TaskbarDa) is also protected. The package is not needed by the shell; it is an exception by exact name in the protected list (MicrosoftWindows.Client.\*). The provisioned copy stays: the board appears for new users, and revert registers the package again. The legacy Windows 10 News and interests policy (Windows Feeds\\\\EnableFeeds) is also under UCPD protection and has no effect on Windows 11: it is not written. Explorer restarts.
 
-Değişiklikler (1):
+Changes (1):
 
 - `Appx: MicrosoftWindows.Client.WebExperience kaldırılır (kullanıcı)`

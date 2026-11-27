@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'ui.theme-black'
-    Title       = 'Siyah tema (koyu, saydamlık kapalı, otomatik vurgu, düz siyah duvar kağıdı)'
-    Description = 'Uygulamalar ve Windows koyu kipe geçer, saydamlık efektleri kapanır. Vurgu rengi Otomatik (duvar kağıdından; düz siyahta Windows varsayılanı) ve Başlat / görev çubuğu ile pencere başlıklarında gösterilmez: yüzeyler koyu kipin kendi koyu grisinde kalır. Duvar kağıdı kaldırılır, masaüstü düz siyah renk olur (Kişiselleştir > Arka plan: Düz renk). Değişiklikler hemen yayınlanır; bazı uygulamalar yeniden açılınca koyulaşır.'
+    Title       = 'Black theme (dark, transparency off, automatic accent, solid black wallpaper)'
+    Description = 'Apps and Windows switch to dark mode and transparency effects are turned off. The accent color is Automatic (from the wallpaper; on solid black, the Windows default) and is not shown on Start / taskbar and window title bars: surfaces stay in dark mode''s own dark gray. The wallpaper is removed and the desktop becomes a solid black color (Personalize > Background: Solid color). Changes are broadcast immediately; some apps turn dark when reopened.'
     Category    = 'ui'
     Risk        = 'Safe'
     Refresh     = @('Desktop', 'Settings')

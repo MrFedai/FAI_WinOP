@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'setup.background-apps-off'
-    Title       = 'Arka plan uygulamalarını kapat (istisna listesi hariç)'
-    Description = 'Gizlilik ilkesiyle (AppPrivacy\LetAppsRunInBackground=2, "zorla reddet") Store / paketli uygulamaların arka planda çalışması kapatılır; exceptions parametresindeki paket aile adları (varsayılan WhatsApp: 5319275A.WhatsAppDesktop_cv1g1gvanyjgm) LetAppsRunInBackground_ForceAllowTheseApps ile açık kalır. İlke sonradan kurulan uygulamaları da kapsar; Ayarlar''daki uygulama başına seçenek ilke yüzünden gri görünür. Win32 uygulamaları (ör. winget ile kurulan Telegram Desktop) bu ayardan etkilenmez, bu yüzden listede yok. Kullanıcı genel anahtarı (GlobalUserDisabled) kullanılmadı: o istisnaları da kapatır.'
+    Title       = 'Turn off background apps (except an exception list)'
+    Description = 'With a privacy policy (AppPrivacy\LetAppsRunInBackground=2, "force deny") Store / packaged apps are stopped from running in the background; the package family names in the exceptions parameter (default WhatsApp: 5319275A.WhatsAppDesktop_cv1g1gvanyjgm) stay allowed through LetAppsRunInBackground_ForceAllowTheseApps. The policy also covers apps installed later; the per-app option in Settings appears grayed out because of the policy. Win32 apps (e.g. Telegram Desktop installed with winget) are not affected by this setting, so they are not in the list. The user-wide switch (GlobalUserDisabled) was not used: it would turn off the exceptions too.'
     Category    = 'setup'
     Risk        = 'Safe'
     Params      = @{ exceptions = @('5319275A.WhatsAppDesktop_cv1g1gvanyjgm') }

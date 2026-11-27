@@ -19,7 +19,7 @@
     },
     {
       "id": "whatsapp", "name": "WhatsApp", "source": "msstore", "packageId": "9NKSQGP7F2NH", "appxNames": ["5319275A.WhatsAppDesktop"],
-      "notes": "Store (MSIX) uygulaması; WebView2 çalışma zamanı gerekir (docs/APPS.md). Otomatik başlatması MSIX StartupTask ile, bu katalogda yönetilmez.",
+      "notes": "Store (MSIX) app; needs the WebView2 runtime (docs/APPS.md). Its autostart is handled by an MSIX StartupTask and is not managed in this catalog.",
       "postInstall": { "removeDesktopShortcut": true }
     },
     {
@@ -32,7 +32,7 @@
     },
     {
       "id": "steam", "name": "Steam", "source": "winget", "packageId": "Valve.Steam",
-      "notes": "Kaldırma kaydında sessiz komut yok: winget kaldırıcıyı argümansız (etkileşimli) başlatır; geri alma quietUninstall kullanır.",
+      "notes": "The uninstall entry has no silent command: winget starts the uninstaller without arguments (interactive); revert uses quietUninstall.",
       "quietUninstall": { "path": "%ProgramFiles(x86)%\\Steam\\uninstall.exe", "args": "/S" },
       "postInstall": {
         "removeAutostart": true, "startupRegistryNames": ["Steam"],
@@ -42,7 +42,7 @@
     },
     {
       "id": "tradingview", "name": "TradingView", "source": "winget", "packageId": "TradingView.TradingViewDesktop",
-      "notes": "MSIX paketi.",
+      "notes": "MSIX package.",
       "postInstall": { "removeDesktopShortcut": true, "desktopShortcutNames": ["TradingView.lnk"] }
     },
     {
@@ -70,7 +70,7 @@
     },
     {
       "id": "chrome", "name": "Google Chrome", "source": "winget", "packageId": "Google.Chrome",
-      "notes": "Varsayılan tarayıcı ayrı tweak: setup.default-browser.",
+      "notes": "The default browser is a separate tweak: setup.default-browser.",
       "postInstall": {
         "removeAutostart": true, "startupRegistryNames": ["GoogleChromeAutoLaunch_*"],
         "removeDesktopShortcut": true, "desktopShortcutNames": ["Google Chrome.lnk"]
@@ -78,7 +78,7 @@
     },
     {
       "id": "spotify", "name": "Spotify", "source": "msstore", "packageId": "9NCBCSZSJRSB", "appxNames": ["SpotifyAB.SpotifyMusic"],
-      "notes": "Store (MSIX) sürümü: winget sürümünün kurucusu yönetici oturumunda çalışmıyor. Otomatik başlatması MSIX StartupTask ile, bu katalogda yönetilmez.",
+      "notes": "Store (MSIX) version: the installer of the winget version does not work in an administrator session. Its autostart is handled by an MSIX StartupTask and is not managed in this catalog.",
       "postInstall": { "removeDesktopShortcut": true, "desktopShortcutNames": ["Spotify.lnk"] }
     },
     {

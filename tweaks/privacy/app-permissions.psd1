@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'privacy.app-permissions'
-    Title       = 'Uygulama izinlerini kapat (kamera ve mikrofon açık)'
-    Description = 'Ayarlar > Gizlilik ve güvenlik > Uygulama izinleri altındaki izinleri cihaz düzeyinde kapatır: konum, bildirimlere erişim, hesap bilgisi, kişiler, takvim, telefon aramaları, arama geçmişi, e-posta, görevler, mesajlaşma, radyolar, diğer cihazlarla eşitleme, uygulama tanılaması, belgeler, resimler, videolar, müzik, dosya sistemi, metin / görüntü üretimi (yapay zekâ modelleri) ve geçiş anahtarı listeleme. Kamera ve mikrofon açık tutulur (cihaz ve kullanıcı düzeyinde). İzinler çoğunlukla Store (paketli) uygulamaları etkiler; masaüstü uygulamalarında yalnız konum, kamera ve mikrofon izni geçerlidir. Konum kapalıyken otomatik saat dilimi ve Cihazımı bul çalışmaz. İzin anahtarı olmayan bir sürümde (ör. müzik, yapay zekâ modelleri) değer yine yazılır, etkisi olmaz.'
+    Title       = 'Turn off app permissions (camera and microphone stay on)'
+    Description = 'Turns off, at the device level, the permissions under Settings > Privacy & security > App permissions: location, notification access, account info, contacts, calendar, phone calls, call history, email, tasks, messaging, radios, sync with other devices, app diagnostics, documents, pictures, videos, music, file system, text / image generation (AI models) and passkey listing. Camera and microphone stay on (device and user level). The permissions mostly affect Store (packaged) apps; for desktop apps only the location, camera and microphone permissions apply. While location is off, automatic time zone and Find my device do not work. On a version without a permission key (e.g. music, AI models) the value is still written but has no effect.'
     Category    = 'privacy'
     Risk        = 'Safe'
     Actions     = @(

@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'power.plan'
-    Title       = 'Güç planı: prizde yüksek performans, pilde dengeli'
-    Description = 'Aracın kendi güç planını (FAI_WinOP, sabit GUID) Balanced''dan kopyalayıp etkin yapar; var olan bir planın varlığı varsayılmaz (Balanced silinmişse etkin planın kopyası alınır). Prizde (AC): işlemci en düşük / en yüksek durum %100, çekirdek park etme kapalı (en az çekirdek %100), soğutma etkin, USB seçici askıya alma ve PCIe bağlantı durumu güç yönetimi kapalı, disk kapanmaz, kablosuz bağdaştırıcı en yüksek performans, uyku ve hazırda bekletme yok. Pilde (DC): Balanced varsayılanları kalır; uyku (sleepOnBatterySec, varsayılan 900 sn) ve hazırda bekletme (hibernateOnBatterySec, varsayılan 10800 sn) açıkça açık. Dizüstünde hazırda bekletme (powercfg /hibernate on) da açılır. Ekran ve parlaklığa dokunulmaz. Geri alma önceki etkin plana döner ve aracın planını siler.'
+    Title       = 'Power plan: high performance on AC, balanced on battery'
+    Description = 'Copies the tool''s own power plan (FAI_WinOP, fixed GUID) from Balanced and makes it active; the existence of any plan is not assumed (if Balanced was deleted, a copy of the active plan is used). On AC: processor minimum / maximum state 100%, core parking off (minimum cores 100%), cooling active, USB selective suspend and PCIe link state power management off, disk never turns off, wireless adapter at maximum performance, no sleep or hibernate. On battery (DC): Balanced defaults stay; sleep (sleepOnBatterySec, default 900 s) and hibernate (hibernateOnBatterySec, default 10800 s) are explicitly on. On a laptop, hibernate (powercfg /hibernate on) is also enabled. Display and brightness are not touched. Revert returns to the previous active plan and deletes the tool''s plan.'
     Category    = 'power'
     Risk        = 'Safe'
     Params      = @{ sleepOnBatterySec = 900; hibernateOnBatterySec = 10800 }

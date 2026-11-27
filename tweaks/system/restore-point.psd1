@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'system.restore-point'
-    Title       = 'Sistem Geri Yükleme noktası'
-    Description = 'Her çalıştırmada ilk adım (First): profildeki uygulamalardan ve öteki tweak''lerden önce bir Sistem Geri Yükleme noktası oluşturur. Sistem sürücüsünde Sistem Koruması kapalıysa açar. Windows''un 24 saatte bir nokta sınırı (SystemRestorePointCreationFrequency) oluşturma sırasında geçici olarak kaldırılır, sonra eski hâline döner. -Undo noktayı silmez; FAI_WinOP''un kendi geri alması ayrıca vardır, bu nokta son çare (rstrui). Not: Sistem Koruması açma / nokta oluşturma gerçek makinede (VM) doğrulanmadı.'
+    Title       = 'System Restore point'
+    Description = 'The first step (First) of every run: creates a System Restore point before the profile''s apps and the other tweaks. Turns on System Protection if it is off on the system drive. Windows'' once-per-24-hours point limit (SystemRestorePointCreationFrequency) is temporarily lifted during creation, then restored. -Undo does not delete the point; FAI_WinOP has its own revert, so this point is a last resort (rstrui). Note: turning on System Protection / creating a point has not been verified on a real machine (VM).'
     Category    = 'system'
     Risk        = 'Safe'
     First       = $true

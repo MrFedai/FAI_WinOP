@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'ui.copilot-off'
-    Title       = 'Copilot''u kapat'
-    Description = 'Windows Copilot ilkeyle kapatılır ("Windows Copilot''u kapat", kullanıcı ve makine) ve görev çubuğundaki Copilot düğmesi gizlenir. Copilot uygulamasının kendisi bloat.remove ile kaldırılır (Microsoft.Copilot). Yeni yapılarda Copilot ayrı bir uygulama olduğundan ilke yalnız eski bütünleşik Copilot''u etkiler; düğme ve uygulama kaldırma asıl işi yapar. Gezgin yeniden başlar.'
+    Title       = 'Turn off Copilot'
+    Description = 'Windows Copilot is turned off by policy ("Turn off Windows Copilot", user and machine) and the Copilot button on the taskbar is hidden. The Copilot app itself is removed by bloat.remove (Microsoft.Copilot). In newer builds Copilot is a separate app, so the policy affects only the old integrated Copilot; the button and the app removal do the real work. Explorer restarts.'
     Category    = 'ui'
     Risk        = 'Safe'
     Refresh     = @('Shell')

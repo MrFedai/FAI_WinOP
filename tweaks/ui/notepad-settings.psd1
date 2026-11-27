@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'ui.notepad-settings'
-    Title       = 'Not Defteri ayarları'
-    Description = 'Not Defteri (Store sürümü) kendi ayar dosyasından (settings.dat) ayarlanır: dosyalar yeni pencerede açılır (sekme yerine), açılışta önceki oturum geri yüklenmez (kaydedilmemiş sekmeler hatırlanmaz), Copilot ile yeniden yazma (AI) kapalı. Not Defteri açıksa kapatılır. Ayar dosyası uygulama ilk açılışında oluşur: Not Defteri hiç açılmadıysa tweak "zaten uygun" görünür ve bir sonraki çalıştırmada uygulanır. Değer adları ve anlamları Not Defteri sürümüne bağlıdır; gerçek makinede doğrulanacak (Faz 9).'
+    Title       = 'Notepad settings'
+    Description = 'Notepad (Store version) is configured through its own settings file (settings.dat): files open in a new window (instead of a tab), the previous session is not restored at startup (unsaved tabs are not remembered), and rewriting with Copilot (AI) is off. Notepad is closed if it is open. The settings file is created the first time the app opens: if Notepad has never been opened, the tweak shows as "already set" and is applied on the next run. Value names and meanings depend on the Notepad version; to be verified on a real machine (Phase 9).'
     Category    = 'ui'
     Risk        = 'Safe'
     Params      = @{ openInNewWindow = 1; restoreSession = $false; aiRewrite = $false }

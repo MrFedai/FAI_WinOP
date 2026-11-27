@@ -1,10 +1,10 @@
 ﻿@{
     Id          = 'setup.default-browser'
-    Title       = 'Varsayılan tarayıcı (Ayarlar üzerinden)'
-    Description = 'https için varsayılan tarayıcı appName değilse Ayarlar > Varsayılan uygulamalar sayfasını o uygulamada açar; "Varsayılan olarak ayarla" düğmesine kullanıcı basar, sonra sonuç denetlenir. Windows 11 UserChoice karma koruması ve UCPD sürücüsü yüzünden programla güvenilir yol yok (docs/APPS.md). Etkileşimsiz kipte uygulanmaz; geri alma da Ayarlar sayfasından elle yapılır.'
+    Title       = 'Default browser (via Settings)'
+    Description = 'If the default browser for https is not appName, opens Settings > Default apps for that app; the user clicks the "Set default" button, then the result is checked. Because of the Windows 11 UserChoice hash protection and the UCPD driver, there is no reliable programmatic way (docs/APPS.md). Not applied in non-interactive mode; revert is also done manually from the Settings page.'
     Category    = 'setup'
     Risk        = 'Caution'
-    Confirm     = 'Ayarlar sayfası açılacak; "Varsayılan olarak ayarla" düğmesine sizin basmanız gerekir.'
+    Confirm     = 'The Settings page will open; you need to click the "Set default" button yourself.'
     Params      = @{ progId = 'ChromeHTML'; appName = 'Google Chrome'; scope = 'Machine' }
     Actions     = @(
         @{ Type = 'DefaultBrowser'; ProgId = '{{progId}}'; AppName = '{{appName}}'; Scope = '{{scope}}' }

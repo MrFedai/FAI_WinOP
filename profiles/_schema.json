@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/MrFedai/FAI_WinOP/profiles/_schema.json",
   "title": "FAI_WinOP profili",
-  "description": "BELGE / editör desteği. Asıl doğrulama src/Core/Schema.ps1 (Get-FaiProfileError) içindedir; Windows PowerShell 5.1'de Test-Json yoktur. İzin verilen alan adları ikisinde birebir aynı tutulur (tests/Unit/Schema.Tests.ps1 denetler).",
+  "description": "DOCUMENTATION / editor support. The real validation is in src/Core/Schema.ps1 (Get-FaiProfileError); Windows PowerShell 5.1 has no Test-Json. The allowed field names are kept identical in both (checked by tests/Unit/Schema.Tests.ps1).",
   "type": "object",
   "additionalProperties": false,
   "required": [ "name", "tweaks" ],
@@ -11,12 +11,12 @@
     "name": {
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9-]*$",
-      "description": "Profil adı: küçük harf, rakam, tire."
+      "description": "Profile name: lowercase letters, digits, hyphen."
     },
     "description": { "type": "string" },
     "tweaks": {
       "type": "array",
-      "description": "Uygulanacak tweak'ler, bu sırayla. Tekrar eden kimlik hatadır.",
+      "description": "Tweaks to apply, in this order. A duplicate ID is an error.",
       "items": {
         "oneOf": [
           { "$ref": "#/definitions/tweakId" },
@@ -28,7 +28,7 @@
               "id": { "$ref": "#/definitions/tweakId" },
               "params": {
                 "type": "object",
-                "description": "Tweak'in Params varsayılanlarını geçersiz kılar (tweak'te tanımlı olmayan ad hatadır)."
+                "description": "Overrides the tweak's Params defaults (a name not defined in the tweak is an error)."
               }
             }
           }
@@ -37,12 +37,12 @@
     },
     "autoConfirm": {
       "type": "array",
-      "description": "-Unattended modda onaysız uygulanacak Caution tweak'ler (tweaks listesinde olmalı). Risk düzeyi hiçbir zaman otomatik onaylanmaz.",
+      "description": "Caution tweaks to apply without confirmation in -Unattended mode (must be in the tweaks list). A risk level is never auto-confirmed.",
       "items": { "$ref": "#/definitions/tweakId" }
     },
     "apps": {
       "type": "array",
-      "description": "Kurulacak uygulamalar (apps/catalog.json kimlikleri), tweak'lerden önce, bu sırayla. Tekrar eden kimlik hatadır.",
+      "description": "Apps to install (apps/catalog.json IDs), before the tweaks, in this order. A duplicate ID is an error.",
       "items": {
         "oneOf": [
           { "$ref": "#/definitions/appId" },
@@ -52,7 +52,7 @@
             "required": [ "id" ],
             "properties": {
               "id": { "$ref": "#/definitions/appId" },
-              "keepAutostart": { "type": "boolean", "description": "Katalogdaki otomatik başlatma kapatma kuralını uygulama (ör. WhatsApp, Telegram)." }
+              "keepAutostart": { "type": "boolean", "description": "Do not apply the catalog's rule that turns off autostart (e.g. WhatsApp, Telegram)." }
             }
           }
         ]
@@ -60,42 +60,42 @@
     },
     "games": {
       "type": "array",
-      "description": "Faz 7 (gaming.per-game): oyun başına öncelik (IFEO CpuPriorityClass) ve işlemci benzeşimi (açılış görevi). Maskeler makinenin mantıksal işlemci / çekirdek sayısından hesaplanır. Tweak'lerden sonra, layout'tan önce uygulanır.",
+      "description": "Phase 7 (gaming.per-game): per-game priority (IFEO CpuPriorityClass) and processor affinity (startup task). Masks are computed from the machine's logical processor / core count. Applied after the tweaks and before the layout.",
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": [ "exe" ],
         "properties": {
-          "exe": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._ \\-]*\\.[Ee][Xx][Ee]$", "description": "Yalnız dosya adı (ör. cs2.exe), yol değil." },
+          "exe": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._ \\-]*\\.[Ee][Xx][Ee]$", "description": "File name only (e.g. cs2.exe), not a path." },
           "priority": { "type": "string", "enum": [ "Idle", "BelowNormal", "Normal", "AboveNormal", "High" ] },
-          "smtOff": { "type": "boolean", "description": "Her fiziksel çekirdeğin yalnız ilk mantıksal işlemcisi." },
-          "excludeCore0": { "type": "boolean", "description": "Çekirdek 0'ın mantıksal işlemcileri kullanılmaz." }
+          "smtOff": { "type": "boolean", "description": "Only the first logical processor of each physical core." },
+          "excludeCore0": { "type": "boolean", "description": "The logical processors of core 0 are not used." }
         }
       }
     },
     "layout": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Faz 6: görev çubuğu / masaüstü / Başlat düzeni (-ExportLayout yazar). 'layout.profile' tweak'i olarak tweak'lerden sonra uygulanır, -Undo geri alır. Her alan isteğe bağlı.",
+      "description": "Phase 6: taskbar / desktop / Start layout (written by -ExportLayout). Applied after the tweaks as the 'layout.profile' tweak; -Undo reverts it. Every field is optional.",
       "properties": {
         "taskbar": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
             "alignment": { "type": "string", "enum": [ "center", "left" ] },
-            "autoHide": { "type": "boolean", "description": "StuckRects3 Settings 8. bayt, 0. bit." },
+            "autoHide": { "type": "boolean", "description": "StuckRects3 Settings byte 8, bit 0." },
             "pins": {
               "type": "array",
-              "description": "Sabitlemeler sırayla; listede olmayanlar kalkar.",
+              "description": "Pins in order; those not in the list are removed.",
               "items": {
                 "type": "object",
                 "additionalProperties": false,
                 "minProperties": 1,
                 "maxProperties": 1,
                 "properties": {
-                  "appId": { "type": "string", "enum": [ "Microsoft.Windows.Explorer" ], "description": "Bilinen masaüstü uygulama kimliği (Dosya Gezgini)." },
-                  "link": { "type": "string", "pattern": "\\.lnk$", "description": "Başlat menüsündeki kısayolun yolu, ortam değişkenli (%ProgramData%\\...)." },
-                  "aumid": { "type": "string", "description": "Store uygulamasının AppUserModelID'si (<paket ailesi>!<uygulama>)." }
+                  "appId": { "type": "string", "enum": [ "Microsoft.Windows.Explorer" ], "description": "Known desktop app ID (File Explorer)." },
+                  "link": { "type": "string", "pattern": "\\.lnk$", "description": "Path of the shortcut in the Start menu, with environment variables (%ProgramData%\\...)." },
+                  "aumid": { "type": "string", "description": "The Store app's AppUserModelID (<package family>!<app>)." }
                 }
               }
             }
@@ -116,16 +116,16 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "flags": { "type": "integer", "description": "Bags\\1\\Desktop FFlags (1 = otomatik düzenle, 4 = kılavuza hizala)." },
+            "flags": { "type": "integer", "description": "Bags\\1\\Desktop FFlags (1 = auto arrange, 4 = align to grid)." },
             "iconSize": { "type": "integer" },
-            "iconLayouts": { "type": "string", "description": "Simge konumları (IconLayouts, base64). Masaüstü öğe adlarını içerir." }
+            "iconLayouts": { "type": "string", "description": "Icon positions (IconLayouts, base64). Contains desktop item names." }
           }
         },
         "start": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "start2": { "type": "string", "description": "Başlat sabitlemeleri (start2.bin, base64)." }
+            "start2": { "type": "string", "description": "Start pins (start2.bin, base64)." }
           }
         }
       }
@@ -135,12 +135,12 @@
     "appId": {
       "type": "string",
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
-      "description": "apps/catalog.json'daki uygulama kimliği, ör. chrome"
+      "description": "App ID in apps/catalog.json, e.g. chrome"
     },
     "tweakId": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9]*\\.[a-z0-9]+(-[a-z0-9]+)*$",
-      "description": "kategori.ad biçiminde tweak kimliği, ör. sound.startup-sound-off"
+      "description": "Tweak ID in category.name form, e.g. sound.startup-sound-off"
     }
   }
 }

@@ -1,12 +1,12 @@
 ﻿@{
     Id          = 'setup.edition-pro'
-    Title       = 'Windows Home → Pro yükseltmesi (Ayarlar üzerinden)'
-    Description = 'Yalnız Home (Core) sürümde: Ayarlar > Etkinleştirme sayfasını açar; Pro''ya yükseltme kullanıcının kendi ürün anahtarıyla ("Ürün anahtarını değiştir") ya da Microsoft Store''dan satın alınan yükseltmeyle yapılır. Araç anahtar içermez, genel / KMS anahtarı girmez ve hiçbir etkinleştirme atlatması yapmaz (korsan aktivasyon yok). Yükseltme sonunda Windows yeniden başlar; sürüm Pro olunca tweak koşulu sağlanmaz, atlanır. Etkileşimsiz kipte uygulanmaz; geri alma yoktur.'
+    Title       = 'Windows Home → Pro upgrade (via Settings)'
+    Description = 'Home (Core) edition only: opens the Settings > Activation page; the upgrade to Pro is done with the user''s own product key ("Change product key") or with an upgrade bought from the Microsoft Store. The tool contains no key, enters no generic / KMS key and performs no activation bypass (no pirated activation). Windows restarts at the end of the upgrade; once the edition is Pro, the tweak condition is not met and it is skipped. Not applied in non-interactive mode; there is no revert.'
     Category    = 'setup'
     Risk        = 'Caution'
-    Confirm     = 'Ayarlar > Etkinleştirme açılacak; yükseltmeyi kendi ürün anahtarınızla ya da Store''dan siz yaparsınız.'
+    Confirm     = 'Settings > Activation will open; you do the upgrade yourself with your own product key or from the Store.'
     Conditions  = @(@{ Edition = 'Core' })
     Actions     = @(
-        @{ Type = 'OpenSettings'; Uri = 'ms-settings:activation'; Message = 'Etkinleştirme sayfası açıldı: "Ürün anahtarını değiştir" ile kendi Pro anahtarınızı girin ya da Store''dan Pro yükseltmesini alın. Yükseltme sonrası Windows yeniden başlar.' }
+        @{ Type = 'OpenSettings'; Uri = 'ms-settings:activation'; Message = 'Activation page opened: enter your own Pro key with "Change product key", or get the Pro upgrade from the Store. Windows restarts after the upgrade.' }
     )
 }

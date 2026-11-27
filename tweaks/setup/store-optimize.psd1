@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'setup.store-optimize'
-    Title       = 'Microsoft Store: otomatik güncelleme, video ve kişiselleştirme kapalı'
-    Description = 'Store uygulamalarının otomatik indirilip güncellenmesi kapatılır (WindowsStore\WindowsUpdate\AutoDownload=2); Store uygulamaları bunun yerine winget upgrade ile güncellenir. Store''un kendi ayarlarında (settings.dat) videoların otomatik oynatılması, uygulama kurulum bildirimleri ve kişiselleştirilmiş deneyim kapatılır. Store hiç açılmamışsa ayar dosyası yoktur: o adımlar atlanır, Store bir kez açıldıktan sonraki çalıştırmada uygulanır. Yazarken Store açıksa kapatılır.'
+    Title       = 'Microsoft Store: automatic updates, video and personalization off'
+    Description = 'Automatic download and update of Store apps is turned off (WindowsStore\WindowsUpdate\AutoDownload=2); Store apps are updated with winget upgrade instead. In the Store''s own settings (settings.dat), video autoplay, app install notifications and personalized experience are turned off. If the Store has never been opened, the settings file does not exist: those steps are skipped and applied on the first run after the Store has been opened once. If the Store is open while writing, it is closed.'
     Category    = 'setup'
     Risk        = 'Caution'
     Actions     = @(

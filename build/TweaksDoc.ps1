@@ -1,14 +1,14 @@
 ﻿<#
 .SYNOPSIS
-    docs/TWEAKS.md katalog belgesini tweaks/ altındaki .psd1 dosyalarından üretir.
+    Generates the docs/TWEAKS.md catalog document from the .psd1 files under tweaks/.
 
 .DESCRIPTION
-    Parametresiz çağrı: üretim bundle'ını geçici klasöre kurar, tweak kataloğunu yükler (şema doğrulaması dahil),
-    docs/TWEAKS.md'yi yazar ve ne yaptığını basar. Çıktı kararlıdır (sıralı); içerik değişmediyse dosyaya dokunmaz.
-    Geçersiz tweak dosyası varsa alan yoluyla hata verir ve belge yazılmaz.
+    Called without parameters: builds the production bundle in a temporary folder, loads the tweak catalog (including
+    schema validation), writes docs/TWEAKS.md and prints what it did. The output is stable (sorted); if the content
+    did not change, the file is not touched. If a tweak file is invalid, it fails with the field path and no document is written.
 
 .PARAMETER Check
-    Yalnız denetler: belge güncel değilse 1 ile çıkar (CI). Dosya yazılmaz.
+    Check only: exits with 1 if the document is out of date (CI). No file is written.
 
 .EXAMPLE
     pwsh -NoProfile -File build/TweaksDoc.ps1
@@ -49,16 +49,16 @@ $ids = @($catalog.Keys | Sort-Object)
 $categories = @($ids | ForEach-Object { $catalog[$_].Category } | Sort-Object -Unique)
 $actionCount = 0
 $lines = New-Object 'System.Collections.Generic.List[string]'
-$lines.Add('# Tweak kataloğu')
+$lines.Add('# Tweak catalog')
 $lines.Add('')
-$lines.Add('> Otomatik üretilir: `pwsh -NoProfile -File build/TweaksDoc.ps1` (kaynak: `tweaks/**/*.psd1`). Elle düzenlemeyin.')
+$lines.Add('> Auto-generated: `pwsh -NoProfile -File build/TweaksDoc.ps1` (source: `tweaks/**/*.psd1`). Do not edit by hand.')
 $lines.Add('')
-$lines.Add('Risk: **Safe** doğrudan uygulanır · **⚠ Caution** onay ister · **⛔ Risk** "EVET" yazılmasını ister, `-Unattended` kipte uygulanmaz.')
-$lines.Add('Değişiklikler varsayılan parametrelerle listelenir; profil parametreleri geçersiz kılabilir.')
+$lines.Add('Risk: **Safe** is applied directly · **⚠ Caution** asks for confirmation · **⛔ Risk** requires typing "YES" and is not applied in `-Unattended` mode.')
+$lines.Add('Changes are listed with default parameters; a profile can override the parameters.')
 $lines.Add('')
-$lines.Add('Profilden üretilen tweak''ler katalogda dosya olarak yok: `app.<id>` (profil `apps`, `apps/catalog.json`), `gaming.per-game` (profil `games`: IFEO `CpuPriorityClass` + işlemci benzeşimi için `\FAI_WinOP\GameAffinity` açılış görevi; maskeler makinenin işlemci sayısından), `layout.profile` (profil `layout`), `updates.on` / `updates.off` (`-UpdatesOn` / `-UpdatesOff`). Biçim: `profiles/_schema.json`.')
+$lines.Add('Tweaks generated from the profile are not files in the catalog: `app.<id>` (profile `apps`, `apps/catalog.json`), `gaming.per-game` (profile `games`: IFEO `CpuPriorityClass` + the `\FAI_WinOP\GameAffinity` startup task for processor affinity; masks come from the machine''s processor count), `layout.profile` (profile `layout`), `updates.on` / `updates.off` (`-UpdatesOn` / `-UpdatesOff`). Format: `profiles/_schema.json`.')
 $lines.Add('')
-$lines.Add('| Id | Başlık | Risk | Koşul | Parametre |')
+$lines.Add('| Id | Title | Risk | Condition | Parameters |')
 $lines.Add('| --- | --- | --- | --- | --- |')
 foreach ($id in $ids) {
     $t = $catalog[$id]
@@ -83,26 +83,26 @@ foreach ($cat in $categories) {
         $lines.Add((ConvertTo-MdText $t.Description))
         if ($t.Confirm) {
             $lines.Add('')
-            $lines.Add('Onay uyarısı: ' + (ConvertTo-MdText $t.Confirm))
+            $lines.Add('Confirmation warning: ' + (ConvertTo-MdText $t.Confirm))
         }
         $flags = New-Object 'System.Collections.Generic.List[string]'
-        if ($t.First) { $flags.Add('her çalıştırmada ilk adım (uygulamalardan önce)') }
-        if ($t.AlwaysConfirm) { $flags.Add('onay her çalıştırmada sorulur (autoConfirm işlemez, `-Unattended` kipte uygulanmaz)') }
-        if ($t.Tool) { $flags.Add('araç: profille otomatik çalışmaz, menüden / `-Only` ile') }
+        if ($t.First) { $flags.Add('first step of every run (before apps)') }
+        if ($t.AlwaysConfirm) { $flags.Add('confirmation is asked on every run (autoConfirm does not apply, not applied in `-Unattended` mode)') }
+        if ($t.Tool) { $flags.Add('tool: does not run automatically with a profile, only from the menu / with `-Only`') }
         if ($flags.Count -gt 0) {
             $lines.Add('')
-            $lines.Add('Çalışma: ' + ($flags -join ' · '))
+            $lines.Add('Run: ' + ($flags -join ' · '))
         }
         if ($t.Conditions.Count -gt 0) {
             $lines.Add('')
-            $lines.Add('Koşul: ' + (ConvertTo-MdText ((@($t.Conditions | ForEach-Object { $_.Describe() })) -join ' ve ')))
+            $lines.Add('Condition: ' + (ConvertTo-MdText ((@($t.Conditions | ForEach-Object { $_.Describe() })) -join ' and ')))
         }
         if ($t.Params.Count -gt 0) {
             $lines.Add('')
-            $lines.Add('Parametreler (varsayılan): ' + ((@($t.Params.Keys | Sort-Object | ForEach-Object { '`' + $_ + '` = ' + (Format-ParamValue $t.Params[$_]) })) -join ' · '))
+            $lines.Add('Parameters (default): ' + ((@($t.Params.Keys | Sort-Object | ForEach-Object { '`' + $_ + '` = ' + (Format-ParamValue $t.Params[$_]) })) -join ' · '))
         }
         $lines.Add('')
-        $lines.Add(('Değişiklikler ({0}):' -f $t.Actions.Count))
+        $lines.Add(('Changes ({0}):' -f $t.Actions.Count))
         $lines.Add('')
         foreach ($a in $t.Actions) {
             $lines.Add('- `' + ($a.Describe() -replace '`', "'") + '`')
@@ -115,14 +115,14 @@ $content = ($lines -join "`n") + "`n"
 $current = $null
 if (Test-Path -LiteralPath $outFile) { $current = [System.IO.File]::ReadAllText($outFile) -replace "`r`n", "`n" }
 $upToDate = ($current -ceq $content)
-$summary = '{0} tweak, {1} kategori, {2} eylem' -f $ids.Count, $categories.Count, $actionCount
+$summary = '{0} tweaks, {1} categories, {2} actions' -f $ids.Count, $categories.Count, $actionCount
 
 if ($Check) {
-    if ($upToDate) { Write-Host "docs/TWEAKS.md güncel ($summary)."; exit 0 }
-    Write-Host "docs/TWEAKS.md güncel değil: 'pwsh -NoProfile -File build/TweaksDoc.ps1' çalıştırıp commit edin." -ForegroundColor Red
+    if ($upToDate) { Write-Host "docs/TWEAKS.md is up to date ($summary)."; exit 0 }
+    Write-Host "docs/TWEAKS.md is out of date: run 'pwsh -NoProfile -File build/TweaksDoc.ps1' and commit." -ForegroundColor Red
     exit 1
 }
-if ($upToDate) { Write-Host "docs/TWEAKS.md zaten güncel ($summary)."; exit 0 }
+if ($upToDate) { Write-Host "docs/TWEAKS.md is already up to date ($summary)."; exit 0 }
 # .md: UTF-8 BOM'suz, LF (.gitattributes).
 [System.IO.File]::WriteAllText($outFile, $content, (New-Object System.Text.UTF8Encoding($false)))
-Write-Host "docs/TWEAKS.md yazıldı ($summary)."
+Write-Host "docs/TWEAKS.md written ($summary)."

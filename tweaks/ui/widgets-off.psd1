@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'ui.widgets-off'
-    Title       = 'Pencere öğelerini (Widgets) kapat'
-    Description = 'Pencere öğeleri uygulaması (MicrosoftWindows.Client.WebExperience) bu kullanıcı için kaldırılır: pano ve görev çubuğundaki düğmesi onunla gider. İlke yolu ("Pencere öğelerine izin ver" = Devre dışı, Policies\Microsoft\Dsh) yeni yapılarda UCPD sürücüsü yüzünden yönetici olarak da yazılamıyor; görev çubuğu değeri (TaskbarDa) de korumalı. Paket kabuk için gerekmez; korunan listede (MicrosoftWindows.Client.*) birebir adıyla istisna. Provisioned kopya kalır: yeni kullanıcılarda pano gelir, geri alma paketi yeniden kaydeder. Windows 10 mirası Haberler ve ilgi alanları ilkesi (Windows Feeds\\EnableFeeds) de UCPD korumasında ve Windows 11''de etkisiz: yazılmaz. Gezgin yeniden başlar.'
+    Title       = 'Turn off Widgets'
+    Description = 'The Widgets app (MicrosoftWindows.Client.WebExperience) is removed for this user: the board and its taskbar button go with it. The policy path ("Allow widgets" = Disabled, Policies\Microsoft\Dsh) cannot be written even as administrator in newer builds because of the UCPD driver; the taskbar value (TaskbarDa) is also protected. The package is not needed by the shell; it is an exception by exact name in the protected list (MicrosoftWindows.Client.*). The provisioned copy stays: the board appears for new users, and revert registers the package again. The legacy Windows 10 News and interests policy (Windows Feeds\\EnableFeeds) is also under UCPD protection and has no effect on Windows 11: it is not written. Explorer restarts.'
     Category    = 'ui'
     Risk        = 'Safe'
     Refresh     = @('Shell')

@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'ui.account-pictures-black'
-    Title       = 'Varsayılan hesap resimleri siyah'
-    Description = 'Windows''un varsayılan kullanıcı ve konuk resimleri (%ProgramData%\Microsoft\User Account Pictures içindeki .png / .bmp dosyaları) aynı boyutta düz siyah görüntüyle değiştirilir; hesabına kendi resmini koymamış kullanıcılar Başlat''ta, giriş ekranında ve Ayarlar''da siyah daire görür. Alt klasörler (kullanıcıların kendi resimleri) ve kullanıcının seçtiği resim değişmez. Özgün dosyalar yedeklenir, geri alma birebir geri yazar. Etkisi oturum yeniden açılınca görülür.'
+    Title       = 'Default account pictures black'
+    Description = 'Windows'' default user and guest pictures (the .png / .bmp files in %ProgramData%\Microsoft\User Account Pictures) are replaced with a plain black image of the same size; users who have not set their own account picture see a black circle in Start, on the sign-in screen and in Settings. Subfolders (users'' own pictures) and the picture the user chose are not changed. The original files are backed up and revert writes them back exactly. The effect shows after signing in again.'
     Category    = 'ui'
     Risk        = 'Safe'
     Actions     = @(

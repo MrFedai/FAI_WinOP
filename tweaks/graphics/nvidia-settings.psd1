@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'graphics.nvidia-settings'
-    Title       = 'NVIDIA: tepsi simgesi ve eski keskinleştirme kapalı'
-    Description = 'Yalnız kayıt defteriyle yapılabilen NVIDIA ayarları: oturum açılışında NVIDIA tepsi simgesi başlamaz (NvTray\StartOnLogin=0) ve eski görüntü keskinleştirme ölçekleyicisi kapanır (nvlddmkm FTS\EnableGR535=0; yalnız sürücünün oluşturduğu FTS anahtarı varsa yazılır). Denetim Masası ayarları (düşük gecikme, güç yönetimi, dikey eşitleme, doku filtreleme…) NVIDIA DRS veritabanındadır; imzasız üçüncü parti araç (Profile Inspector) kullanılmadığından bu tweak''in kapsamı dışındadır (NVAPI ile sonra). Gerçek NVIDIA donanımında doğrulanmadı.'
+    Title       = 'NVIDIA: tray icon and legacy sharpening off'
+    Description = 'NVIDIA settings that can be made with the registry alone: the NVIDIA tray icon does not start at sign-in (NvTray\StartOnLogin=0) and the legacy image sharpening scaler is turned off (nvlddmkm FTS\EnableGR535=0; written only if the FTS key created by the driver exists). Control Panel settings (low latency, power management, vertical sync, texture filtering…) live in the NVIDIA DRS database; since no unsigned third-party tool (Profile Inspector) is used, they are outside this tweak''s scope (later, via NVAPI). Not verified on real NVIDIA hardware.'
     Category    = 'graphics'
     Risk        = 'Safe'
     Conditions  = @('HasNvidia')

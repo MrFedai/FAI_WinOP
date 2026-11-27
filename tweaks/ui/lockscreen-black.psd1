@@ -1,7 +1,7 @@
 ﻿@{
     Id          = 'ui.lockscreen-black'
-    Title       = 'Kilit ve oturum açma ekranı siyah'
-    Description = 'Düz siyah bir görüntü (C:\ProgramData\FAI_WinOP\Black.png, 1920x1080) üretilir ve kilit ekranı görüntüsü olarak ilkeyle (PersonalizationCSP) atanır; Windows Spotlight ve kilit ekranı ipuçları bu görüntüyle devre dışı kalır, kullanıcı Ayarlar''dan değiştiremez. Oturum açma ekranındaki bulanık (akrilik) arka plan kapatılır, böylece giriş ekranı da siyah görünür. Yol sistem sürücüsü C: varsayılarak yazılır (ilke değeri ortam değişkeni açmaz). Etkisi bir sonraki kilitlemede görülür.'
+    Title       = 'Lock and sign-in screen black'
+    Description = 'A plain black image (C:\ProgramData\FAI_WinOP\Black.png, 1920x1080) is generated and assigned by policy (PersonalizationCSP) as the lock screen image; Windows Spotlight and lock screen tips are disabled by this image, and the user cannot change it from Settings. The blurred (acrylic) background on the sign-in screen is turned off, so the sign-in screen also looks black. The path is written assuming the system drive is C: (the policy value does not expand environment variables). The effect shows at the next lock.'
     Category    = 'ui'
     Risk        = 'Safe'
     Actions     = @(
