@@ -507,6 +507,13 @@ Describe 'Fabrika, arayüzler ve Windows sağlayıcıları' {
         }
     }
 
+    It 'kaldırıcı çıkış kodu: 0 ve 3010 (yeniden başlatma gerekli) başarı, diğerleri hata' {
+        [WindowsPackageProvider]::IsUninstallerSuccess(0) | Should -BeTrue
+        [WindowsPackageProvider]::IsUninstallerSuccess(3010) | Should -BeTrue
+        [WindowsPackageProvider]::IsUninstallerSuccess(1) | Should -BeFalse
+        [WindowsPackageProvider]::IsUninstallerSuccess(1603) | Should -BeFalse
+    }
+
     It 'saf yardımcılar: kayıt defteri ve görev yolu ayrıştırma' {
         $p = [WindowsRegistryProvider]::SplitPath('hkcu:\Software\FAI_WinOP_Test\')
         $p['Hive'].ToString() | Should -Be 'CurrentUser'

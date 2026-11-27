@@ -5,6 +5,7 @@ class WindowsPackageProvider : IPackageProvider {
     # winget çıkış kodları (APPINSTALLER_CLI_ERROR_*)
     static [int] $NoPackageFound = -1978335212          # 0x8A150014
     static [int] $UpdateNotApplicable = -1978335189     # 0x8A15002B (zaten kurulu / güncel)
+    static [int] $RebootRequired = 3010                 # ERROR_SUCCESS_REBOOT_REQUIRED (MSI / kaldırıcı: başarılı, yeniden başlatma gerekli)
     # Kaldırma sonrası paketin listeden düşmesi için en çok bekleme.
     static [int] $UninstallWaitSeconds = 120
 
@@ -65,8 +66,13 @@ class WindowsPackageProvider : IPackageProvider {
         $p = $null
         if ($Arguments) { $p = Start-Process -FilePath $FilePath -ArgumentList $Arguments -PassThru -Wait }
         else { $p = Start-Process -FilePath $FilePath -PassThru -Wait }
-        if ($p.ExitCode -ne 0) { throw ('{0}: kaldırıcı {1} çıkış kodu {2}' -f $PackageId, $FilePath, $p.ExitCode) }
+        if (-not [WindowsPackageProvider]::IsUninstallerSuccess($p.ExitCode)) { throw ('{0}: kaldırıcı {1} çıkış kodu {2}' -f $PackageId, $FilePath, $p.ExitCode) }
         $this.WaitUntilGone($PackageId, $Source, ('{0} {1}' -f $FilePath, $Arguments))
+    }
+
+    # Kaldırıcı çıkış kodu: 0 ya da 3010 (yeniden başlatma gerekli) başarı.
+    static [bool] IsUninstallerSuccess([int] $Code) {
+        return ($Code -eq 0 -or $Code -eq [WindowsPackageProvider]::RebootRequired)
     }
 
     # Bazı kaldırıcılar (NSIS) kendini geçici klasöre kopyalayıp hemen çıkar; kaldırma sürer. Paket listeden düşene kadar
